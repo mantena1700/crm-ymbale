@@ -1,0 +1,24 @@
+[
+  {
+    "id": "1",
+    "name": "Meta Mensal de Receita",
+    "type": "revenue",
+    "target": 50000,
+    "current": 0,
+    "period": "monthly",
+    "startDate": "2025-12-05T03:33:00.355Z",
+    "endDate": "2026-01-05T03:33:00.355Z",
+    "status": "active"
+  },
+  {
+    "id": "2",
+    "name": "Novos Clientes",
+    "type": "clients",
+    "target": 20,
+    "current": 0,
+    "period": "monthly",
+    "startDate": "2025-12-05T03:33:00.355Z",
+    "endDate": "2026-01-05T03:33:00.355Z",
+    "status": "active"
+  }
+]

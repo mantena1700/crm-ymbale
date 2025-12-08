@@ -1,0 +1,104 @@
+.floatingToggle {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    
+    /* Tema escuro (padrão) */
+    background: linear-gradient(135deg, #1e293b, #334155);
+    box-shadow: 
+        0 4px 15px rgba(0, 0, 0, 0.3),
+        0 0 20px rgba(99, 102, 241, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.floatingToggle:hover {
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 
+        0 8px 25px rgba(0, 0, 0, 0.4),
+        0 0 30px rgba(99, 102, 241, 0.4);
+}
+
+.floatingToggle:active {
+    transform: translateY(-1px) scale(1.02);
+}
+
+/* Tema claro */
+.floatingToggle.light {
+    background: linear-gradient(135deg, #ffffff, #f1f5f9);
+    box-shadow: 
+        0 4px 15px rgba(0, 0, 0, 0.1),
+        0 0 20px rgba(37, 99, 235, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.floatingToggle.light:hover {
+    box-shadow: 
+        0 8px 25px rgba(0, 0, 0, 0.15),
+        0 0 30px rgba(37, 99, 235, 0.25);
+}
+
+.iconWrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.icon {
+    width: 22px;
+    height: 22px;
+    transition: all 0.3s ease;
+}
+
+/* Cor do ícone no tema escuro */
+.floatingToggle .icon {
+    color: #fbbf24;
+}
+
+/* Cor do ícone no tema claro */
+.floatingToggle.light .icon {
+    color: #6366f1;
+}
+
+/* Animação de rotação ao trocar */
+.floatingToggle:active .icon {
+    transform: rotate(20deg);
+}
+
+/* Pulse animation sutil */
+@keyframes pulse {
+    0%, 100% {
+        box-shadow: 
+            0 4px 15px rgba(0, 0, 0, 0.3),
+            0 0 20px rgba(99, 102, 241, 0.2);
+    }
+    50% {
+        box-shadow: 
+            0 4px 15px rgba(0, 0, 0, 0.3),
+            0 0 25px rgba(99, 102, 241, 0.35);
+    }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .floatingToggle {
+        bottom: 16px;
+        right: 16px;
+        width: 44px;
+        height: 44px;
+    }
+    
+    .icon {
+        width: 20px;
+        height: 20px;
+    }
+}

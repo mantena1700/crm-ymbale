@@ -1,0 +1,381 @@
+'use client';
+
+import { useState, useMemo } from 'react';
+import { Restaurant } from '@/lib/types';
+import { PageLayout, Card, Grid, Badge, Button } from '@/components/PageLayout';
+import { Table } from '@/components/Table';
+import { updateRestaurantStatus } from '@/app/actions';
+import styles from './ClientsNew.module.css';
+
+interface Props {
+    initialRestaurants: Restaurant[];
+}
+
+export default function ClientsClientNew({ initialRestaurants }: Props) {
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedCity, setSelectedCity] = useState('Todos');
+    const [selectedStatus, setSelectedStatus] = useState('Todos');
+    const [selectedPotential, setSelectedPotential] = useState('Todos');
+    const [sortOption, setSortOption] = useState('default');
+    const [restaurants, setRestaurants] = useState(initialRestaurants);
+    const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+    const [activeTab, setActiveTab] = useState<'active' | 'discarded'>('active');
+
+    // Extract unique values for filters
+    const cities = useMemo(() => {
+        const unique = new Set(restaurants.map(r => r.address?.city || 'Outros').filter(c => c));
+        return ['Todos', ...Array.from(unique).sort()];
+    }, [restaurants]);
+
+    const statuses = ['Todos', 'A Analisar', 'Qualificado', 'Contatado', 'Negociação', 'Fechado'];
+    const potentials = ['Todos', 'ALTÍSSIMO', 'ALTO', 'MÉDIO', 'BAIXO'];
+
+    const filteredRestaurants = useMemo(() => {
+        return restaurants.filter(r => {
+            // Filter by View Mode
+            if (activeTab === 'active' && r.status === 'Descartado') return false;
+            if (activeTab === 'discarded' && r.status !== 'Descartado') return false;
+
+            const matchesSearch = r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                (r.category?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
+            const matchesCity = selectedCity === 'Todos' || (r.address?.city || 'Outros') === selectedCity;
+            const matchesStatus = selectedStatus === 'Todos' || (r.status || 'A Analisar') === selectedStatus;
+            const matchesPotential = selectedPotential === 'Todos' || r.salesPotential === selectedPotential;
+
+            return matchesSearch && matchesCity && matchesStatus && matchesPotential;
+        }).sort((a, b) => {
+            if (sortOption === 'name') return a.name.localeCompare(b.name);
+            if (sortOption === 'rating-high') return b.rating - a.rating;
+            if (sortOption === 'rating-low') return a.rating - b.rating;
+            if (sortOption === 'reviews-high') return (b.reviewCount || 0) - (a.reviewCount || 0);
+            if (sortOption === 'reviews-low') return (a.reviewCount || 0) - (b.reviewCount || 0);
+            return 0;
+        });
+    }, [restaurants, searchTerm, selectedCity, selectedStatus, selectedPotential, sortOption, activeTab]);
+
+    // Calculate stats
+    const stats = useMemo(() => {
+        const active = restaurants.filter(r => r.status !== 'Descartado');
+        return {
+            total: active.length,
+            altissimo: active.filter(r => r.salesPotential === 'ALTÍSSIMO').length,
+            alto: active.filter(r => r.salesPotential === 'ALTO').length,
+            medio: active.filter(r => r.salesPotential === 'MÉDIO').length,
+            avgRating: active.length > 0 
+                ? (active.reduce((sum, r) => sum + r.rating, 0) / active.length).toFixed(1)
+                : '0'
+        };
+    }, [restaurants]);
+
+    // Table columns
+    const tableColumns = [
+        {
+            key: 'name',
+            label: 'Restaurante',
+            render: (value: string, row: Restaurant) => (
+                <div className={styles.restaurantCell}>
+                    <span className={styles.restaurantName}>{value}</span>
+                    <span className={styles.restaurantCategory}>{row.category}</span>
+                </div>
+            )
+        },
+        {
+            key: 'address',
+            label: 'Localização',
+            width: '150px',
+            render: (value: any) => value?.city || 'N/A'
+        },
+        {
+            key: 'salesPotential',
+            label: 'Potencial',
+            width: '120px',
+            render: (value: string) => (
+                <Badge variant={
+                    value === 'ALTÍSSIMO' ? 'danger' : 
+                    value === 'ALTO' ? 'warning' : 
+                    value === 'MÉDIO' ? 'info' : 'default'
+                }>
+                    {value}
+                </Badge>
+            )
+        },
+        {
+            key: 'status',
+            label: 'Status',
+            width: '120px',
+            render: (value: string) => {
+                const variant = 
+                    value === 'Fechado' ? 'success' :
+                    value === 'Negociação' ? 'warning' :
+                    value === 'Contatado' ? 'info' : 'default';
+                return <Badge variant={variant}>{value || 'A Analisar'}</Badge>;
+            }
+        },
+        {
+            key: 'rating',
+            label: 'Avaliação',
+            width: '100px',
+            align: 'center' as const,
+            render: (value: number, row: Restaurant) => (
+                <div className={styles.ratingCell}>
+                    <span>⭐ {value.toFixed(1)}</span>
+                    <span className={styles.reviewCount}>({row.reviewCount || 0})</span>
+                </div>
+            )
+        }
+    ];
+
+    const getPotentialColor = (potential: string) => {
+        switch (potential) {
+            case 'ALTÍSSIMO': return '#ef4444';
+            case 'ALTO': return '#f59e0b';
+            case 'MÉDIO': return '#3b82f6';
+            default: return '#94a3b8';
+        }
+    };
+
+    const getStatusColor = (status: string) => {
+        switch (status) {
+            case 'Fechado': return '#22c55e';
+            case 'Negociação': return '#f59e0b';
+            case 'Contatado': return '#3b82f6';
+            case 'Qualificado': return '#10b981';
+            default: return '#6366f1';
+        }
+    };
+
+    return (
+        <PageLayout
+            title="Base de Clientes"
+            subtitle="Gerencie e segmente seus leads com facilidade"
+            icon="👥"
+            actions={
+                <>
+                    <Button variant="secondary" onClick={() => window.location.href = '/batch-analysis'}>
+                        🤖 Análise em Lote
+                    </Button>
+                    <Button variant="primary" onClick={() => window.location.href = '/clients/new'}>
+                        ➕ Novo Cliente
+                    </Button>
+                </>
+            }
+        >
+            {/* Stats Cards */}
+            <Grid cols={4}>
+                <Card className={styles.statCard}>
+                    <div className={styles.statIcon} style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
+                        <span>📊</span>
+                    </div>
+                    <div className={styles.statContent}>
+                        <div className={styles.statLabel}>Total de Leads</div>
+                        <div className={styles.statValue}>{stats.total}</div>
+                    </div>
+                </Card>
+
+                <Card className={styles.statCard}>
+                    <div className={styles.statIcon} style={{ background: 'linear-gradient(135deg, #ef4444, #dc2626)' }}>
+                        <span>🔥</span>
+                    </div>
+                    <div className={styles.statContent}>
+                        <div className={styles.statLabel}>Altíssimo Potencial</div>
+                        <div className={styles.statValue}>{stats.altissimo}</div>
+                    </div>
+                </Card>
+
+                <Card className={styles.statCard}>
+                    <div className={styles.statIcon} style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}>
+                        <span>⚡</span>
+                    </div>
+                    <div className={styles.statContent}>
+                        <div className={styles.statLabel}>Alto Potencial</div>
+                        <div className={styles.statValue}>{stats.alto}</div>
+                    </div>
+                </Card>
+
+                <Card className={styles.statCard}>
+                    <div className={styles.statIcon} style={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)' }}>
+                        <span>⭐</span>
+                    </div>
+                    <div className={styles.statContent}>
+                        <div className={styles.statLabel}>Avaliação Média</div>
+                        <div className={styles.statValue}>{stats.avgRating}</div>
+                    </div>
+                </Card>
+            </Grid>
+
+            {/* Tabs and Filters */}
+            <Card>
+                <div className={styles.tabsContainer}>
+                    <div className={styles.tabs}>
+                        <button
+                            className={`${styles.tab} ${activeTab === 'active' ? styles.active : ''}`}
+                            onClick={() => setActiveTab('active')}
+                        >
+                            🚀 Ativos ({restaurants.filter(r => r.status !== 'Descartado').length})
+                        </button>
+                        <button
+                            className={`${styles.tab} ${activeTab === 'discarded' ? styles.active : ''}`}
+                            onClick={() => setActiveTab('discarded')}
+                        >
+                            🗑️ Descartados ({restaurants.filter(r => r.status === 'Descartado').length})
+                        </button>
+                    </div>
+
+                    <div className={styles.viewModeToggle}>
+                        <button
+                            className={`${styles.viewModeBtn} ${viewMode === 'grid' ? styles.active : ''}`}
+                            onClick={() => setViewMode('grid')}
+                            title="Visualização em Grade"
+                        >
+                            ⊞
+                        </button>
+                        <button
+                            className={`${styles.viewModeBtn} ${viewMode === 'table' ? styles.active : ''}`}
+                            onClick={() => setViewMode('table')}
+                            title="Visualização em Tabela"
+                        >
+                            ☰
+                        </button>
+                    </div>
+                </div>
+
+                <div className={styles.filters}>
+                    <input
+                        type="text"
+                        placeholder="🔍 Buscar por nome ou categoria..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className={styles.searchInput}
+                    />
+
+                    <select
+                        value={selectedCity}
+                        onChange={(e) => setSelectedCity(e.target.value)}
+                        className={styles.filterSelect}
+                    >
+                        {cities.map(city => (
+                            <option key={city} value={city}>{city}</option>
+                        ))}
+                    </select>
+
+                    <select
+                        value={selectedStatus}
+                        onChange={(e) => setSelectedStatus(e.target.value)}
+                        className={styles.filterSelect}
+                    >
+                        {statuses.map(status => (
+                            <option key={status} value={status}>{status}</option>
+                        ))}
+                    </select>
+
+                    <select
+                        value={selectedPotential}
+                        onChange={(e) => setSelectedPotential(e.target.value)}
+                        className={styles.filterSelect}
+                    >
+                        {potentials.map(potential => (
+                            <option key={potential} value={potential}>{potential}</option>
+                        ))}
+                    </select>
+
+                    <select
+                        value={sortOption}
+                        onChange={(e) => setSortOption(e.target.value)}
+                        className={styles.filterSelect}
+                    >
+                        <option value="default">Ordenar por...</option>
+                        <option value="name">Nome (A-Z)</option>
+                        <option value="rating-high">Maior Avaliação</option>
+                        <option value="rating-low">Menor Avaliação</option>
+                        <option value="reviews-high">Mais Avaliações</option>
+                        <option value="reviews-low">Menos Avaliações</option>
+                    </select>
+                </div>
+
+                <div className={styles.resultsCount}>
+                    Mostrando <strong>{filteredRestaurants.length}</strong> de <strong>{restaurants.length}</strong> clientes
+                </div>
+            </Card>
+
+            {/* Content */}
+            {viewMode === 'grid' ? (
+                <div className={styles.gridView}>
+                    {filteredRestaurants.map(restaurant => (
+                        <Card key={restaurant.id} className={styles.restaurantCard}>
+                            <div 
+                                className={styles.cardHeader}
+                                style={{ 
+                                    borderLeft: `4px solid ${getPotentialColor(restaurant.salesPotential)}`
+                                }}
+                            >
+                                <h3 className={styles.cardTitle}>{restaurant.name}</h3>
+                                <Badge variant={
+                                    restaurant.salesPotential === 'ALTÍSSIMO' ? 'danger' : 
+                                    restaurant.salesPotential === 'ALTO' ? 'warning' : 
+                                    restaurant.salesPotential === 'MÉDIO' ? 'info' : 'default'
+                                }>
+                                    {restaurant.salesPotential}
+                                </Badge>
+                            </div>
+
+                            <div className={styles.cardBody}>
+                                <div className={styles.cardInfo}>
+                                    <span className={styles.infoLabel}>📍</span>
+                                    <span>{restaurant.address?.city || 'N/A'}</span>
+                                </div>
+
+                                <div className={styles.cardInfo}>
+                                    <span className={styles.infoLabel}>🍽️</span>
+                                    <span>{restaurant.category}</span>
+                                </div>
+
+                                <div className={styles.cardInfo}>
+                                    <span className={styles.infoLabel}>⭐</span>
+                                    <span>{restaurant.rating.toFixed(1)} ({restaurant.reviewCount || 0} avaliações)</span>
+                                </div>
+
+                                <div className={styles.cardInfo}>
+                                    <span className={styles.infoLabel}>📊</span>
+                                    <Badge variant={
+                                        restaurant.status === 'Fechado' ? 'success' :
+                                        restaurant.status === 'Negociação' ? 'warning' :
+                                        restaurant.status === 'Contatado' ? 'info' : 'default'
+                                    }>
+                                        {restaurant.status || 'A Analisar'}
+                                    </Badge>
+                                </div>
+
+                                {restaurant.projectedDeliveries && (
+                                    <div className={styles.cardInfo}>
+                                        <span className={styles.infoLabel}>📦</span>
+                                        <span>{restaurant.projectedDeliveries} entregas/dia</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className={styles.cardFooter}>
+                                <Button
+                                    variant="ghost"
+                                    onClick={() => window.location.href = `/restaurant/${restaurant.id}`}
+                                    className={styles.cardButton}
+                                >
+                                    Ver Detalhes →
+                                </Button>
+                            </div>
+                        </Card>
+                    ))}
+                </div>
+            ) : (
+                <Card>
+                    <Table
+                        columns={tableColumns}
+                        data={filteredRestaurants}
+                        onRowClick={(row) => window.location.href = `/restaurant/${row.id}`}
+                        emptyMessage="Nenhum cliente encontrado"
+                    />
+                </Card>
+            )}
+        </PageLayout>
+    );
+}
+

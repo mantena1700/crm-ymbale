@@ -185,7 +185,7 @@ export async function getRestaurantQuickView(restaurantId: string) {
         stats: {
             totalComments: restaurant.comments.length,
             avgRating: restaurant.rating,
-            projectedRevenue: restaurant.projectedDeliveries * 2.5, // Estimate
+            projectedRevenue: (restaurant.projectedDeliveries ?? 0) * 2.5, // Estimate
         }
     };
 }

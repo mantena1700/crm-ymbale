@@ -1,7 +1,7 @@
 // src/lib/db-data.ts
 // Camada de dados usando Prisma para buscar do banco de dados Supabase
 import { prisma } from './db';
-import { Restaurant, AnalysisResult, Note, FollowUp, Goal, Activity } from './types';
+import { Restaurant, AnalysisResult, Note, FollowUp, Goal, Activity, Seller } from './types';
 
 // Restaurantes
 export async function getRestaurants(): Promise<Restaurant[]> {
@@ -12,14 +12,14 @@ export async function getRestaurants(): Promise<Restaurant[]> {
         },
         orderBy: { createdAt: 'desc' }
     });
-    
+
     return restaurants.map(r => ({
         id: r.id,
         name: r.name,
         rating: Number(r.rating || 0),
-        reviewCount: r.reviewCount,
-        totalComments: r.totalComments,
-        projectedDeliveries: r.projectedDeliveries,
+        reviewCount: r.reviewCount ?? 0,
+        totalComments: r.totalComments ?? 0,
+        projectedDeliveries: r.projectedDeliveries ?? 0,
         salesPotential: r.salesPotential || 'N/A',
         category: r.category || 'N/A',
         address: r.address as any,
@@ -27,6 +27,17 @@ export async function getRestaurants(): Promise<Restaurant[]> {
         comments: r.comments.map(c => c.content),
         status: r.status || undefined,
         email: (r.address as any)?.email || '',
+        seller: r.seller ? {
+            id: r.seller.id,
+            name: r.seller.name,
+            email: r.seller.email || undefined,
+            phone: r.seller.phone || undefined,
+            photoUrl: r.seller.photoUrl || undefined,
+            regions: r.seller.regions as string[],
+            neighborhoods: (r.seller.neighborhoods as string[]) || [],
+            active: r.seller.active || false
+        } : undefined,
+        assignedAt: r.assignedAt?.toISOString()
     }));
 }
 
@@ -65,9 +76,9 @@ export async function getAnalysis(id: string): Promise<AnalysisResult | null> {
         where: { restaurantId: id },
         orderBy: { createdAt: 'desc' }
     });
-    
+
     if (!analysis) return null;
-    
+
     return {
         restaurantId: id,
         score: analysis.score,
@@ -87,7 +98,7 @@ export async function saveNote(id: string, content: string) {
             content
         }
     });
-    
+
     return {
         id: note.id,
         content: note.content,
@@ -100,7 +111,7 @@ export async function getNotes(id: string): Promise<Note[]> {
         where: { restaurantId: id },
         orderBy: { createdAt: 'desc' }
     });
-    
+
     return notes.map(n => ({
         id: n.id,
         content: n.content,
@@ -143,7 +154,7 @@ export async function getFollowUps(restaurantId?: string): Promise<FollowUp[]> {
         where: restaurantId ? { restaurantId } : undefined,
         orderBy: { scheduledDate: 'asc' }
     });
-    
+
     return followUps.map(f => ({
         id: f.id,
         restaurantId: f.restaurantId,
@@ -169,7 +180,7 @@ export async function getUpcomingFollowUps(): Promise<FollowUp[]> {
             restaurant: true
         }
     });
-    
+
     return followUps.map(f => ({
         id: f.id,
         restaurantId: f.restaurantId,
@@ -217,7 +228,7 @@ export async function getGoals(): Promise<Goal[]> {
     const goals = await prisma.goal.findMany({
         orderBy: { createdAt: 'desc' }
     });
-    
+
     return goals.map(g => ({
         id: g.id,
         name: g.name,
@@ -260,14 +271,14 @@ export async function getDashboardStats() {
         pendingAnalysis,
         hotLeadsCount: hotLeads.length,
         avgRating: avgRatingResult._avg.rating ? Number(avgRatingResult._avg.rating).toFixed(1) : '0',
-        projectedRevenue: hotLeads.reduce((sum, r) => sum + r.projectedDeliveries, 0) * 2.5,
+        projectedRevenue: hotLeads.reduce((sum, r) => sum + (r.projectedDeliveries ?? 0), 0) * 2.5,
         hotLeads: hotLeads.map(r => ({
             id: r.id,
             name: r.name,
             rating: Number(r.rating || 0),
-            reviewCount: r.reviewCount,
-            totalComments: r.totalComments,
-            projectedDeliveries: r.projectedDeliveries,
+            reviewCount: r.reviewCount ?? 0,
+            totalComments: r.totalComments ?? 0,
+            projectedDeliveries: r.projectedDeliveries ?? 0,
             salesPotential: r.salesPotential || 'N/A',
             category: r.category || 'N/A',
             address: r.address as any,
@@ -288,7 +299,7 @@ export async function getRecentActivities(limit: number = 10): Promise<Activity[
             restaurant: true
         }
     });
-    
+
     return activities.map(a => ({
         id: a.id,
         type: a.type as any,
@@ -303,4 +314,54 @@ export async function getRecentActivities(limit: number = 10): Promise<Activity[
 
 // Export Activity type
 export type { Activity };
+
+// Intelligent Segmentation
+export async function getIntelligentSegmentation() {
+    const restaurants = await getRestaurants();
+    const analyses = await Promise.all(
+        restaurants.map(r => getAnalysis(r.id))
+    );
+
+    const highPotential = restaurants.filter((r, i) => {
+        const analysis = analyses[i];
+        return (analysis && analysis.score >= 80) || r.salesPotential === 'ALTÍSSIMO';
+    });
+
+    const mediumPotential = restaurants.filter((r, i) => {
+        const analysis = analyses[i];
+        return (analysis && analysis.score >= 60 && analysis.score < 80) || r.salesPotential === 'ALTO';
+    });
+
+    const lowPotential = restaurants.filter((r, i) => {
+        const analysis = analyses[i];
+        return (!analysis || analysis.score < 60) && r.salesPotential !== 'ALTÍSSIMO' && r.salesPotential !== 'ALTO';
+    });
+
+    return {
+        highPotential,
+        mediumPotential,
+        lowPotential,
+        total: restaurants.length
+    };
+}
+
+// Sellers
+export async function getSellers(): Promise<Seller[]> {
+    const sellers = await prisma.seller.findMany({
+        orderBy: { name: 'asc' }
+    });
+    
+    return sellers.map(s => ({
+        id: s.id,
+        name: s.name,
+        email: s.email || '',
+        phone: s.phone || '',
+        photoUrl: s.photoUrl || undefined,
+        regions: s.regions as string[],
+        neighborhoods: s.neighborhoods as string[],
+        active: s.active,
+        createdAt: s.createdAt.toISOString(),
+        updatedAt: s.updatedAt.toISOString(),
+    }));
+}
 

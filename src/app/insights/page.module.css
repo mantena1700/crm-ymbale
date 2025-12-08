@@ -1,0 +1,68 @@
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.header h1 {
+    font-size: var(--text-3xl);
+    font-weight: 700;
+    margin: 0 0 var(--space-1);
+    background: linear-gradient(135deg, #fff 0%, #10b981 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.header p {
+    color: var(--text-muted);
+    margin: 0 0 var(--space-6);
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--space-4);
+}
+
+.card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-xl);
+    padding: var(--space-6);
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--primary);
+}
+
+.cardIcon {
+    font-size: 3rem;
+    margin-bottom: var(--space-4);
+}
+
+.card h3 {
+    color: var(--foreground);
+    margin: 0 0 var(--space-2);
+    font-size: var(--text-lg);
+}
+
+.card p {
+    color: var(--text-muted);
+    margin: 0 0 var(--space-4);
+    line-height: 1.6;
+}
+
+.cardLink {
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.2s ease;
+}
+
+.cardLink:hover {
+    color: var(--accent);
+}
+

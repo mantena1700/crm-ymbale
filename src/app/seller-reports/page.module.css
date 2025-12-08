@@ -1,0 +1,298 @@
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: var(--space-6) var(--space-4);
+}
+
+.header {
+    margin-bottom: var(--space-6);
+}
+
+.header h1 {
+    font-size: var(--text-3xl);
+    font-weight: 700;
+    margin: 0 0 var(--space-2) 0;
+    background: linear-gradient(to right, #fff, #cbd5e1);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.subtitle {
+    color: var(--text-muted);
+    font-size: var(--text-base);
+    margin: 0;
+}
+
+.selectorCard {
+    background: var(--card-bg);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-xl);
+    padding: var(--space-6);
+    margin-bottom: var(--space-6);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.selectorCard label {
+    font-size: var(--text-base);
+    font-weight: 600;
+    color: var(--foreground);
+}
+
+.sellerSelect {
+    padding: var(--space-3) var(--space-4);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--foreground);
+    font-size: var(--text-base);
+    font-family: inherit;
+    transition: all 0.2s ease;
+}
+
+.sellerSelect:focus {
+    outline: none;
+    border-color: var(--primary);
+    background: rgba(99, 102, 241, 0.1);
+}
+
+.generateButton {
+    padding: var(--space-4) var(--space-6);
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    color: white;
+    border: none;
+    border-radius: var(--radius-lg);
+    font-weight: 600;
+    font-size: var(--text-base);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px var(--primary-glow);
+}
+
+.generateButton:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px var(--primary-glow);
+}
+
+.generateButton:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.reportContainer {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+}
+
+.reportHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    padding-bottom: var(--space-4);
+    border-bottom: 2px solid var(--border);
+}
+
+.reportHeader h2 {
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    margin: 0;
+    color: var(--foreground);
+}
+
+.reportDate {
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+}
+
+.summaryGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: var(--space-4);
+}
+
+.summaryCard {
+    background: var(--card-bg);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-5);
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow-md);
+}
+
+.summaryCard:hover {
+    transform: translateY(-4px);
+    border-color: var(--primary);
+    box-shadow: var(--shadow-xl);
+}
+
+.summaryIcon {
+    font-size: var(--text-3xl);
+    width: 64px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(99, 102, 241, 0.1);
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    flex-shrink: 0;
+}
+
+.summaryContent {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.summaryContent label {
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+    font-weight: 600;
+}
+
+.summaryValue {
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    color: var(--foreground);
+    background: linear-gradient(to bottom, #fff, #cbd5e1);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.insightsCard,
+.clientsCard,
+.recommendationsCard {
+    background: var(--card-bg);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-xl);
+    padding: var(--space-6);
+    box-shadow: var(--shadow-lg);
+}
+
+.insightsCard h3,
+.clientsCard h3,
+.recommendationsCard h3 {
+    font-size: var(--text-xl);
+    font-weight: 600;
+    margin: 0 0 var(--space-5) 0;
+    color: var(--foreground);
+}
+
+.insightsContent {
+    color: var(--foreground);
+    line-height: 1.8;
+    font-size: var(--text-base);
+}
+
+.insightsContent p {
+    margin: var(--space-3) 0;
+}
+
+.clientsList {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.clientItem {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-4);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    transition: all 0.2s ease;
+}
+
+.clientItem:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: var(--primary);
+}
+
+.clientRank {
+    font-size: var(--text-xl);
+    font-weight: 700;
+    color: var(--primary);
+    width: 40px;
+    text-align: center;
+}
+
+.clientInfo {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.clientName {
+    font-size: var(--text-lg);
+    font-weight: 600;
+    color: var(--foreground);
+}
+
+.clientDetails {
+    display: flex;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+}
+
+.clientStatus {
+    padding: var(--space-1) var(--space-2);
+    background: rgba(99, 102, 241, 0.15);
+    color: var(--primary);
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    font-size: var(--text-xs);
+}
+
+.recommendationsList {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.recommendationsList li {
+    padding: var(--space-3) var(--space-4);
+    background: rgba(99, 102, 241, 0.1);
+    border-left: 3px solid var(--primary);
+    border-radius: var(--radius-sm);
+    color: var(--foreground);
+    line-height: 1.6;
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: var(--space-4) var(--space-3);
+    }
+
+    .summaryGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .reportHeader {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+

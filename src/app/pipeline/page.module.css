@@ -1,0 +1,1131 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    height: 100%;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+/* Header */
+.header {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    padding-bottom: var(--space-4);
+    border-bottom: 1px solid var(--card-border);
+}
+
+.headerTop {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+}
+
+.header h1 {
+    font-size: var(--text-3xl);
+    font-weight: 700;
+    margin: 0 0 var(--space-1) 0;
+    color: var(--foreground);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+/* Emoji mantém cor natural */
+.header h1 .emoji {
+    background: none;
+    -webkit-text-fill-color: initial;
+    color: inherit;
+    display: inline-block;
+}
+
+/* Aplicar gradiente apenas no texto */
+.header h1 .titleText {
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Modo claro - gradiente mais escuro e visível */
+[data-theme="light"] .header h1 .titleText {
+    background: linear-gradient(135deg, #1e40af, #4338ca);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.header p {
+    color: var(--text-muted);
+    font-size: var(--text-base);
+    margin: 0;
+}
+
+.headerActions {
+    display: flex;
+    gap: var(--space-3);
+}
+
+.viewToggle {
+    display: flex;
+    background: var(--card-bg);
+    border-radius: var(--radius-lg);
+    padding: 4px;
+    border: 1px solid var(--border);
+}
+
+.viewButton {
+    padding: var(--space-2) var(--space-3);
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+    cursor: pointer;
+    border-radius: var(--radius-md);
+    transition: all 0.2s ease;
+}
+
+.viewButton:hover {
+    color: var(--foreground);
+}
+
+.viewButton.active {
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    color: white;
+}
+
+/* Metrics Bar */
+.metricsBar {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: var(--space-3);
+}
+
+@media (max-width: 1200px) {
+    .metricsBar {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 600px) {
+    .metricsBar {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.metricCard {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-3);
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    backdrop-filter: blur(8px);
+    transition: all 0.2s ease;
+}
+
+.metricCard:hover {
+    border-color: var(--primary);
+    transform: translateY(-2px);
+}
+
+.metricIcon {
+    font-size: 1.5rem;
+}
+
+.metricContent {
+    display: flex;
+    flex-direction: column;
+}
+
+.metricValue {
+    font-size: var(--text-xl);
+    font-weight: 700;
+    color: var(--foreground);
+    line-height: 1;
+}
+
+.metricLabel {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+}
+
+/* Toolbar */
+.toolbar {
+    display: flex;
+    gap: var(--space-4);
+    align-items: center;
+    flex-wrap: wrap;
+    padding: var(--space-3);
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-lg);
+}
+
+.searchBox {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex: 1;
+    min-width: 250px;
+    background: var(--background);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 0 var(--space-3);
+}
+
+.searchIcon {
+    font-size: 1rem;
+    opacity: 0.5;
+}
+
+.searchInput {
+    flex: 1;
+    background: transparent;
+    border: none;
+    padding: var(--space-2) 0;
+    color: var(--foreground);
+    font-size: var(--text-sm);
+    outline: none;
+}
+
+.searchInput::placeholder {
+    color: var(--text-muted);
+}
+
+.clearSearch {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: var(--space-1);
+}
+
+.filters {
+    display: flex;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+}
+
+.filterButton {
+    padding: var(--space-2) var(--space-3);
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.filterButton:hover {
+    border-color: var(--primary);
+    color: var(--foreground);
+}
+
+.filterButton.active {
+    background: rgba(99, 102, 241, 0.15);
+    border-color: var(--primary);
+    color: var(--primary);
+    font-weight: 600;
+}
+
+.sortBox {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.sortBox label {
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+}
+
+.sortSelect {
+    background: var(--background);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: var(--space-2) var(--space-3);
+    color: var(--foreground);
+    font-size: var(--text-sm);
+    cursor: pointer;
+}
+
+/* Bulk Actions */
+.bulkActions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(139, 92, 246, 0.15));
+    border: 1px solid var(--primary);
+    border-radius: var(--radius-lg);
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.selectedCount {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--primary);
+}
+
+.bulkButton {
+    padding: var(--space-2) var(--space-3);
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: var(--radius-md);
+    color: var(--foreground);
+    font-size: var(--text-sm);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.bulkButton:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.bulkDiscard {
+    border-color: rgba(239, 68, 68, 0.5);
+    color: #ef4444;
+}
+
+.bulkClear {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+    cursor: pointer;
+    margin-left: auto;
+}
+
+/* Content */
+.content {
+    flex: 1;
+    overflow: hidden;
+}
+
+/* Kanban View */
+.kanban {
+    display: flex;
+    gap: var(--space-4);
+    height: 100%;
+    overflow-x: auto;
+    width: 100%;
+    max-width: 100%;
+    padding-bottom: var(--space-4);
+}
+
+.column {
+    min-width: 320px;
+    max-width: 320px;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-xl);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.columnHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-4);
+    border-top: 3px solid;
+    background: var(--card-bg);
+}
+
+.columnTitle {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.columnTitle span {
+    font-size: 1.2rem;
+}
+
+.columnTitle h3 {
+    font-size: var(--text-base);
+    font-weight: 600;
+    color: var(--foreground);
+    margin: 0;
+}
+
+.columnCount {
+    background: rgba(99, 102, 241, 0.2);
+    color: var(--primary);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    padding: 2px 10px;
+    border-radius: 20px;
+}
+
+.columnContent {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--space-3);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.emptyColumn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-6);
+    border: 2px dashed var(--border);
+    border-radius: var(--radius-lg);
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+}
+
+.moreIndicator {
+    text-align: center;
+    padding: var(--space-3);
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+    background: rgba(99, 102, 241, 0.1);
+    border-radius: var(--radius-md);
+}
+
+/* Card */
+.card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-3);
+    cursor: grab;
+    transition: all 0.2s ease;
+}
+
+.card:hover {
+    border-color: var(--primary);
+    box-shadow: 0 4px 20px rgba(99, 102, 241, 0.2);
+    transform: translateY(-2px);
+}
+
+.card:active {
+    cursor: grabbing;
+}
+
+.cardSelected {
+    border-color: var(--primary);
+    background: rgba(99, 102, 241, 0.1);
+}
+
+.cardCompact {
+    padding: var(--space-2);
+}
+
+.cardCompact .cardBody {
+    gap: var(--space-1);
+}
+
+.cardCompact .cardActions {
+    flex-direction: column;
+}
+
+.cardHeader {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
+}
+
+.checkbox {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: var(--primary);
+}
+
+.cardTitle {
+    flex: 1;
+    min-width: 0;
+}
+
+.cardTitle h4 {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--foreground);
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cardCategory {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+}
+
+.priorityBadge {
+    font-size: var(--text-xs);
+    padding: 2px 8px;
+    border-radius: 20px;
+    white-space: nowrap;
+}
+
+.priorityUrgent {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+}
+
+.priorityHigh {
+    background: rgba(249, 115, 22, 0.2);
+    color: #f97316;
+}
+
+.priorityMedium {
+    background: rgba(234, 179, 8, 0.2);
+    color: #eab308;
+}
+
+.priorityLow {
+    background: rgba(107, 114, 128, 0.2);
+    color: #6b7280;
+}
+
+.cardBody {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.cardStats {
+    display: flex;
+    gap: var(--space-3);
+}
+
+.cardStat {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+}
+
+.statIcon {
+    font-size: 0.85rem;
+}
+
+.scoreValue {
+    color: var(--success);
+    font-weight: 600;
+}
+
+.cardLocation {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+}
+
+.cardPainPoints {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.painPointTag {
+    font-size: 10px;
+    padding: 2px 6px;
+    background: rgba(139, 92, 246, 0.15);
+    color: var(--accent);
+    border-radius: 4px;
+}
+
+.cardActions {
+    display: flex;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+    padding-top: var(--space-2);
+    border-top: 1px solid var(--border);
+}
+
+.analyzeButton,
+.followUpButton {
+    flex: 1;
+    padding: var(--space-2);
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    border: none;
+    border-radius: var(--radius-md);
+    color: white;
+    font-size: var(--text-xs);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.analyzeButton:hover:not(:disabled),
+.followUpButton:hover {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+}
+
+.analyzeButton:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.followUpButton {
+    background: rgba(16, 185, 129, 0.2);
+    color: var(--success);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.detailsButton {
+    padding: var(--space-2);
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--text-muted);
+    font-size: var(--text-xs);
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.detailsButton:hover {
+    border-color: var(--primary);
+    color: var(--foreground);
+}
+
+/* List View */
+.listView {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table th,
+.table td {
+    padding: var(--space-3);
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+}
+
+.table th {
+    background: var(--card-bg);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.table tbody tr {
+    transition: background 0.2s ease;
+}
+
+.table tbody tr:hover {
+    background: rgba(99, 102, 241, 0.05);
+}
+
+.rowSelected {
+    background: rgba(99, 102, 241, 0.1) !important;
+}
+
+.nameCell {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.nameCell strong {
+    color: var(--foreground);
+}
+
+.nameCell span {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+}
+
+.potentialBadge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: var(--text-xs);
+    font-weight: 600;
+}
+
+.potentialALTISSIMO {
+    background: rgba(16, 185, 129, 0.2);
+    color: var(--success);
+}
+
+.potentialALTO {
+    background: rgba(249, 115, 22, 0.2);
+    color: #f97316;
+}
+
+.potentialMEDIO {
+    background: rgba(234, 179, 8, 0.2);
+    color: #eab308;
+}
+
+.potentialBAIXO {
+    background: rgba(107, 114, 128, 0.2);
+    color: #6b7280;
+}
+
+.statusBadge {
+    display: inline-block;
+    padding: 2px 8px;
+    background: rgba(99, 102, 241, 0.15);
+    color: var(--primary);
+    border-radius: 4px;
+    font-size: var(--text-xs);
+}
+
+.scoreBadge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    color: white;
+    border-radius: 50%;
+    font-size: var(--text-sm);
+    font-weight: 700;
+}
+
+.tableActions {
+    display: flex;
+    gap: var(--space-2);
+}
+
+.tableAction {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.tableAction:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.tableFooter {
+    padding: var(--space-3);
+    text-align: center;
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+    background: var(--card-bg);
+}
+
+/* Grid View */
+.gridView {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: var(--space-4);
+    overflow-y: auto;
+    padding-right: var(--space-2);
+}
+
+.gridMore {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: var(--space-4);
+    color: var(--text-muted);
+    background: var(--card-bg);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-lg);
+}
+
+/* Modal Overlay */
+.modalOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: var(--space-4);
+}
+
+/* Quick View Modal */
+.quickViewModal {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-xl);
+    width: 100%;
+    max-width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+    padding: var(--space-6);
+    position: relative;
+}
+
+.closeModal {
+    position: absolute;
+    top: var(--space-4);
+    right: var(--space-4);
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    border-radius: 50%;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.closeModal:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: var(--foreground);
+}
+
+.loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-8);
+    color: var(--text-muted);
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-bottom: var(--space-4);
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.quickViewHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--space-4);
+    padding-bottom: var(--space-4);
+    border-bottom: 1px solid var(--border);
+}
+
+.quickViewHeader h2 {
+    font-size: var(--text-xl);
+    color: var(--foreground);
+    margin: 0;
+}
+
+.quickViewRating {
+    font-size: var(--text-lg);
+    color: var(--warning);
+}
+
+.quickViewStats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-3);
+    margin-bottom: var(--space-5);
+}
+
+.quickStat {
+    background: rgba(15, 23, 42, 0.6);
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+    text-align: center;
+}
+
+.quickStatValue {
+    display: block;
+    font-size: var(--text-xl);
+    font-weight: 700;
+    color: var(--foreground);
+}
+
+.quickStatLabel {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+}
+
+.quickViewSection {
+    margin-bottom: var(--space-4);
+}
+
+.quickViewSection h4 {
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+    margin: 0 0 var(--space-2);
+}
+
+.quickViewSection p {
+    color: var(--foreground);
+    line-height: 1.6;
+    margin: 0;
+}
+
+.painPointsList {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+}
+
+.painPoint {
+    padding: var(--space-2) var(--space-3);
+    background: rgba(139, 92, 246, 0.15);
+    color: var(--accent);
+    border-radius: var(--radius-md);
+    font-size: var(--text-sm);
+}
+
+.quickViewActions {
+    display: flex;
+    gap: var(--space-3);
+    margin-top: var(--space-5);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--border);
+}
+
+.viewFullButton {
+    flex: 1;
+    padding: var(--space-3);
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    border: none;
+    border-radius: var(--radius-md);
+    color: white;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    text-decoration: none;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.viewFullButton:hover {
+    filter: brightness(1.1);
+}
+
+.followUpButtonModal {
+    padding: var(--space-3);
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    border-radius: var(--radius-md);
+    color: var(--success);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.followUpButtonModal:hover {
+    background: rgba(16, 185, 129, 0.25);
+}
+
+/* Follow-up Modal */
+.followUpModal {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-xl);
+    width: 100%;
+    max-width: 480px;
+    padding: var(--space-6);
+    position: relative;
+}
+
+.followUpModal h2 {
+    font-size: var(--text-xl);
+    color: var(--foreground);
+    margin: 0 0 var(--space-5);
+}
+
+.formGroup {
+    margin-bottom: var(--space-4);
+}
+
+.formGroup label {
+    display: block;
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+    margin-bottom: var(--space-2);
+}
+
+.typeButtons {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-2);
+}
+
+.typeButton {
+    padding: var(--space-2);
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--text-muted);
+    font-size: var(--text-xs);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.typeButton:hover {
+    border-color: var(--primary);
+    color: var(--foreground);
+}
+
+.typeButton.active {
+    background: rgba(99, 102, 241, 0.15);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.dateInput,
+.notesInput {
+    width: 100%;
+    padding: var(--space-3);
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--foreground);
+    font-size: var(--text-sm);
+}
+
+.notesInput {
+    min-height: 100px;
+    resize: vertical;
+    font-family: inherit;
+}
+
+.formActions {
+    display: flex;
+    gap: var(--space-3);
+    margin-top: var(--space-5);
+}
+
+.cancelButton {
+    flex: 1;
+    padding: var(--space-3);
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.cancelButton:hover {
+    border-color: var(--foreground);
+    color: var(--foreground);
+}
+
+.saveButton {
+    flex: 1;
+    padding: var(--space-3);
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    border: none;
+    border-radius: var(--radius-md);
+    color: white;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.saveButton:hover:not(:disabled) {
+    filter: brightness(1.1);
+}
+
+.saveButton:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .headerTop {
+        flex-direction: column;
+    }
+
+    .header h1 {
+        font-size: var(--text-2xl);
+    }
+
+    .toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .searchBox {
+        width: 100%;
+    }
+
+    .filters {
+        overflow-x: auto;
+        width: 100%;
+        max-width: 100%;
+        flex-wrap: nowrap;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .filterButton {
+        flex-shrink: 0;
+    }
+
+    .bulkActions {
+        flex-wrap: wrap;
+    }
+
+    .kanban {
+        flex-direction: column;
+    }
+
+    .column {
+        min-width: 100%;
+        max-width: 100%;
+    }
+
+    .quickViewStats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .typeButtons {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}

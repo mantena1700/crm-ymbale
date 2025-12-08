@@ -60,9 +60,9 @@ export default function ImportExcelClient() {
   return (
     <div className={styles.container}>
       <div className={styles.card}>
-        <h2>📤 Importar Planilha Excel</h2>
+        <h2>📤 Importar Dados</h2>
         <p className={styles.description}>
-          Faça upload de uma ou múltiplas planilhas Excel (.xlsx) para importar restaurantes automaticamente.
+          Faça upload de planilhas Excel (.xlsx, .xls) ou arquivos de texto (.txt, .csv) para importar restaurantes automaticamente.
           Os leads serão direcionados para os vendedores baseado na região. Você pode selecionar vários arquivos de uma vez!
         </p>
 
@@ -71,7 +71,7 @@ export default function ImportExcelClient() {
             <input
               id="excel-file"
               type="file"
-              accept=".xlsx,.xls"
+              accept=".xlsx,.xls,.txt,.csv"
               multiple
               onChange={handleFileChange}
               className={styles.fileInput}
@@ -80,7 +80,7 @@ export default function ImportExcelClient() {
             <label htmlFor="excel-file" className={styles.fileLabel}>
               {files.length > 0 
                 ? `${files.length} arquivo(s) selecionado(s)` 
-                : '📄 Escolher arquivo(s) Excel (múltiplos permitidos)'}
+                : '📄 Escolher arquivo(s) - Excel (.xlsx, .xls) ou Texto (.txt, .csv)'}
             </label>
           </div>
 
@@ -100,7 +100,7 @@ export default function ImportExcelClient() {
             disabled={files.length === 0 || loading}
             className={styles.submitButton}
           >
-            {loading ? '⏳ Importando...' : `🚀 Importar ${files.length > 0 ? files.length : ''} Planilha(s)`}
+            {loading ? '⏳ Importando...' : `🚀 Importar ${files.length > 0 ? files.length : ''} Arquivo(s)`}
           </button>
         </form>
 

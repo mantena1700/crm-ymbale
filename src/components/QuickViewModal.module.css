@@ -1,0 +1,427 @@
+.overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: var(--space-4);
+}
+
+.modal {
+    background: var(--background);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-xl);
+    width: 100%;
+    max-width: 500px;
+    max-height: 80vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: var(--space-4);
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(139, 92, 246, 0.1));
+    border-bottom: 1px solid var(--border);
+}
+
+.headerInfo h2 {
+    font-size: var(--text-lg);
+    font-weight: 700;
+    color: var(--foreground);
+    margin: 0 0 4px;
+}
+
+.location {
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+    display: block;
+}
+
+.seller {
+    font-size: var(--text-xs);
+    color: var(--primary);
+    display: block;
+    margin-top: 4px;
+}
+
+.closeBtn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    border-radius: var(--radius-md);
+    color: var(--danger);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.closeBtn:hover {
+    background: var(--danger);
+    color: white;
+}
+
+.tabs {
+    display: flex;
+    gap: var(--space-1);
+    padding: var(--space-2) var(--space-4);
+    background: var(--card-bg);
+    border-bottom: 1px solid var(--border);
+}
+
+.tab {
+    flex: 1;
+    padding: var(--space-2);
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-md);
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.tab:hover {
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--foreground);
+}
+
+.tab.active {
+    background: var(--primary);
+    color: white;
+}
+
+.content {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--space-4);
+}
+
+/* Info Tab */
+.infoTab {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.statsGrid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-2);
+}
+
+.statCard {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    background: var(--background);
+    border-radius: var(--radius-lg);
+}
+
+.statIcon {
+    font-size: 1.25rem;
+}
+
+.statCard strong {
+    display: block;
+    font-size: var(--text-lg);
+    font-weight: 700;
+    color: var(--foreground);
+}
+
+.statCard span {
+    font-size: 10px;
+    color: var(--text-muted);
+}
+
+.badges {
+    display: flex;
+    gap: var(--space-4);
+    padding: var(--space-3);
+    background: var(--background);
+    border-radius: var(--radius-lg);
+}
+
+.badgeItem {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.badgeItem label {
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+}
+
+.statusBadge,
+.priorityBadge {
+    padding: 4px 10px;
+    border-radius: var(--radius-sm);
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.statusAnalisar {
+    background: rgba(148, 163, 184, 0.15);
+    color: #cbd5e1;
+}
+
+.statusQualificado {
+    background: rgba(56, 189, 248, 0.15);
+    color: #38bdf8;
+}
+
+.statusContatado {
+    background: rgba(251, 191, 36, 0.15);
+    color: #fbbf24;
+}
+
+.statusNegociacao {
+    background: rgba(168, 85, 247, 0.15);
+    color: #a855f7;
+}
+
+.statusFechado {
+    background: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+}
+
+.priorityAltissimo {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+}
+
+.priorityAlto {
+    background: rgba(251, 146, 60, 0.15);
+    color: #fb923c;
+}
+
+.priorityMedio {
+    background: rgba(251, 191, 36, 0.15);
+    color: #fbbf24;
+}
+
+.priorityBaixo {
+    background: rgba(148, 163, 184, 0.15);
+    color: #94a3b8;
+}
+
+.priorityNd {
+    background: rgba(100, 116, 139, 0.15);
+    color: #64748b;
+}
+
+.address {
+    padding: var(--space-3);
+    background: var(--background);
+    border-radius: var(--radius-lg);
+}
+
+.address h4 {
+    font-size: var(--text-sm);
+    color: var(--foreground);
+    margin: 0 0 var(--space-2);
+}
+
+.address p {
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+    margin: 0;
+}
+
+/* Actions Tab */
+.actionsTab {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.actionBtn {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    background: var(--background);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    color: inherit;
+}
+
+.actionBtn:hover {
+    background: rgba(99, 102, 241, 0.1);
+    border-color: rgba(99, 102, 241, 0.3);
+    transform: translateX(4px);
+}
+
+.actionBtn>span:first-child {
+    font-size: 1.25rem;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(99, 102, 241, 0.15);
+    border-radius: var(--radius-md);
+}
+
+.actionBtn div strong {
+    display: block;
+    color: var(--foreground);
+    font-size: var(--text-sm);
+}
+
+.actionBtn div span {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+}
+
+.quickStatus,
+.quickPriority {
+    padding: var(--space-3);
+    background: var(--background);
+    border-radius: var(--radius-lg);
+}
+
+.quickStatus h4,
+.quickPriority h4 {
+    font-size: var(--text-sm);
+    color: var(--foreground);
+    margin: 0 0 var(--space-2);
+}
+
+.statusBtns,
+.priorityBtns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+}
+
+.statusBtn,
+.priorityBtn {
+    padding: var(--space-1) var(--space-2);
+    background: var(--background);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.statusBtn:hover,
+.priorityBtn:hover {
+    background: rgba(99, 102, 241, 0.2);
+    border-color: var(--primary);
+}
+
+.statusBtn.active,
+.priorityBtn.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+}
+
+/* Notes Tab */
+.notesTab {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.addNote {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.addNote textarea {
+    padding: var(--space-3);
+    background: var(--secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--foreground);
+    font-size: var(--text-sm);
+    resize: none;
+}
+
+.addNote textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.addNote button {
+    align-self: flex-end;
+    padding: var(--space-2) var(--space-4);
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    border: none;
+    border-radius: var(--radius-md);
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.addNote button:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px var(--primary-glow);
+}
+
+.addNote button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.noteHint {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+    padding: var(--space-4);
+    background: var(--background);
+    border-radius: var(--radius-lg);
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+    .modal {
+        max-width: 100%;
+        max-height: 100vh;
+        border-radius: 0;
+    }
+
+    .statsGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .badges {
+        flex-direction: column;
+        gap: var(--space-2);
+    }
+}

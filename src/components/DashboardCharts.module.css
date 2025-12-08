@@ -1,0 +1,112 @@
+.chartsGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: var(--space-4);
+    margin-top: var(--space-4);
+}
+
+@media (max-width: 1024px) {
+    .chartsGrid {
+        grid-template-columns: 1fr;
+        gap: var(--space-3);
+    }
+}
+
+@media (max-width: 768px) {
+    .chartsGrid {
+        grid-template-columns: 1fr;
+        gap: var(--space-3);
+        margin-top: var(--space-3);
+    }
+
+    .chartCard {
+        padding: var(--space-3);
+    }
+}
+
+.chartCard {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+    padding: 2rem;
+    backdrop-filter: blur(12px);
+}
+
+.chartCard h3 {
+    color: var(--text-muted);
+    font-size: 1rem;
+    margin-bottom: 2rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.barChart {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    height: 200px;
+    padding-top: 1rem;
+}
+
+.barGroup {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+}
+
+.bar {
+    width: 40px;
+    background: linear-gradient(to top, var(--primary), var(--accent));
+    border-radius: 8px 8px 0 0;
+    transition: height 0.5s ease;
+    opacity: 0.8;
+}
+
+.bar:hover {
+    opacity: 1;
+    transform: scaleY(1.05);
+}
+
+.barGroup span {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+}
+
+.pieChartContainer {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    height: 200px;
+}
+
+.pieChart {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    background: conic-gradient(var(--primary) 0% 45%,
+            var(--accent) 45% 75%,
+            var(--secondary) 75% 100%);
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+}
+
+.legend {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.legendItem {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--foreground);
+    font-size: 0.9rem;
+}
+
+.dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}

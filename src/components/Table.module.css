@@ -1,0 +1,236 @@
+/* Table Wrapper */
+.tableWrapper {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    backdrop-filter: blur(12px);
+}
+
+.tableScroll {
+    overflow-x: auto;
+    overflow-y: visible;
+}
+
+/* Table */
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-sm);
+}
+
+.table thead {
+    background: rgba(15, 23, 42, 0.3);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.table th {
+    padding: var(--space-3) var(--space-4);
+    text-align: left;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    font-size: var(--text-xs);
+    letter-spacing: 0.05em;
+    border-bottom: 2px solid var(--card-border);
+    white-space: nowrap;
+}
+
+.table tbody tr {
+    border-bottom: 1px solid var(--card-border);
+    transition: all var(--transition-fast);
+}
+
+.table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.table tbody tr.clickable {
+    cursor: pointer;
+}
+
+.table tbody tr:hover {
+    background: rgba(99, 102, 241, 0.05);
+}
+
+.table tbody tr.clickable:hover {
+    background: rgba(99, 102, 241, 0.1);
+    transform: scale(1.01);
+}
+
+.table td {
+    padding: var(--space-3) var(--space-4);
+    color: var(--foreground);
+    vertical-align: middle;
+}
+
+/* Empty State */
+.emptyState {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-8);
+    text-align: center;
+    color: var(--text-muted);
+}
+
+.emptyIcon {
+    font-size: 4rem;
+    margin-bottom: var(--space-3);
+    opacity: 0.5;
+}
+
+.emptyState p {
+    font-size: var(--text-base);
+    color: var(--text-muted);
+}
+
+/* Loading State */
+.loadingState {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-8);
+    text-align: center;
+}
+
+.spinner {
+    font-size: 3rem;
+    animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.loadingState p {
+    margin-top: var(--space-3);
+    color: var(--text-muted);
+}
+
+/* Form Components */
+.formField {
+    margin-bottom: var(--space-4);
+}
+
+.formLabel {
+    display: block;
+    margin-bottom: var(--space-2);
+    font-weight: 600;
+    color: var(--foreground);
+    font-size: var(--text-sm);
+}
+
+.required {
+    color: var(--danger);
+    margin-left: 4px;
+}
+
+.input,
+.select,
+.textarea {
+    width: 100%;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--background);
+    color: var(--foreground);
+    font-size: var(--text-sm);
+    transition: all var(--transition-base);
+    font-family: inherit;
+}
+
+.input:focus,
+.select:focus,
+.textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-glow);
+}
+
+.input::placeholder,
+.textarea::placeholder {
+    color: var(--text-muted);
+}
+
+.textarea {
+    resize: vertical;
+    min-height: 100px;
+    line-height: 1.5;
+}
+
+.select {
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M10.293 3.293L6 7.586 1.707 3.293A1 1 0 00.293 4.707l5 5a1 1 0 001.414 0l5-5a1 1 0 10-1.414-1.414z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right var(--space-3) center;
+    padding-right: var(--space-6);
+}
+
+.formHint {
+    margin-top: var(--space-1);
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+}
+
+.formError {
+    margin-top: var(--space-1);
+    font-size: var(--text-xs);
+    color: var(--danger);
+    font-weight: 500;
+}
+
+/* Responsive Table */
+@media (max-width: 768px) {
+    .table {
+        font-size: var(--text-xs);
+    }
+
+    .table th,
+    .table td {
+        padding: var(--space-2) var(--space-3);
+    }
+
+    .table th {
+        position: sticky;
+        left: 0;
+        background: rgba(15, 23, 42, 0.95);
+    }
+}
+
+/* Light Theme */
+[data-theme="light"] .tableWrapper {
+    background: #ffffff;
+    border-color: var(--border);
+}
+
+[data-theme="light"] .table thead {
+    background: #f8fafc;
+}
+
+[data-theme="light"] .table th {
+    color: #64748b;
+    border-bottom-color: #e2e8f0;
+}
+
+[data-theme="light"] .table tbody tr {
+    border-bottom-color: #e2e8f0;
+}
+
+[data-theme="light"] .table tbody tr:hover {
+    background: #f8fafc;
+}
+
+[data-theme="light"] .input,
+[data-theme="light"] .select,
+[data-theme="light"] .textarea {
+    background: #ffffff;
+    border-color: #cbd5e1;
+    color: #0f172a;
+}
+

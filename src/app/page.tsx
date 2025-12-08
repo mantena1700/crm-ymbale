@@ -1,5 +1,5 @@
 import { getDashboardStats, getRestaurants, getFollowUps, getGoals, getUpcomingFollowUps, getRecentActivities, Activity } from '@/lib/db-data';
-import DashboardClient from './DashboardClient';
+import DashboardClientNew from './DashboardClientNew';
 
 export default async function Dashboard() {
     const stats = await getDashboardStats();
@@ -56,5 +56,5 @@ export default async function Dashboard() {
         recentActivities: recentActivities
     };
 
-    return <DashboardClient stats={advancedStats} />;
+    return <DashboardClientNew stats={advancedStats} />;
 }

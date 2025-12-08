@@ -1,8 +1,8 @@
 import { getRestaurants } from '@/lib/db-data';
-import ClientsClient from './ClientsClient';
+import ClientsClientNew from './ClientsClientNew';
 
 export default async function ClientsPage() {
     const restaurants = await getRestaurants();
 
-    return <ClientsClient initialRestaurants={restaurants} />;
+    return <ClientsClientNew initialRestaurants={restaurants} />;
 }

@@ -1,0 +1,41 @@
+import { Restaurant, AnalysisResult } from './types';
+import { analyzeRestaurantWithOpenAI } from './openai-service';
+
+export async function analyzeRestaurant(restaurant: Restaurant): Promise<AnalysisResult> {
+    const openaiKey = process.env.OPENAI_API_KEY;
+    
+    console.log('=== AI ANALYSIS START ===');
+    console.log('Restaurant:', restaurant.name);
+    console.log('API Key:', openaiKey ? `Present (${openaiKey.length} chars)` : 'MISSING');
+    
+    if (!openaiKey || openaiKey.length < 50) {
+        console.error('❌ No valid API key found');
+        return {
+            restaurantId: restaurant.id,
+            score: 0,
+            summary: 'Chave da API não configurada. Configure OPENAI_API_KEY no .env.local',
+            painPoints: ['Configuração necessária'],
+            salesCopy: 'Configure a chave da API para gerar análises.',
+            status: 'A Analisar'
+        } as AnalysisResult;
+    }
+
+    try {
+        console.log('🚀 Calling OpenAI...');
+        const result = await analyzeRestaurantWithOpenAI(restaurant);
+        console.log('✅ Analysis complete! Score:', result.score);
+        console.log('=== AI ANALYSIS END ===');
+        return result;
+    } catch (error: any) {
+        console.error('❌ Analysis failed:', error?.message || error);
+        console.log('=== AI ANALYSIS END (ERROR) ===');
+        return {
+            restaurantId: restaurant.id,
+            score: 0,
+            summary: `Erro: ${error?.message || 'Falha na análise'}`,
+            painPoints: ['Erro de conexão'],
+            salesCopy: 'Não foi possível gerar.',
+            status: 'A Analisar'
+        } as AnalysisResult;
+    }
+}

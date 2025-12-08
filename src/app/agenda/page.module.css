@@ -1,0 +1,715 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+}
+
+/* Header */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+}
+
+.header h1 {
+    font-size: var(--text-3xl);
+    font-weight: 700;
+    margin: 0 0 var(--space-1);
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+[data-theme="light"] .header h1 {
+    background: linear-gradient(135deg, #1e40af, #4338ca);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.header p {
+    color: var(--text-muted);
+    margin: 0;
+}
+
+.newButton {
+    padding: var(--space-3) var(--space-5);
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    border: none;
+    border-radius: var(--radius-lg);
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 20px var(--primary-glow);
+}
+
+.newButton:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 30px var(--primary-glow);
+}
+
+/* Stats */
+.stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-4);
+}
+
+@media (max-width: 900px) {
+    .stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 500px) {
+    .stats {
+        grid-template-columns: 1fr;
+    }
+}
+
+.statCard {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-4);
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-xl);
+    backdrop-filter: blur(12px);
+    transition: all 0.3s ease;
+}
+
+.statCard:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+}
+
+.statIcon {
+    font-size: 2rem;
+}
+
+.statValue {
+    display: block;
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    color: var(--foreground);
+}
+
+.statLabel {
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+}
+
+.statTotal {
+    border-left: 4px solid var(--primary);
+}
+
+.statToday {
+    border-left: 4px solid #10b981;
+}
+
+.statOverdue {
+    border-left: 4px solid #ef4444;
+}
+
+.statCompleted {
+    border-left: 4px solid #6b7280;
+}
+
+/* Toolbar */
+.toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+    padding: var(--space-4);
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-xl);
+}
+
+.viewToggle {
+    display: flex;
+    background: var(--card-bg);
+    border-radius: var(--radius-lg);
+    padding: 4px;
+}
+
+.viewButton {
+    padding: var(--space-2) var(--space-4);
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+    cursor: pointer;
+    border-radius: var(--radius-md);
+    transition: all 0.2s ease;
+}
+
+.viewButton:hover {
+    color: var(--foreground);
+}
+
+.viewButton.active {
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    color: white;
+}
+
+.filters {
+    display: flex;
+    gap: var(--space-3);
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.filterSelect {
+    padding: var(--space-2) var(--space-3);
+    background: var(--background);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--foreground);
+    font-size: var(--text-sm);
+    cursor: pointer;
+}
+
+.checkboxLabel {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+.checkboxLabel input {
+    accent-color: var(--primary);
+}
+
+/* Content */
+.content {
+    flex: 1;
+}
+
+/* List View */
+.listView {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.emptyState {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-8);
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-xl);
+    text-align: center;
+}
+
+.emptyIcon {
+    font-size: 4rem;
+    margin-bottom: var(--space-4);
+}
+
+.emptyState h3 {
+    color: var(--foreground);
+    margin: 0 0 var(--space-2);
+}
+
+.emptyState p {
+    color: var(--text-muted);
+    margin: 0 0 var(--space-4);
+}
+
+.emptyButton {
+    padding: var(--space-3) var(--space-5);
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    border: none;
+    border-radius: var(--radius-md);
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.dateGroup {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+}
+
+.dateHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-3) var(--space-4);
+    background: var(--card-bg);
+    border-bottom: 1px solid var(--border);
+}
+
+.dateText {
+    font-weight: 600;
+    color: var(--foreground);
+}
+
+.dateCount {
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+}
+
+.dateItems {
+    display: flex;
+    flex-direction: column;
+}
+
+.followUpCard {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    border-bottom: 1px solid var(--border);
+    transition: all 0.2s ease;
+}
+
+.followUpCard:last-child {
+    border-bottom: none;
+}
+
+.followUpCard:hover {
+    background: rgba(99, 102, 241, 0.05);
+}
+
+.followUpCard.completed {
+    opacity: 0.6;
+}
+
+.followUpCard.completed .cardContent {
+    text-decoration: line-through;
+}
+
+.followUpCard.overdue {
+    border-left: 3px solid #ef4444;
+    background: rgba(239, 68, 68, 0.05);
+}
+
+.checkButton {
+    width: 24px;
+    height: 24px;
+    border: 2px solid var(--border);
+    border-radius: 50%;
+    background: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--success);
+    font-size: 12px;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+}
+
+.checkButton:hover {
+    border-color: var(--success);
+    background: rgba(16, 185, 129, 0.1);
+}
+
+.followUpCard.completed .checkButton {
+    background: var(--success);
+    border-color: var(--success);
+    color: white;
+}
+
+.cardContent {
+    flex: 1;
+    min-width: 0;
+}
+
+.cardHeader {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-2);
+}
+
+.typeTag {
+    padding: 2px 8px;
+    background: rgba(99, 102, 241, 0.15);
+    color: var(--primary);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-xs);
+    font-weight: 600;
+}
+
+.time {
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+}
+
+.restaurantLink {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    text-decoration: none;
+    margin-bottom: var(--space-2);
+}
+
+.restaurantLink strong {
+    color: var(--foreground);
+    font-size: var(--text-base);
+}
+
+.restaurantLink span {
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+}
+
+.restaurantLink:hover strong {
+    color: var(--primary);
+}
+
+.notes {
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+    margin: 0;
+    line-height: 1.5;
+}
+
+.cardActions {
+    display: flex;
+    gap: var(--space-2);
+}
+
+.actionButton {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--text-muted);
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.actionButton:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+/* Calendar View */
+.calendarView {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-xl);
+    padding: var(--space-4);
+}
+
+.calendarHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-4);
+}
+
+.calendarHeader h3 {
+    color: var(--foreground);
+    font-size: var(--text-xl);
+    text-transform: capitalize;
+    margin: 0;
+}
+
+.calendarNav {
+    width: 36px;
+    height: 36px;
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    border-radius: var(--radius-md);
+    color: var(--primary);
+    font-size: var(--text-lg);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.calendarNav:hover {
+    background: rgba(99, 102, 241, 0.2);
+}
+
+.calendarGrid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+}
+
+.calendarDayHeader {
+    padding: var(--space-2);
+    background: var(--card-bg);
+    text-align: center;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.calendarDay {
+    min-height: 100px;
+    padding: var(--space-2);
+    background: var(--background);
+    transition: all 0.2s ease;
+}
+
+.calendarDay:hover {
+    background: rgba(99, 102, 241, 0.1);
+}
+
+.calendarDay.otherMonth {
+    opacity: 0.4;
+}
+
+.calendarDay.today {
+    background: rgba(99, 102, 241, 0.15);
+    border: 1px solid var(--primary);
+}
+
+.dayNumber {
+    display: block;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--foreground);
+    margin-bottom: var(--space-2);
+}
+
+.calendarDay.today .dayNumber {
+    color: var(--primary);
+}
+
+.dayEvents {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.dayEvent {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(99, 102, 241, 0.2);
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+}
+
+.dayEvent.completed {
+    opacity: 0.5;
+}
+
+.moreEvents {
+    font-size: 10px;
+    color: var(--text-muted);
+    padding: 2px 4px;
+}
+
+/* Modal */
+.modalOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: var(--space-4);
+}
+
+.modal {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-xl);
+    width: 100%;
+    max-width: 500px;
+    padding: var(--space-6);
+    position: relative;
+}
+
+.closeModal {
+    position: absolute;
+    top: var(--space-4);
+    right: var(--space-4);
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    border-radius: 50%;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.closeModal:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: var(--foreground);
+}
+
+.modal h2 {
+    font-size: var(--text-xl);
+    color: var(--foreground);
+    margin: 0 0 var(--space-5);
+}
+
+.formGroup {
+    margin-bottom: var(--space-4);
+}
+
+.formGroup label {
+    display: block;
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+    margin-bottom: var(--space-2);
+}
+
+.formSelect,
+.formInput,
+.formTextarea {
+    width: 100%;
+    padding: var(--space-3);
+    background: var(--background);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--foreground);
+    font-size: var(--text-sm);
+}
+
+.formTextarea {
+    min-height: 100px;
+    resize: vertical;
+    font-family: inherit;
+}
+
+.typeButtons {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-2);
+}
+
+.typeButton {
+    padding: var(--space-2);
+    background: var(--background);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.typeButton:hover {
+    border-color: var(--primary);
+    color: var(--foreground);
+}
+
+.typeButton.active {
+    background: rgba(99, 102, 241, 0.15);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.formActions {
+    display: flex;
+    gap: var(--space-3);
+    margin-top: var(--space-5);
+}
+
+.cancelButton {
+    flex: 1;
+    padding: var(--space-3);
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.cancelButton:hover {
+    border-color: var(--foreground);
+    color: var(--foreground);
+}
+
+.saveButton {
+    flex: 1;
+    padding: var(--space-3);
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    border: none;
+    border-radius: var(--radius-md);
+    color: white;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.saveButton:hover:not(:disabled) {
+    filter: brightness(1.1);
+}
+
+.saveButton:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+    .header {
+        flex-direction: column;
+    }
+
+    .newButton {
+        width: 100%;
+    }
+
+    .toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .filters {
+        flex-direction: column;
+    }
+
+    .calendarDay {
+        min-height: 60px;
+    }
+
+    .dayNumber {
+        font-size: var(--text-xs);
+    }
+
+    .dayEvent {
+        width: 18px;
+        height: 18px;
+        font-size: 10px;
+    }
+}
