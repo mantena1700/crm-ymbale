@@ -1,74 +1,88 @@
 # 📦 CRM Ymbale
 
-Sistema de Gestão de Relacionamento com Clientes (CRM) desenvolvido com Next.js, PostgreSQL e Prisma.
+Sistema de CRM (Customer Relationship Management) para gestão de leads e clientes.
 
-## 🚀 Instalação Rápida com Docker
+## 🚀 Tecnologias
 
-### Pré-requisitos
-- Docker e Docker Compose instalados
-- Git instalado
+- **Next.js 16** - Framework React com App Router
+- **TypeScript** - Tipagem estática
+- **Prisma** - ORM para banco de dados
+- **PostgreSQL** - Banco de dados
+- **Docker** - Containerização do banco
 
-### 1. Clonar o repositório
+## 📋 Funcionalidades
+
+- ✅ Dashboard com métricas
+- ✅ Gestão de leads/clientes
+- ✅ Pipeline de vendas
+- ✅ Agenda de follow-ups
+- ✅ Gestão de vendedores
+- ✅ Campanhas de marketing
+- ✅ Relatórios
+- ✅ Análise em lote com IA
+- ✅ Sistema de metas
+- ✅ Autenticação de usuários
+
+## 🔧 Instalação Local
+
+### 1. Clonar repositório
+
 ```bash
-git clone https://github.com/SEU_USUARIO/crm-ymbale.git
+git clone https://github.com/mantena1700/crm-ymbale.git
 cd crm-ymbale
 ```
 
-### 2. Criar arquivo .env
+### 2. Instalar dependências
+
+```bash
+npm install
+```
+
+### 3. Iniciar PostgreSQL com Docker
+
+```bash
+docker compose up -d postgres
+```
+
+### 4. Configurar ambiente
+
 ```bash
 cp env.example .env
 ```
 
-### 3. Subir os containers
+### 5. Criar banco de dados
+
 ```bash
-docker-compose up -d --build
+npx prisma generate
+npx prisma db push
 ```
 
-### 4. Criar as tabelas do banco
+### 6. Criar usuário admin
+
 ```bash
-docker-compose exec crm prisma db push
+npx tsx scripts/create-admin.ts
 ```
 
-### 5. Criar usuário administrador
+### 7. Iniciar em desenvolvimento
+
 ```bash
-docker-compose exec crm tsx scripts/create-admin.ts
+npm run dev
 ```
 
-### 6. Acessar o sistema
-- **URL:** http://localhost:3001
-- **Usuário:** admin
-- **Senha:** admin
+Acesse: http://localhost:3000
 
----
+## 🌐 Deploy em VPS
 
-## 🖥️ Deploy em VPS (Produção)
+Consulte o arquivo [DEPLOY_VPS.md](./DEPLOY_VPS.md) para instruções completas de instalação em servidor.
 
-Consulte o arquivo [DEPLOY_VPS.md](./DEPLOY_VPS.md) para instruções detalhadas de deploy em servidores VPS.
+## 👤 Credenciais Padrão
 
----
+| Campo | Valor |
+|-------|-------|
+| Usuário | `admin` |
+| Senha | `admin` |
 
-## 📋 Comandos Úteis
-
-| Comando | Descrição |
-|---------|-----------|
-| `docker-compose up -d` | Iniciar containers |
-| `docker-compose down` | Parar containers |
-| `docker-compose logs -f` | Ver logs em tempo real |
-| `docker-compose exec crm sh` | Acessar terminal do container |
-| `docker-compose down -v` | Parar e remover volumes (⚠️ apaga dados) |
-
----
-
-## 🔧 Tecnologias
-
-- **Frontend:** Next.js 16, React 19, TypeScript
-- **Backend:** Next.js API Routes, Server Actions
-- **Banco de Dados:** PostgreSQL 16
-- **ORM:** Prisma 6
-- **Autenticação:** Sistema próprio com bcrypt
-- **Deploy:** Docker, Docker Compose
-
----
+⚠️ **Troque a senha no primeiro acesso!**
 
 ## 📁 Estrutura do Projeto
 
@@ -77,30 +91,35 @@ crm-ymbale/
 ├── src/
 │   ├── app/           # Páginas e rotas (App Router)
 │   ├── components/    # Componentes React
-│   └── lib/           # Utilitários e configurações
+│   ├── lib/           # Utilitários e configurações
+│   └── types/         # Definições TypeScript
 ├── prisma/
 │   └── schema.prisma  # Schema do banco de dados
-├── scripts/           # Scripts de manutenção
+├── scripts/           # Scripts utilitários
 ├── public/            # Arquivos estáticos
-├── Dockerfile         # Configuração Docker
-└── docker-compose.yml # Orquestração de containers
+└── docker-compose.yml # Configuração Docker
 ```
 
----
-
-## 🔐 Variáveis de Ambiente
-
-Copie `env.example` para `.env` e configure:
+## 🔑 Variáveis de Ambiente
 
 | Variável | Descrição |
 |----------|-----------|
 | `DATABASE_URL` | URL de conexão PostgreSQL |
+| `NODE_ENV` | Ambiente (development/production) |
+| `OPENAI_API_KEY` | (Opcional) Chave API OpenAI |
+| `GOOGLE_AI_API_KEY` | (Opcional) Chave API Google AI |
 | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | (Opcional) Chave Google Maps |
-| `OPENAI_API_KEY` | (Opcional) Chave OpenAI para IA |
-| `GOOGLE_AI_API_KEY` | (Opcional) Chave Google AI/Gemini |
 
----
+## 📊 Comandos Úteis
 
-## 📄 Licença
+| Comando | Descrição |
+|---------|-----------|
+| `npm run dev` | Iniciar em desenvolvimento |
+| `npm run build` | Build de produção |
+| `npm start` | Iniciar produção |
+| `npx prisma studio` | Interface visual do banco |
+| `npx prisma db push` | Sincronizar schema |
+
+## 📝 Licença
 
 Projeto privado - Todos os direitos reservados.

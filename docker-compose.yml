@@ -19,21 +19,5 @@ services:
       timeout: 5s
       retries: 5
 
-  # Aplicação CRM
-  crm:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: crm-app
-    restart: unless-stopped
-    ports:
-      - "3000:3000"
-    environment:
-      DATABASE_URL: postgresql://crm_user:crm_senha_segura_2024@postgres:5432/crm_ymbale?schema=public
-      NODE_ENV: production
-    depends_on:
-      postgres:
-        condition: service_healthy
-
 volumes:
   postgres_data:
