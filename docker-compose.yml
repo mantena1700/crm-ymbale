@@ -27,7 +27,7 @@ services:
     container_name: crm-app
     restart: unless-stopped
     ports:
-      - "3001:3000"
+      - "3000:3000"
     environment:
       DATABASE_URL: postgresql://crm_user:crm_senha_segura_2024@postgres:5432/crm_ymbale?schema=public
       NODE_ENV: production

@@ -38,14 +38,11 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 
-# Docker
-Dockerfile
-docker-compose.yml
-.dockerignore
-
-# Documentação
-*.md
-!README.md
+# Documentação (manter apenas README)
+DEPLOY_VPS.md
+CONFIGURAR_GOOGLE_MAPS.md
+CONFIGURAR_STORAGE.md
+MIGRACAO_SUPABASE.md
 
 # Dados de desenvolvimento
 data/
