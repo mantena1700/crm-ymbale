@@ -4,15 +4,6 @@ import { supabase } from '@/lib/supabase';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// Configurar limite de upload para 10MB
-export const config = {
-    api: {
-        bodyParser: {
-            sizeLimit: '10mb',
-        },
-    },
-};
-
 export async function POST(request: NextRequest) {
     try {
         if (!supabase) {

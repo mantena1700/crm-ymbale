@@ -4,6 +4,8 @@ import { validateSession } from '@/lib/auth';
 import UsersClient from './UsersClient';
 import { getUsers } from './actions';
 
+export const dynamic = 'force-dynamic';
+
 export default async function UsersPage() {
     // Verificar autenticação e permissão de admin
     const cookieStore = await cookies();

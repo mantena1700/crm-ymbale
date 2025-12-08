@@ -771,8 +771,8 @@ export async function exportWeeklyScheduleToExcel(
                 id: seller.id,
                 name: seller.name,
                 email: seller.email || '',
-                regions: seller.regions || [],
-                neighborhoods: seller.neighborhoods || [],
+                regions: (seller.regions as string[]) || [],
+                neighborhoods: (seller.neighborhoods as string[]) || [],
             },
             weekStart: weekStartDate,
             followUps: followUps.map(f => ({

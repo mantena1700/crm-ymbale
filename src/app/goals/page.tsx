@@ -1,6 +1,8 @@
 import { getRestaurants, getGoals } from '@/lib/db-data';
 import GoalsClient from './GoalsClient';
 
+export const dynamic = 'force-dynamic';
+
 export default async function GoalsPage() {
     const restaurants = await getRestaurants();
     const goals = await getGoals();

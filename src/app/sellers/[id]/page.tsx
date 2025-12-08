@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/db';
 import SellerDetailsClient from './SellerDetailsClient';
 
+export const dynamic = 'force-dynamic';
+
 export default async function SellerDetailsPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
     const seller = await prisma.seller.findUnique({

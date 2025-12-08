@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/db';
 import SellersClient from './SellersClient';
 
+export const dynamic = 'force-dynamic';
+
 export default async function SellersPage() {
     try {
         const sellers = await prisma.seller.findMany({

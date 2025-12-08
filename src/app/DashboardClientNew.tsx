@@ -222,7 +222,7 @@ export default function DashboardClientNew({ stats }: DashboardClientProps) {
 
             {/* Alertas e Ações Rápidas */}
             <div className={styles.alertsGrid}>
-                <Card className={styles.alertCard} title={null}>
+                <Card className={styles.alertCard} title={undefined}>
                     <div className={styles.alert} data-variant="warning">
                         <span className={styles.alertIcon}>⚠️</span>
                         <div className={styles.alertContent}>
@@ -234,7 +234,7 @@ export default function DashboardClientNew({ stats }: DashboardClientProps) {
                     </div>
                 </Card>
                 
-                <Card className={styles.alertCard} title={null}>
+                <Card className={styles.alertCard} title={undefined}>
                     <div className={styles.alert} data-variant="info">
                         <span className={styles.alertIcon}>📅</span>
                         <div className={styles.alertContent}>
@@ -246,7 +246,7 @@ export default function DashboardClientNew({ stats }: DashboardClientProps) {
                     </div>
                 </Card>
 
-                <Card className={styles.alertCard} title={null}>
+                <Card className={styles.alertCard} title={undefined}>
                     <div className={styles.alert} data-variant="success">
                         <span className={styles.alertIcon}>🎯</span>
                         <div className={styles.alertContent}>

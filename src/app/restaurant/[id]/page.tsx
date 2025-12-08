@@ -5,6 +5,8 @@ import styles from './page.module.css';
 import Link from 'next/link';
 import RestaurantDetailsClient from './RestaurantDetailsClient';
 
+export const dynamic = 'force-dynamic';
+
 interface PageProps {
     params: Promise<{ id: string }>;
 }

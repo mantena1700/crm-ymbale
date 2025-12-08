@@ -3,6 +3,8 @@ import { getCampaigns, getEmailTemplates } from './actions';
 import { getWorkflows } from './workflow-actions';
 import { getSellers } from '@/lib/db-data';
 
+export const dynamic = 'force-dynamic';
+
 export default async function CampaignsPage() {
     const [campaigns, workflows, templates, sellers] = await Promise.all([
         getCampaigns(),

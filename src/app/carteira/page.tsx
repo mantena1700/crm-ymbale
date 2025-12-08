@@ -1,7 +1,7 @@
-'use server';
-
 import { prisma } from '@/lib/db';
 import CarteiraClient from './CarteiraClient';
+
+export const dynamic = 'force-dynamic';
 
 async function getData() {
     try {

@@ -1,6 +1,8 @@
 import { getDashboardStats, getRestaurants, getFollowUps, getGoals, getUpcomingFollowUps, getRecentActivities, Activity } from '@/lib/db-data';
 import DashboardClientNew from './DashboardClientNew';
 
+export const dynamic = 'force-dynamic';
+
 export default async function Dashboard() {
     const stats = await getDashboardStats();
     const restaurants = await getRestaurants();
