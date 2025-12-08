@@ -210,17 +210,16 @@ export async function cleanExpiredSessions(): Promise<number> {
     return result.count;
 }
 
-// Gerar token de sessão seguro
+// Gerar token de sessão seguro usando crypto
 function generateSessionToken(): string {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let token = '';
-    for (let i = 0; i < 64; i++) {
-        token += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
+    // Usar crypto para geração segura de tokens
+    const array = new Uint8Array(48);
+    crypto.getRandomValues(array);
+    const token = Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
     return token + '_' + Date.now().toString(36);
 }
 
-// Gerar senha aleatória segura
+// Gerar senha aleatória segura usando crypto
 export function generateRandomPassword(length: number = 12): string {
     const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     const lowercase = 'abcdefghijklmnopqrstuvwxyz';
@@ -228,20 +227,32 @@ export function generateRandomPassword(length: number = 12): string {
     const special = '!@#$%&*';
     const allChars = uppercase + lowercase + numbers + special;
     
+    // Função auxiliar para obter índice aleatório seguro
+    const getSecureRandomIndex = (max: number): number => {
+        const array = new Uint32Array(1);
+        crypto.getRandomValues(array);
+        return array[0] % max;
+    };
+    
     // Garantir pelo menos um de cada tipo
     let password = '';
-    password += uppercase.charAt(Math.floor(Math.random() * uppercase.length));
-    password += lowercase.charAt(Math.floor(Math.random() * lowercase.length));
-    password += numbers.charAt(Math.floor(Math.random() * numbers.length));
-    password += special.charAt(Math.floor(Math.random() * special.length));
+    password += uppercase.charAt(getSecureRandomIndex(uppercase.length));
+    password += lowercase.charAt(getSecureRandomIndex(lowercase.length));
+    password += numbers.charAt(getSecureRandomIndex(numbers.length));
+    password += special.charAt(getSecureRandomIndex(special.length));
     
     // Completar o resto
     for (let i = 4; i < length; i++) {
-        password += allChars.charAt(Math.floor(Math.random() * allChars.length));
+        password += allChars.charAt(getSecureRandomIndex(allChars.length));
     }
     
-    // Embaralhar
-    return password.split('').sort(() => Math.random() - 0.5).join('');
+    // Embaralhar usando Fisher-Yates com crypto
+    const arr = password.split('');
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = getSecureRandomIndex(i + 1);
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr.join('');
 }
 
 // Verificar autenticação de uma requisição

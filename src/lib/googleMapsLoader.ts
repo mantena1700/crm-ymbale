@@ -3,7 +3,14 @@ let isLoading = false;
 let isLoaded = false;
 const callbacks: Array<() => void> = [];
 
-export function loadGoogleMaps(apiKey: string = 'AIzaSyASOKtEiW5F-NkwvjApo0NcMYab6OF3nlg'): Promise<void> {
+export function loadGoogleMaps(apiKey?: string): Promise<void> {
+    // Usar variável de ambiente ou parâmetro
+    const key = apiKey || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
+    
+    if (!key) {
+        console.warn('⚠️ Google Maps API Key não configurada. Configure NEXT_PUBLIC_GOOGLE_MAPS_API_KEY no .env');
+        return Promise.reject(new Error('Google Maps API Key não configurada'));
+    }
     return new Promise((resolve, reject) => {
         // Se já está carregado, resolve imediatamente
         if (isLoaded || (window.google && window.google.maps)) {
@@ -50,7 +57,7 @@ export function loadGoogleMaps(apiKey: string = 'AIzaSyASOKtEiW5F-NkwvjApo0NcMYa
         isLoading = true;
 
         const script = document.createElement('script');
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry`;
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=places,geometry`;
         script.async = true;
         script.defer = true;
 
