@@ -171,6 +171,8 @@ http://SEU_IP_DA_VPS
 
 ## 🔄 Atualizar o Sistema
 
+### Opção A: Com Systemd (Método Original)
+
 ```bash
 cd /root/crm-ymbale
 git pull
@@ -182,6 +184,36 @@ cp -r public .next/standalone/
 cp -r .next/static .next/standalone/.next/
 systemctl restart crm
 ```
+
+### Opção B: Migrar para PM2 (Recomendado)
+
+```bash
+# 1. Instalar PM2
+npm install -g pm2
+
+# 2. Parar systemd
+systemctl stop crm
+systemctl disable crm
+
+# 3. Atualizar código
+cd /root/crm-ymbale
+git pull
+npm install
+npx prisma generate
+npx prisma db push
+npm run build
+
+# 4. Iniciar com PM2
+pm2 start ecosystem.config.js
+pm2 save
+pm2 startup
+
+# 5. Verificar
+pm2 status
+pm2 logs crm-ymbale --lines 20
+```
+
+**Para mais detalhes, consulte:** [DEPLOY_COMANDOS_VPS.md](./DEPLOY_COMANDOS_VPS.md)
 
 ---
 
