@@ -1,152 +1,189 @@
+/* Settings - Design Profissional ATUALIZADO */
+@import '../../styles/design-system.css';
+
 .container {
     padding: 0;
-    max-width: 900px;
+    max-width: 1200px;
     margin: 0 auto;
     width: 100%;
 }
 
 .header {
-    margin-bottom: var(--space-6);
+    margin-bottom: 2rem;
 }
 
-@media (max-width: 768px) {
     .header h1 {
-        font-size: var(--text-2xl);
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin: 0 0 0.25rem 0;
+    color: var(--ds-text);
     }
+
+.header p {
+    font-size: 0.875rem;
+    color: var(--ds-text-muted);
+    margin: 0;
 }
 
 .section {
-    background: var(--card-bg);
-    border: 1px solid var(--card-border);
-    border-radius: var(--radius-lg);
-    padding: var(--space-6);
-    margin-bottom: var(--space-4);
-    backdrop-filter: blur(12px);
-    box-shadow: var(--shadow-md);
+    background: var(--ds-card);
+    border: 1px solid var(--ds-border);
+    border-radius: 0.875rem;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
     transition: all 0.3s ease;
 }
 
 .section:hover {
-    border-color: rgba(99, 102, 241, 0.3);
-    box-shadow: var(--shadow-lg);
-}
-
-@media (max-width: 768px) {
-    .section {
-        padding: var(--space-4);
-        margin-bottom: var(--space-3);
-    }
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
 }
 
 .section h2 {
-    color: var(--foreground);
-    margin-bottom: 0.5rem;
-    font-size: 1.25rem;
+    color: var(--ds-text);
+    margin: 0 0 0.5rem 0;
+    font-size: 1.125rem;
+    font-weight: 600;
 }
 
 .description {
-    color: var(--text-muted);
+    color: var(--ds-text-muted);
     margin-bottom: 1.5rem;
     line-height: 1.6;
+    font-size: 0.875rem;
 }
 
 .description code {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--ds-gray-100);
     padding: 0.2rem 0.4rem;
-    border-radius: 4px;
+    border-radius: 0.25rem;
     font-family: monospace;
+    font-size: 0.8125rem;
+}
+
+[data-theme="dark"] .description code {
+    background: rgba(0,0,0,0.3);
 }
 
 .uploadZone {
-    border: 2px dashed var(--border);
-    border-radius: 8px;
+    border: 2px dashed var(--ds-border);
+    border-radius: 0.75rem;
     padding: 2rem;
     text-align: center;
-    color: var(--text-muted);
+    color: var(--ds-text-muted);
     margin-bottom: 1.5rem;
-    background: var(--background);
+    background: var(--ds-gray-50);
+    transition: all 0.2s;
+}
+
+[data-theme="dark"] .uploadZone {
+    background: rgba(0,0,0,0.2);
+}
+
+.uploadZone:hover {
+    border-color: var(--ds-primary);
+    background: var(--ds-primary-light);
 }
 
 .button {
-    background: linear-gradient(135deg, var(--primary), var(--accent));
+    background: var(--ds-primary);
     color: white;
     border: none;
-    padding: var(--space-3) var(--space-6);
-    border-radius: var(--radius-md);
+    padding: 0.625rem 1.5rem;
+    border-radius: 0.5rem;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    font-size: var(--text-sm);
-    box-shadow: 0 0 15px var(--primary-glow);
+    transition: all 0.15s;
+    font-size: 0.875rem;
 }
 
 .button:hover:not(:disabled) {
-    background: linear-gradient(135deg, var(--primary-hover), var(--accent));
+    background: var(--ds-primary-hover);
     transform: translateY(-2px);
-    box-shadow: 0 0 25px var(--primary-glow);
-    filter: brightness(1.1);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
 .button:active:not(:disabled) {
     transform: translateY(0);
 }
 
+.button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 .successMessage {
     margin-top: 1rem;
-    color: var(--success);
+    color: var(--ds-success);
     font-weight: 500;
+    font-size: 0.875rem;
 }
 
 .field {
     display: flex;
     align-items: center;
     gap: 1rem;
+    margin-bottom: 1rem;
 }
 
 .field label {
-    color: var(--text-muted);
+    color: var(--ds-text);
     width: 150px;
+    font-weight: 500;
+    font-size: 0.875rem;
 }
 
 .input {
-    background: var(--background);
-    border: 1px solid var(--border);
-    padding: 0.5rem;
-    border-radius: 6px;
-    color: var(--text-muted);
+    background: var(--ds-card);
+    border: 1px solid var(--ds-border);
+    padding: 0.625rem 0.875rem;
+    border-radius: 0.5rem;
+    color: var(--ds-text);
     flex: 1;
+    font-size: 0.875rem;
+}
+
+.input:focus {
+    outline: none;
+    border-color: var(--ds-primary);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .badge {
-    font-size: var(--text-xs);
+    font-size: 0.75rem;
     font-weight: 600;
-    padding: var(--space-1) var(--space-3);
-    border-radius: var(--radius-sm);
+    padding: 0.25rem 0.75rem;
+    border-radius: 0.375rem;
     border: 1px solid;
 }
 
 .badge.connected {
-    background: rgba(16, 185, 129, 0.15);
-    color: var(--success);
-    border-color: rgba(16, 185, 129, 0.3);
+    background: var(--ds-success-bg);
+    color: var(--ds-success);
+    border-color: var(--ds-success);
 }
 
 .badge.disconnected {
-    background: rgba(239, 68, 68, 0.15);
-    color: var(--danger);
-    border-color: rgba(239, 68, 68, 0.3);
+    background: var(--ds-danger-bg);
+    color: var(--ds-danger);
+    border-color: var(--ds-danger);
 }
 
 .helpText {
-    font-size: var(--text-xs);
-    color: var(--text-muted);
-    margin-top: var(--space-1);
+    font-size: 0.75rem;
+    color: var(--ds-text-muted);
+    margin-top: 0.5rem;
     font-style: italic;
 }
 
 .aiFeatures {
-    margin-top: var(--space-5);
+    margin-top: 1.5rem;
+}
+
+.aiFeatures li {
     position: relative;
+    padding-left: 1rem;
+    margin-bottom: 0.5rem;
+    color: var(--ds-text);
 }
 
 .aiFeatures li::before {
@@ -156,6 +193,22 @@
     top: 0.5em;
     width: 6px;
     height: 6px;
-    background: var(--success);
+    background: var(--ds-success);
     border-radius: 50%;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .header h1 {
+        font-size: 1.5rem;
+    }
+    
+    .field {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .field label {
+        width: 100%;
+    }
 }

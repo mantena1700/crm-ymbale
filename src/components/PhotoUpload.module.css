@@ -1,13 +1,16 @@
+/* Photo Upload - Design System */
+@import '../styles/design-system.css';
+
 .container {
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
+    gap: 0.75rem;
 }
 
 .label {
-    font-size: var(--text-sm);
-    font-weight: 700;
-    color: #e2e8f0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--ds-text);
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
@@ -15,27 +18,31 @@
 .uploadArea {
     width: 150px;
     height: 150px;
-    border: 2px dashed rgba(99, 102, 241, 0.5);
-    border-radius: var(--radius-xl);
+    border: 2px dashed var(--ds-border);
+    border-radius: 0.875rem;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: all 0.3s ease;
-    background: rgba(15, 23, 42, 0.6);
+    transition: all 0.2s;
+    background: var(--ds-gray-50);
     position: relative;
     overflow: hidden;
 }
 
+[data-theme="dark"] .uploadArea {
+    background: rgba(0,0,0,0.2);
+}
+
 .uploadArea:hover {
-    border-color: rgba(99, 102, 241, 0.8);
-    background: rgba(15, 23, 42, 0.8);
+    border-color: var(--ds-primary);
+    background: var(--ds-primary-light);
     transform: scale(1.02);
 }
 
 .uploadArea.dragging {
-    border-color: var(--primary);
-    background: rgba(99, 102, 241, 0.2);
+    border-color: var(--ds-primary);
+    background: var(--ds-primary-light);
     transform: scale(1.05);
 }
 
@@ -56,7 +63,7 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
-    border-radius: var(--radius-xl);
+    border-radius: 0.875rem;
 }
 
 .overlay {
@@ -70,8 +77,8 @@
     align-items: center;
     justify-content: center;
     opacity: 0;
-    transition: opacity 0.3s ease;
-    border-radius: var(--radius-xl);
+    transition: opacity 0.2s;
+    border-radius: 0.875rem;
 }
 
 .previewContainer:hover .overlay {
@@ -79,35 +86,35 @@
 }
 
 .changeText {
-    color: #ffffff;
+    color: white;
     font-weight: 600;
-    font-size: var(--text-sm);
+    font-size: 0.875rem;
     text-align: center;
 }
 
 .removeButton {
     position: absolute;
-    top: 8px;
-    right: 8px;
-    width: 28px;
-    height: 28px;
+    top: 0.5rem;
+    right: 0.5rem;
+    width: 1.75rem;
+    height: 1.75rem;
     border-radius: 50%;
-    background: rgba(239, 68, 68, 0.9);
+    background: var(--ds-danger);
     color: white;
     border: none;
-    font-size: var(--text-xl);
+    font-size: 1.125rem;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s ease;
+    transition: all 0.15s;
     z-index: 10;
     line-height: 1;
     padding: 0;
 }
 
 .removeButton:hover {
-    background: #ef4444;
+    background: #dc2626;
     transform: scale(1.1);
 }
 
@@ -116,40 +123,39 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: var(--space-2);
-    padding: var(--space-4);
+    gap: 0.5rem;
+    padding: 1rem;
     text-align: center;
 }
 
 .initials {
-    width: 80px;
-    height: 80px;
+    width: 5rem;
+    height: 5rem;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--primary), var(--accent));
+    background: linear-gradient(135deg, var(--ds-primary), var(--ds-primary-hover));
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: var(--text-2xl);
+    font-size: 1.5rem;
     font-weight: 700;
     color: white;
-    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
 .icon {
-    font-size: var(--text-4xl);
+    font-size: 2.5rem;
     opacity: 0.7;
 }
 
 .placeholderText {
-    color: #cbd5e1;
-    font-size: var(--text-sm);
+    color: var(--ds-text);
+    font-size: 0.875rem;
     font-weight: 600;
     margin: 0;
 }
 
 .placeholderSubtext {
-    color: #94a3b8;
-    font-size: var(--text-xs);
+    color: var(--ds-text-muted);
+    font-size: 0.75rem;
     margin: 0;
 }
-

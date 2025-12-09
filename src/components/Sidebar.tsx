@@ -22,6 +22,7 @@ interface NavItem {
     label: string;
     badge?: number;
     adminOnly?: boolean;
+    permission?: string; // código de permissão necessária
 }
 
 interface NavSection {
@@ -45,13 +46,13 @@ interface SystemSettings {
 const Sidebar = () => {
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [isMobileOpen, setIsMobileOpen] = useState(false);
-    const [notifications, setNotifications] = useState(3);
-    const [pendingFollowUps, setPendingFollowUps] = useState(5);
+    const [notifications, setNotifications] = useState(0);
+    const [pendingFollowUps, setPendingFollowUps] = useState(0);
     const [user, setUser] = useState<UserInfo | null>(null);
     const [settings, setSettings] = useState<SystemSettings>({
         crmName: 'Ymbale',
         crmLogo: null,
-        primaryColor: '#6366f1',
+        primaryColor: '#2563eb',
     });
     const [loggingOut, setLoggingOut] = useState(false);
     const pathname = usePathname();
@@ -78,11 +79,29 @@ const Sidebar = () => {
                     setSettings({
                         crmName: data.crmName || 'Ymbale',
                         crmLogo: data.crmLogo,
-                        primaryColor: data.primaryColor || '#6366f1',
+                        primaryColor: data.primaryColor || '#2563eb',
                     });
                 }
             })
             .catch(() => {});
+    }, []);
+
+    // Buscar contadores reais (notificações e follow-ups)
+    useEffect(() => {
+        const fetchCounts = () => {
+            fetch('/api/sidebar-counts')
+                .then(res => res.json())
+                .then(data => {
+                    setNotifications(data.notifications || 0);
+                    setPendingFollowUps(data.pendingFollowUps || 0);
+                })
+                .catch(() => {});
+        };
+        
+        fetchCounts();
+        // Atualizar a cada 60 segundos
+        const interval = setInterval(fetchCounts, 60000);
+        return () => clearInterval(interval);
     }, []);
 
     const handleLogout = async () => {
@@ -95,40 +114,45 @@ const Sidebar = () => {
         }
     };
 
+    // Menu completo com todas as funcionalidades
     const navSections: NavSection[] = [
+        {
+            title: '',
+            items: [
+                { href: '/', icon: '🏠', label: 'Dashboard', permission: 'dashboard.view' },
+            ]
+        },
+        {
+            title: 'VENDAS',
+            items: [
+                { href: '/clients', icon: '👥', label: 'Leads', permission: 'clients.view' },
+                { href: '/pipeline', icon: '📊', label: 'Pipeline', permission: 'pipeline.view' },
+                { href: '/agenda', icon: '📅', label: 'Agenda', badge: pendingFollowUps, permission: 'agenda.view' },
+                { href: '/campaigns', icon: '📧', label: 'Campanhas', permission: 'campaigns.view' },
+            ]
+        },
         {
             title: 'GESTÃO',
             items: [
-                { href: '/', icon: '📊', label: 'Dashboard' },
-                { href: '/pipeline', icon: '🚀', label: 'Pipeline' },
-                { href: '/clients', icon: '👥', label: 'Clientes' },
-                { href: '/carteira', icon: '💼', label: 'Carteira' },
+                { href: '/carteira', icon: '🗺️', label: 'Carteira', permission: 'carteira.view' },
+                { href: '/goals', icon: '🎯', label: 'Metas', permission: 'goals.view' },
+                { href: '/sellers', icon: '👔', label: 'Equipe', permission: 'sellers.view' },
             ]
         },
         {
-            title: 'INTELIGÊNCIA',
+            title: 'ANÁLISES',
             items: [
-                { href: '/batch-analysis', icon: '🤖', label: 'Análise em Lote' },
-                { href: '/reports', icon: '📄', label: 'Relatórios' },
-                { href: '/insights', icon: '💡', label: 'Insights IA' },
-            ]
-        },
-        {
-            title: 'ESTRATÉGIA',
-            items: [
-                { href: '/agenda', icon: '📅', label: 'Agenda', badge: pendingFollowUps },
-                { href: '/goals', icon: '🎯', label: 'Metas' },
-                { href: '/campaigns', icon: '📣', label: 'Campanhas' },
+                { href: '/batch-analysis', icon: '🤖', label: 'Análise IA', permission: 'analysis.view' },
+                { href: '/reports', icon: '📈', label: 'Relatórios', permission: 'reports.view' },
+                { href: '/insights', icon: '💡', label: 'Insights', permission: 'insights.view' },
             ]
         },
         {
             title: 'SISTEMA',
             items: [
-                { href: '/sellers', icon: '👥', label: 'Vendedores' },
-                { href: '/seller-reports', icon: '📊', label: 'Relatórios Vendedores' },
-                { href: '/notifications', icon: '🔔', label: 'Notificações', badge: notifications },
-                { href: '/users', icon: '🔐', label: 'Usuários', adminOnly: true },
-                { href: '/settings', icon: '⚙️', label: 'Configurações' },
+                { href: '/settings', icon: '⚙️', label: 'Configurações', adminOnly: true, permission: 'settings.view' },
+                { href: '/users', icon: '👤', label: 'Usuários', adminOnly: true, permission: 'users.view' },
+                { href: '/admin/zonas', icon: '🗺️', label: 'Zonas de Atendimento', adminOnly: true, permission: 'settings.view' },
             ]
         }
     ];

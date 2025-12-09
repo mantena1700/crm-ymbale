@@ -20,8 +20,7 @@ interface Seller {
     email: string | null;
     phone: string | null;
     photoUrl: string | null;
-    regions: string[];
-    neighborhoods: string[];
+    zonas: string[]; // Zonas de atendimento (substitui regions/neighborhoods)
     active: boolean;
 }
 
@@ -30,7 +29,6 @@ interface Restaurant {
     name: string;
     rating: number;
     reviewCount: number;
-    category: string | null;
     address: any;
     status: string;
     salesPotential: string | null;
@@ -85,7 +83,7 @@ export default function CarteiraClient({ initialData }: Props) {
     const [showScheduleModal, setShowScheduleModal] = useState<string | null>(null);
     const [scheduleData, setScheduleData] = useState({ date: '', time: '', notes: '' });
     const [loading, setLoading] = useState(false);
-    const [activeTab, setActiveTab] = useState<'carteira' | 'semana' | 'agenda' | 'mapa'>('carteira');
+    const [activeTab, setActiveTab] = useState<'carteira-padrao' | 'carteira' | 'semana' | 'agenda' | 'mapa'>('carteira-padrao');
     const [weekViewMode, setWeekViewMode] = useState<'list' | 'calendar'>('calendar');
     const [currentWeekStart, setCurrentWeekStart] = useState(() => {
         const today = new Date();
@@ -118,31 +116,26 @@ export default function CarteiraClient({ initialData }: Props) {
         }
     }, [selectedSellerId, currentWeekStart]);
 
-    // Carregar agendamentos quando vendedor ou semana mudar
+    // Carregar agendamentos quando executivo ou semana mudar
     useEffect(() => {
         loadWeeklySchedule();
     }, [loadWeeklySchedule]);
 
-    // Vendedor selecionado
+    // Executivo selecionado
     const selectedSeller = sellers.find(s => s.id === selectedSellerId);
 
-    // Filtrar restaurantes da carteira do vendedor
+    // Filtrar restaurantes da carteira do executivo
     const carteiraRestaurants = useMemo(() => {
         if (!selectedSeller) return [];
 
         return restaurants.filter(r => {
-            // Verifica se o restaurante está atribuído ao vendedor
+            // Verifica se o restaurante está atribuído ao executivo
             if (r.sellerId === selectedSellerId) return true;
 
-            // Verifica se o bairro do restaurante está na carteira do vendedor
-            const neighborhood = r.address?.neighborhood?.toLowerCase() || '';
-            const city = r.address?.city?.toLowerCase() || '';
-            
-            const sellerNeighborhoods = selectedSeller.neighborhoods.map(n => n.toLowerCase());
-            const sellerRegions = selectedSeller.regions.map(r => r.toLowerCase());
-
-            return sellerNeighborhoods.some(n => neighborhood.includes(n) || n.includes(neighborhood)) ||
-                   sellerRegions.some(reg => city.includes(reg) || reg.includes(city));
+            // Com o novo sistema de zonas, os restaurantes já são atribuídos automaticamente
+            // baseado na zona, então não precisamos mais filtrar por bairro/cidade
+            // Apenas retornar os restaurantes atribuídos ao executivo
+            return false;
         });
     }, [restaurants, selectedSellerId, selectedSeller]);
 
@@ -153,8 +146,8 @@ export default function CarteiraClient({ initialData }: Props) {
             if (searchTerm) {
                 const search = searchTerm.toLowerCase();
                 if (!r.name.toLowerCase().includes(search) &&
-                    !r.category?.toLowerCase().includes(search) &&
-                    !r.address?.neighborhood?.toLowerCase().includes(search)) {
+                    !r.address?.neighborhood?.toLowerCase().includes(search) &&
+                    !r.address?.city?.toLowerCase().includes(search)) {
                     return false;
                 }
             }
@@ -251,7 +244,7 @@ export default function CarteiraClient({ initialData }: Props) {
         }
 
         if (!selectedSellerId) {
-            alert('Selecione um vendedor primeiro.');
+            alert('Selecione um executivo primeiro.');
             return;
         }
 
@@ -308,7 +301,7 @@ export default function CarteiraClient({ initialData }: Props) {
     // Exportar agenda semanal para Excel
     const handleExportExcel = async () => {
         if (!selectedSellerId) {
-            alert('Selecione um vendedor primeiro.');
+            alert('Selecione um executivo primeiro.');
             return;
         }
 
@@ -427,27 +420,29 @@ export default function CarteiraClient({ initialData }: Props) {
             <header className={styles.header}>
                 <div className={styles.headerLeft}>
                     <h1>💼 Carteira de Clientes</h1>
-                    <p>Gestão de prospecção por vendedor</p>
+                    <p>{activeTab === 'carteira-padrao' ? 'Visão geral de todas as carteiras de executivos' : 'Gestão de prospecção por executivo'}</p>
                 </div>
-                <div className={styles.headerRight}>
-                    <div className={styles.sellerSelect}>
-                        <label>Vendedor:</label>
-                        <select 
-                            value={selectedSellerId} 
-                            onChange={e => setSelectedSellerId(e.target.value)}
-                        >
-                            {sellers.map(seller => (
-                                <option key={seller.id} value={seller.id}>
-                                    {seller.name}
-                                </option>
-                            ))}
-                        </select>
+                {activeTab !== 'carteira-padrao' && (
+                    <div className={styles.headerRight}>
+                        <div className={styles.sellerSelect}>
+                            <label>Executivo:</label>
+                            <select 
+                                value={selectedSellerId} 
+                                onChange={e => setSelectedSellerId(e.target.value)}
+                            >
+                                {sellers.map(seller => (
+                                    <option key={seller.id} value={seller.id}>
+                                        {seller.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
                     </div>
-                </div>
+                )}
             </header>
 
-            {/* Seller Card */}
-            {selectedSeller && (
+            {/* Seller Card - Apenas na aba individual */}
+            {activeTab !== 'carteira-padrao' && selectedSeller && (
                 <div className={styles.sellerCard}>
                     <div className={styles.sellerInfo}>
                         <div className={styles.sellerAvatar}>
@@ -461,14 +456,12 @@ export default function CarteiraClient({ initialData }: Props) {
                             <h2>{selectedSeller.name}</h2>
                             <p>{selectedSeller.email}</p>
                             <div className={styles.sellerRegions}>
-                                {selectedSeller.regions.map((region, i) => (
-                                    <span key={i} className={styles.regionTag}>{region}</span>
-                                ))}
-                                {selectedSeller.neighborhoods.slice(0, 5).map((n, i) => (
-                                    <span key={`n-${i}`} className={styles.neighborhoodTag}>{n}</span>
-                                ))}
-                                {selectedSeller.neighborhoods.length > 5 && (
-                                    <span className={styles.moreTag}>+{selectedSeller.neighborhoods.length - 5}</span>
+                                {selectedSeller.zonas && selectedSeller.zonas.length > 0 ? (
+                                    selectedSeller.zonas.map((zona, i) => (
+                                        <span key={i} className={styles.regionTag}>{zona}</span>
+                                    ))
+                                ) : (
+                                    <span className={styles.noZonaTag}>Sem zonas atribuídas</span>
                                 )}
                             </div>
                         </div>
@@ -497,10 +490,16 @@ export default function CarteiraClient({ initialData }: Props) {
             {/* Tabs */}
             <div className={styles.tabs}>
                 <button 
+                    className={`${styles.tab} ${activeTab === 'carteira-padrao' ? styles.active : ''}`}
+                    onClick={() => setActiveTab('carteira-padrao')}
+                >
+                    💼 Carteira Padrão
+                </button>
+                <button 
                     className={`${styles.tab} ${activeTab === 'carteira' ? styles.active : ''}`}
                     onClick={() => setActiveTab('carteira')}
                 >
-                    📋 Carteira Completa
+                    📋 Carteira Individual
                 </button>
                 <button 
                     className={`${styles.tab} ${activeTab === 'semana' ? styles.active : ''}`}
@@ -522,7 +521,227 @@ export default function CarteiraClient({ initialData }: Props) {
                 </button>
             </div>
 
-            {/* Tab Content */}
+            {/* Tab Content - Carteira Padrão */}
+            {activeTab === 'carteira-padrao' && (
+                <div className={styles.carteiraPadraoContainer}>
+                    {/* Search e Filtros Globais */}
+                    <div className={styles.filters}>
+                        <div className={styles.searchBox}>
+                            <span>🔍</span>
+                            <input
+                                type="text"
+                                placeholder="Buscar restaurante, executivo ou bairro..."
+                                value={searchTerm}
+                                onChange={e => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+                        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+                            <option value="all">Todos os Status</option>
+                            <option value="A Analisar">A Analisar</option>
+                            <option value="Qualificado">Qualificado</option>
+                            <option value="Contatado">Contatado</option>
+                            <option value="Negociação">Negociação</option>
+                            <option value="Fechado">Fechado</option>
+                        </select>
+                        <select value={filterPotential} onChange={e => setFilterPotential(e.target.value)}>
+                            <option value="all">Todos os Potenciais</option>
+                            <option value="ALTISSIMO">🔥 Altíssimo</option>
+                            <option value="ALTO">⬆️ Alto</option>
+                            <option value="MEDIO">➡️ Médio</option>
+                            <option value="BAIXO">⬇️ Baixo</option>
+                        </select>
+                    </div>
+
+                    {/* Carteiras de Todos os Executivos */}
+                    {sellers.map(seller => {
+                        // Filtrar restaurantes deste executivo
+                        const sellerRestaurants = restaurants.filter(r => r.sellerId === seller.id);
+                        
+                        // Aplicar filtros globais
+                        const filteredSellerRestaurants = sellerRestaurants.filter(r => {
+                            if (searchTerm) {
+                                const search = searchTerm.toLowerCase();
+                                if (!r.name.toLowerCase().includes(search) &&
+                                    !seller.name.toLowerCase().includes(search) &&
+                                    !r.address?.neighborhood?.toLowerCase().includes(search) &&
+                                    !r.address?.city?.toLowerCase().includes(search)) {
+                                    return false;
+                                }
+                            }
+                            if (filterStatus !== 'all' && r.status !== filterStatus) return false;
+                            if (filterPotential !== 'all' && r.salesPotential !== filterPotential) return false;
+                            return true;
+                        });
+
+                        // Visitas deste executivo
+                        const sellerVisits = visits.filter(v => v.sellerId === seller.id);
+                        
+                        // Estatísticas deste executivo
+                        const sellerStats = {
+                            total: sellerRestaurants.length,
+                            visitados: sellerRestaurants.filter(r => 
+                                sellerVisits.some(v => v.restaurantId === r.id)
+                            ).length,
+                            naoVisitados: sellerRestaurants.filter(r => 
+                                !sellerVisits.some(v => v.restaurantId === r.id)
+                            ).length,
+                            aAnalisar: sellerRestaurants.filter(r => r.status === 'A Analisar').length,
+                            qualificados: sellerRestaurants.filter(r => r.status === 'Qualificado').length,
+                            contatados: sellerRestaurants.filter(r => r.status === 'Contatado').length,
+                            negociacao: sellerRestaurants.filter(r => r.status === 'Negociação').length,
+                            fechados: sellerRestaurants.filter(r => r.status === 'Fechado').length,
+                        };
+
+                        if (filteredSellerRestaurants.length === 0 && sellerRestaurants.length === 0) return null;
+
+                        return (
+                            <div key={seller.id} className={styles.executivoCarteiraSection}>
+                                {/* Header do Executivo */}
+                                <div className={styles.executivoCarteiraHeader}>
+                                    <div className={styles.executivoInfo}>
+                                        <div className={styles.executivoAvatar}>
+                                            {seller.photoUrl ? (
+                                                <img src={seller.photoUrl} alt={seller.name} />
+                                            ) : (
+                                                <span>{seller.name.charAt(0)}</span>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <h3>{seller.name}</h3>
+                                            <p>{seller.email || 'Sem email'}</p>
+                                        </div>
+                                    </div>
+                                    <div className={styles.executivoStats}>
+                                        <div className={styles.miniStat}>
+                                            <span className={styles.miniStatValue}>{sellerStats.total}</span>
+                                            <span className={styles.miniStatLabel}>Total</span>
+                                        </div>
+                                        <div className={styles.miniStat}>
+                                            <span className={styles.miniStatValue} style={{ color: '#22c55e' }}>
+                                                {sellerStats.visitados}
+                                            </span>
+                                            <span className={styles.miniStatLabel}>Visitados</span>
+                                        </div>
+                                        <div className={styles.miniStat}>
+                                            <span className={styles.miniStatValue} style={{ color: '#f59e0b' }}>
+                                                {sellerStats.naoVisitados}
+                                            </span>
+                                            <span className={styles.miniStatLabel}>Não Visitados</span>
+                                        </div>
+                                        <div className={styles.miniStat}>
+                                            <span className={styles.miniStatValue} style={{ color: '#22c55e' }}>
+                                                {sellerStats.fechados}
+                                            </span>
+                                            <span className={styles.miniStatLabel}>Fechados</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Tabela de Restaurantes */}
+                                {filteredSellerRestaurants.length > 0 ? (
+                                    <div className={styles.tableWrapper}>
+                                        <table className={styles.table}>
+                                            <thead>
+                                                <tr>
+                                                    <th>Restaurante</th>
+                                                    <th>Bairro</th>
+                                                    <th>Status</th>
+                                                    <th>Potencial</th>
+                                                    <th>Visitação</th>
+                                                    <th>Avaliação</th>
+                                                    <th>Ações</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {filteredSellerRestaurants.map(restaurant => {
+                                                    const hasVisit = sellerVisits.some(v => v.restaurantId === restaurant.id);
+                                                    const lastVisit = sellerVisits
+                                                        .filter(v => v.restaurantId === restaurant.id)
+                                                        .sort((a, b) => new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime())[0];
+                                                    const priority = getPriorityBadge(restaurant.salesPotential);
+                                                    
+                                                    return (
+                                                        <tr key={restaurant.id}>
+                                                            <td>
+                                                                <div className={styles.clientCell}>
+                                                                    <strong>{restaurant.name}</strong>
+                                                                </div>
+                                                            </td>
+                                                            <td>{restaurant.address?.neighborhood || 'N/D'}</td>
+                                                            <td>
+                                                                <span className={`${styles.statusBadge} ${getStatusBadge(restaurant.status)}`}>
+                                                                    {restaurant.status}
+                                                                </span>
+                                                            </td>
+                                                            <td>
+                                                                <span className={`${styles.priorityBadge} ${priority.class}`}>
+                                                                    {priority.label}
+                                                                </span>
+                                                            </td>
+                                                            <td>
+                                                                {hasVisit ? (
+                                                                    <div className={styles.visitStatus}>
+                                                                        <span style={{ color: '#22c55e' }}>✅ Visitado</span>
+                                                                        {lastVisit && (
+                                                                            <small style={{ color: '#6b7280', fontSize: '0.75rem' }}>
+                                                                                {formatDate(lastVisit.visitDate)}
+                                                                            </small>
+                                                                        )}
+                                                                    </div>
+                                                                ) : (
+                                                                    <span style={{ color: '#f59e0b' }}>⏳ Não Visitado</span>
+                                                                )}
+                                                            </td>
+                                                            <td>⭐ {restaurant.rating?.toFixed(1) || 'N/D'}</td>
+                                                            <td>
+                                                                <div className={styles.tableActions}>
+                                                                    <button 
+                                                                        onClick={() => {
+                                                                            setQuickViewId(restaurant.id);
+                                                                            setQuickViewTab('info');
+                                                                        }}
+                                                                        title="Ver detalhes"
+                                                                    >
+                                                                        👁️
+                                                                    </button>
+                                                                    <button 
+                                                                        onClick={() => {
+                                                                            setSelectedSellerId(seller.id);
+                                                                            setShowScheduleModal(restaurant.id);
+                                                                        }}
+                                                                        title="Agendar visita"
+                                                                    >
+                                                                        📅
+                                                                    </button>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                ) : (
+                                    <div className={styles.emptyState}>
+                                        <span>📭</span>
+                                        <p>Nenhum restaurante encontrado com os filtros aplicados</p>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+
+                    {sellers.length === 0 && (
+                        <div className={styles.emptyState}>
+                            <span>👥</span>
+                            <h3>Nenhum executivo cadastrado</h3>
+                            <p>Cadastre executivos para ver suas carteiras</p>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Tab Content - Carteira Individual */}
             {activeTab === 'carteira' && (
                 <>
                     {/* Filters */}

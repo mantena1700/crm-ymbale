@@ -22,10 +22,40 @@ model SystemSettings {
   companyName   String?  @map("company_name") @db.VarChar(255)
   companyEmail  String?  @map("company_email") @db.VarChar(255)
   companyPhone  String?  @map("company_phone") @db.VarChar(50)
+  
+  // API Keys (armazenadas criptografadas)
+  openaiApiKey      String?  @map("openai_api_key") @db.VarChar(500)
+  googleMapsApiKey  String?  @map("google_maps_api_key") @db.VarChar(500)
+  googleAiApiKey    String?  @map("google_ai_api_key") @db.VarChar(500)
+  
   updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   updatedBy     String?  @map("updated_by") @db.Uuid
 
   @@map("system_settings")
+}
+
+// ========================================
+// AGENTES DE IA
+// ========================================
+
+model AIAgent {
+  id                 String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  code               String   @unique @db.VarChar(50)  // "restaurant_analyzer", "email_generator", etc
+  name               String   @db.VarChar(100)
+  description        String?  @db.Text
+  systemPrompt       String   @map("system_prompt") @db.Text
+  userPromptTemplate String   @map("user_prompt_template") @db.Text
+  model              String   @default("gpt-4o-mini") @db.VarChar(50)
+  temperature        Decimal  @default(0.7) @db.Decimal(2, 1)
+  maxTokens          Int      @default(1000) @map("max_tokens")
+  active             Boolean  @default(true)
+  isDefault          Boolean  @default(true) @map("is_default")  // Se é o prompt padrão do sistema
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([code], map: "idx_ai_agents_code")
+  @@index([active], map: "idx_ai_agents_active")
+  @@map("ai_agents")
 }
 
 // ========================================
@@ -40,7 +70,7 @@ model User {
   name               String    @db.VarChar(255)
   role               String    @default("user") @db.VarChar(20) // 'admin' ou 'user'
   active             Boolean   @default(true)
-  mustChangePassword Boolean   @default(false) @map("must_change_password") // Força troca de senha no próximo login
+  mustChangePassword Boolean   @default(false) @map("must_change_password")
   lastLogin          DateTime? @map("last_login") @db.Timestamptz(6)
   loginAttempts      Int       @default(0) @map("login_attempts")
   lockedUntil        DateTime? @map("locked_until") @db.Timestamptz(6)
@@ -48,18 +78,54 @@ model User {
   updatedAt          DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   createdBy          String?   @map("created_by") @db.Uuid
 
-  // Relação com o vendedor (opcional - se o usuário for um vendedor)
+  // Relação com o vendedor
   sellerId      String?   @unique @map("seller_id") @db.Uuid
   seller        Seller?   @relation(fields: [sellerId], references: [id], onDelete: SetNull)
 
-  // Sessões do usuário
-  sessions      Session[]
+  // Sessões e permissões
+  sessions         Session[]
+  userPermissions  UserPermission[]
 
   @@index([username], map: "idx_users_username")
   @@index([email], map: "idx_users_email")
   @@index([role], map: "idx_users_role")
   @@index([active], map: "idx_users_active")
   @@map("users")
+}
+
+// ========================================
+// SISTEMA DE PERMISSÕES
+// ========================================
+
+model Permission {
+  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  code        String   @unique @db.VarChar(50)  // ex: "dashboard.view", "clients.create"
+  name        String   @db.VarChar(100)
+  description String?  @db.VarChar(255)
+  module      String   @db.VarChar(50)  // ex: "dashboard", "clients", "pipeline"
+  action      String   @db.VarChar(20)  // "view", "create", "edit", "delete"
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  
+  userPermissions UserPermission[]
+
+  @@index([module], map: "idx_permissions_module")
+  @@index([code], map: "idx_permissions_code")
+  @@map("permissions")
+}
+
+model UserPermission {
+  userId       String @map("user_id") @db.Uuid
+  permissionId String @map("permission_id") @db.Uuid
+  grantedAt    DateTime @default(now()) @map("granted_at") @db.Timestamptz(6)
+  grantedBy    String?  @map("granted_by") @db.Uuid
+  
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([userId, permissionId])
+  @@index([userId], map: "idx_user_permissions_user_id")
+  @@index([permissionId], map: "idx_user_permissions_permission_id")
+  @@map("user_permissions")
 }
 
 model Session {
@@ -98,6 +164,7 @@ model Seller {
 
   restaurants Restaurant[]
   visits      Visit[]
+  zonas       SellerZona[]
 
   @@map("sellers")
 }
@@ -111,7 +178,6 @@ model Restaurant {
   totalComments       Int?      @default(0) @map("total_comments")
   projectedDeliveries Int?      @default(0) @map("projected_deliveries")
   salesPotential      String?   @default("N/A") @map("sales_potential") @db.VarChar(50)
-  category            String?   @default("N/A") @db.VarChar(100)
   address             Json?     @default("{}")
   lastCollectionDate  DateTime? @map("last_collection_date") @db.Date
   status              String?   @default("A Analisar") @db.VarChar(50)
@@ -120,8 +186,10 @@ model Restaurant {
   sourceFile          String?   @map("source_file") @db.VarChar(255)
   sellerId            String?   @map("seller_id") @db.Uuid
   assignedAt          DateTime? @map("assigned_at") @db.Timestamptz(6)
+  zonaId              String?   @map("zona_id") @db.Uuid
 
   seller    Seller?   @relation(fields: [sellerId], references: [id], onDelete: SetNull)
+  zona      ZonaCep?  @relation(fields: [zonaId], references: [id], onDelete: SetNull)
   visits    Visit[]
   comments  Comment[]
   analyses  Analysis[]
@@ -131,12 +199,12 @@ model Restaurant {
   campaignRecipients CampaignRecipient[]
   workflowExecutions WorkflowExecution[]
 
-  @@index([category], map: "idx_restaurants_category")
   @@index([createdAt(sort: Desc)], map: "idx_restaurants_created_at")
   @@index([rating(sort: Desc)], map: "idx_restaurants_rating")
   @@index([salesPotential], map: "idx_restaurants_sales_potential")
   @@index([sellerId], map: "idx_restaurants_seller_id")
   @@index([status], map: "idx_restaurants_status")
+  @@index([zonaId], map: "idx_restaurants_zona_id")
   @@map("restaurants")
 }
 
@@ -449,4 +517,40 @@ model WorkflowExecution {
   @@index([restaurantId], map: "idx_workflow_executions_restaurant_id")
   @@index([status], map: "idx_workflow_executions_status")
   @@map("workflow_executions")
+}
+
+// ========================================
+// ZONAS DE ATENDIMENTO POR CEP
+// ========================================
+
+model ZonaCep {
+  id          String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  zonaNome    String    @map("zona_nome") @db.VarChar(100)
+  cepInicial  String    @map("cep_inicial") @db.VarChar(9)
+  cepFinal    String    @map("cep_final") @db.VarChar(9)
+  ativo       Boolean   @default(true)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  sellers    SellerZona[]
+  restaurants Restaurant[]
+
+  @@index([ativo], map: "idx_zonas_cep_ativo")
+  @@index([cepInicial, cepFinal], map: "idx_zonas_cep_range")
+  @@map("zonas_cep")
+}
+
+model SellerZona {
+  id          String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  sellerId    String    @map("seller_id") @db.Uuid
+  zonaId      String    @map("zona_id") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  seller     Seller    @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  zona       ZonaCep   @relation(fields: [zonaId], references: [id], onDelete: Cascade)
+
+  @@unique([sellerId, zonaId])
+  @@index([sellerId], map: "idx_seller_zonas_seller_id")
+  @@index([zonaId], map: "idx_seller_zonas_zona_id")
+  @@map("seller_zonas")
 }

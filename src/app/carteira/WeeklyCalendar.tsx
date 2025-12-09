@@ -8,7 +8,6 @@ interface Restaurant {
     id: string;
     name: string;
     rating: number;
-    category: string | null;
     address: any;
     salesPotential: string | null;
     status: string;

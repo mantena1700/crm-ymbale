@@ -11,7 +11,6 @@ export async function analyzeRestaurantWithOpenAI(restaurant: Restaurant): Promi
     console.log('========================================');
     console.log('🔍 STARTING REAL AI ANALYSIS');
     console.log('Restaurant:', restaurant.name);
-    console.log('Category:', restaurant.category);
     console.log('Total comments available:', restaurant.comments.length);
     
     if (!apiKey || apiKey.length < 50) {
@@ -76,7 +75,6 @@ Responda APENAS com JSON válido.`
                 {
                     role: 'user',
                     content: `RESTAURANTE: ${restaurant.name}
-CATEGORIA: ${restaurant.category}
 AVALIAÇÃO: ${restaurant.rating} estrelas
 TOTAL AVALIAÇÕES: ${restaurant.reviewCount}
 
@@ -170,7 +168,7 @@ export async function generateEmailWithAI(
                 },
                 {
                     role: 'user',
-                    content: `Crie um email de vendas para o restaurante "${restaurant.name}" (${restaurant.category}).
+                    content: `Crie um email de vendas para o restaurante "${restaurant.name}".
 
 PROBLEMAS IDENTIFICADOS:
 ${analysis ? analysis.painPoints.map(p => `- ${p}`).join('\n') : 'Nenhum problema específico identificado ainda.'}
@@ -242,7 +240,6 @@ export async function generateStrategyWithAI(
                     content: `Crie uma estratégia de vendas ESPECÍFICA para ${restaurant.name}.
 
 DADOS DO RESTAURANTE:
-- Categoria: ${restaurant.category}
 - Avaliação: ${restaurant.rating} estrelas
 - Volume estimado: ${restaurant.projectedDeliveries} entregas/mês
 - Potencial: ${restaurant.salesPotential}
@@ -293,7 +290,7 @@ export async function generateFollowUpMessageWithAI(
                 },
                 {
                     role: 'user',
-                    content: `Follow-up para ${restaurant.name} (${restaurant.category}).
+                    content: `Follow-up para ${restaurant.name}.
 ${previousContact ? `Contato anterior: ${previousContact}` : 'Primeiro contato.'}
 
 Crie uma mensagem curta (máximo 80 palavras) e personalizada.`

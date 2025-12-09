@@ -10,7 +10,6 @@ import styles from './DashboardNew.module.css';
 interface DashboardStats {
     totalRestaurants: number;
     hotLeadsCount: number;
-    projectedRevenue: number;
     hotLeads: Restaurant[];
     totalLeads: number;
     qualifiedLeads: number;
@@ -42,7 +41,6 @@ interface DashboardClientProps {
 export default function DashboardClientNew({ stats }: DashboardClientProps) {
     const [greeting, setGreeting] = useState('');
     const [currentTime, setCurrentTime] = useState('');
-    const [animatedRevenue, setAnimatedRevenue] = useState(0);
 
     useEffect(() => {
         const hour = new Date().getHours();
@@ -59,29 +57,10 @@ export default function DashboardClientNew({ stats }: DashboardClientProps) {
         updateTime();
         const interval = setInterval(updateTime, 1000);
 
-        // Animate revenue
-        let current = 0;
-        const target = stats.projectedRevenue;
-        const duration = 1500;
-        const steps = 60;
-        const increment = target / steps;
-        const stepTime = duration / steps;
-
-        const timer = setInterval(() => {
-            current += increment;
-            if (current >= target) {
-                setAnimatedRevenue(target);
-                clearInterval(timer);
-            } else {
-                setAnimatedRevenue(Math.floor(current));
-            }
-        }, stepTime);
-
         return () => {
             clearInterval(interval);
-            clearInterval(timer);
         };
-    }, [stats.projectedRevenue]);
+    }, []);
 
     const conversionRate = stats.totalLeads > 0 
         ? ((stats.closedDeals / stats.totalLeads) * 100).toFixed(1)
@@ -203,11 +182,11 @@ export default function DashboardClientNew({ stats }: DashboardClientProps) {
                     color="linear-gradient(135deg, #22c55e, #10b981)"
                 />
                 <StatCard
-                    icon="💰"
-                    label="Receita Projetada"
-                    value={`R$ ${animatedRevenue.toLocaleString()}K`}
-                    trend="up"
-                    trendValue="+15% este mês"
+                    icon="📅"
+                    label="Follow-ups Hoje"
+                    value={stats.todayFollowUps}
+                    trend="neutral"
+                    trendValue={`${stats.pendingFollowUps} pendentes`}
                     color="linear-gradient(135deg, #f59e0b, #d97706)"
                 />
                 <StatCard

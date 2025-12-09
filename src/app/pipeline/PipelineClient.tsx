@@ -51,8 +51,8 @@ export default function PipelineClient({ initialRestaurants, initialMetrics }: P
             const term = searchTerm.toLowerCase();
             result = result.filter(r =>
                 r.name.toLowerCase().includes(term) ||
-                r.category?.toLowerCase().includes(term) ||
-                r.address?.city?.toLowerCase().includes(term)
+                r.address?.city?.toLowerCase().includes(term) ||
+                r.address?.neighborhood?.toLowerCase().includes(term)
             );
         }
 
@@ -237,9 +237,6 @@ export default function PipelineClient({ initialRestaurants, initialMetrics }: P
                     />
                     <div className={styles.cardTitle}>
                         <h4>{restaurant.name}</h4>
-                        {restaurant.category && restaurant.category !== 'N/A' && (
-                            <span className={styles.cardCategory}>{restaurant.category}</span>
-                        )}
                     </div>
                     <span className={`${styles.priorityBadge} ${priority.class}`}>
                         {priority.label}
@@ -573,7 +570,7 @@ export default function PipelineClient({ initialRestaurants, initialMetrics }: P
                                                 <span>⭐ {r.rating}</span>
                                             </div>
                                         </td>
-                                        <td>{r.category && r.category !== 'N/A' ? r.category : '-'}</td>
+                                        <td>{r.address?.neighborhood || '-'}</td>
                                         <td>{r.address?.city || 'N/A'}</td>
                                         <td>
                                             <span className={`${styles.potentialBadge} ${styles[`potential${r.salesPotential?.replace(/Í/g, 'I')}`]}`}>
@@ -635,7 +632,6 @@ export default function PipelineClient({ initialRestaurants, initialMetrics }: P
                         name: quickViewRestaurant.name,
                         rating: quickViewRestaurant.rating,
                         reviewCount: quickViewRestaurant.reviewCount ?? 0,
-                        category: quickViewRestaurant.category || null,
                         address: quickViewRestaurant.address,
                         status: quickViewRestaurant.status || 'A Analisar',
                         salesPotential: quickViewRestaurant.salesPotential,

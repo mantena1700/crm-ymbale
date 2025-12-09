@@ -2,6 +2,7 @@
 
 import { ReactNode } from 'react';
 import styles from './PageLayout.module.css';
+import { NotificationIcon } from './NotificationIcon';
 
 interface PageLayoutProps {
     children: ReactNode;
@@ -28,7 +29,10 @@ export function PageLayout({ children, title, subtitle, icon, actions, className
                             </div>
                         )}
                     </div>
-                    {actions && <div className={styles.actions}>{actions}</div>}
+                    <div className={styles.headerRight}>
+                        <NotificationIcon />
+                        {actions && <div className={styles.actions}>{actions}</div>}
+                    </div>
                 </header>
             )}
             <div className={styles.pageContent}>

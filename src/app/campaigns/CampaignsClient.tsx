@@ -1136,7 +1136,7 @@ export default function CampaignsClient({
                                                     >
                                                         <option value="send_email">📧 Enviar Email</option>
                                                         <option value="create_followup">📅 Criar Follow-up</option>
-                                                        <option value="assign_seller">👤 Atribuir Vendedor</option>
+                                                        <option value="assign_seller">👤 Atribuir Executivo</option>
                                                         <option value="update_status">🔄 Atualizar Status</option>
                                                         <option value="create_note">📝 Criar Nota</option>
                                                     </select>
@@ -1178,7 +1178,7 @@ export default function CampaignsClient({
                                             )}
                                             {step.type === 'assign_seller' && (
                                                 <div className={styles.formGroup}>
-                                                    <label>Vendedor</label>
+                                                    <label>Executivo</label>
                                                     <select
                                                         value={step.config?.sellerId || ''}
                                                         onChange={e => updateWorkflowStep(index, 'config', { ...step.config, sellerId: e.target.value })}

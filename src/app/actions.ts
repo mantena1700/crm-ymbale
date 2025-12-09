@@ -1,4 +1,4 @@
-﻿'use server';
+'use server';
 
 import { revalidatePath } from 'next/cache';
 import fs from 'fs';
@@ -320,9 +320,6 @@ async function parseTextFile(file: File): Promise<any[]> {
                     } else if (field.includes('endereço') || field.includes('rua') || field.includes('street')) {
                         restaurant['Endereço (Rua)'] = value;
                         restaurant.street = value;
-                    } else if (field.includes('categoria') || field.includes('category')) {
-                        restaurant['Categoria'] = value;
-                        restaurant.category = value;
                     } else if (field.includes('potencial') || field.includes('potential')) {
                         restaurant['Potencial Vendas'] = value;
                         restaurant.salesPotential = value;
@@ -427,13 +424,6 @@ async function parseTextFile(file: File): Promise<any[]> {
                 continue;
             }
             
-            const categoriaMatch = line.match(/(?:Categoria|Category)[:\s]+(.+)/i);
-            if (categoriaMatch) {
-                currentRestaurant['Categoria'] = categoriaMatch[1].trim();
-                currentRestaurant.category = categoriaMatch[1].trim();
-                continue;
-            }
-            
             const potencialMatch = line.match(/(?:Potencial|Potential)[:\s]+(.+)/i);
             if (potencialMatch) {
                 currentRestaurant['Potencial Vendas'] = potencialMatch[1].trim();
@@ -486,36 +476,113 @@ export async function importExcelFile(formData: FormData) {
         let totalErrors = 0;
         let processedFiles = 0;
 
-        // Buscar vendedores ativos (uma vez para todos os arquivos)
-        const sellers = await prisma.seller.findMany({
-            where: { active: true }
-        });
+        // Função para limpar CEP
+        const cleanCep = (cep: string): string => {
+            return cep.replace(/[^0-9]/g, '');
+        };
 
-        const findSellerForRegion = (city: string, neighborhood: string): string | null => {
-            for (const seller of sellers) {
-                // Check City Match
-                if (city && city !== 'N/A') {
-                    const regions = (seller.regions as string[]) || [];
-                    if (regions.some(region =>
-                        city.toLowerCase().includes(region.toLowerCase()) ||
-                        region.toLowerCase().includes(city.toLowerCase())
-                    )) {
-                        return seller.id;
+        // Função para encontrar zona por CEP (usar modelo se disponível, senão SQL direto)
+        const findZonaByCep = async (cep: string): Promise<string | null> => {
+            try {
+                const cleanedCep = cleanCep(cep);
+                if (cleanedCep.length !== 8) {
+                    return null;
+                }
+
+                const cepNum = parseInt(cleanedCep, 10);
+
+                let zonas: any[] = [];
+                
+                // Tentar usar modelo se disponível, senão SQL direto
+                if (prisma && typeof (prisma as any).zonaCep !== 'undefined') {
+                    zonas = await (prisma as any).zonaCep.findMany({
+                        where: {
+                            ativo: true
+                        }
+                    });
+                } else {
+                    // Fallback: usar SQL direto
+                    const result = await prisma.$queryRaw<Array<{
+                        id: string;
+                        zona_nome: string;
+                        cep_inicial: string;
+                        cep_final: string;
+                        ativo: boolean;
+                    }>>`SELECT * FROM zonas_cep WHERE ativo = true`;
+                    zonas = result.map(z => ({
+                        id: z.id,
+                        zonaNome: z.zona_nome,
+                        cepInicial: z.cep_inicial,
+                        cepFinal: z.cep_final,
+                        ativo: z.ativo
+                    }));
+                }
+
+                // Buscar zona que contém o CEP
+                for (const zona of zonas) {
+                    const cepInicial = (zona as any).cepInicial || (zona as any).cep_inicial;
+                    const cepFinal = (zona as any).cepFinal || (zona as any).cep_final;
+                    const zonaInicio = parseInt(cleanCep(cepInicial), 10);
+                    const zonaFim = parseInt(cleanCep(cepFinal), 10);
+                    if (cepNum >= zonaInicio && cepNum <= zonaFim) {
+                        return (zona as any).id;
                     }
                 }
 
-                // Check Neighborhood Match
-                if (neighborhood && neighborhood !== 'N/A') {
-                    const sellerNeighborhoods = ((seller as any).neighborhoods as string[]) || [];
-                    if (sellerNeighborhoods.some(nb =>
-                        neighborhood.toLowerCase().includes(nb.toLowerCase()) ||
-                        nb.toLowerCase().includes(neighborhood.toLowerCase())
-                    )) {
-                        return seller.id;
-                    }
-                }
+                return null;
+            } catch (error) {
+                console.error('Erro ao buscar zona por CEP:', error);
+                return null;
             }
-            return null;
+        };
+
+        // Função para encontrar executivo pela zona (usar modelo se disponível, senão SQL direto)
+        const findSellerByZona = async (zonaId: string): Promise<string | null> => {
+            try {
+                if (prisma && typeof (prisma as any).sellerZona !== 'undefined') {
+                    // Usar modelo Prisma
+                    const sellerZona = await (prisma as any).sellerZona.findFirst({
+                        where: {
+                            zonaId: zonaId,
+                            seller: {
+                                active: true
+                            }
+                        },
+                        include: {
+                            seller: true
+                        }
+                    });
+
+                    if (sellerZona && sellerZona.seller) {
+                        return sellerZona.seller.id;
+                    }
+                } else {
+                    // Fallback: usar SQL direto
+                    const result = await prisma.$queryRaw<Array<{
+                        seller_id: string;
+                    }>>`
+                        SELECT sz.seller_id 
+                        FROM seller_zonas sz
+                        INNER JOIN sellers s ON s.id = sz.seller_id
+                        WHERE sz.zona_id = ${zonaId} AND s.active = true
+                        LIMIT 1
+                    `;
+                    
+                    if (result && result.length > 0) {
+                        return result[0].seller_id;
+                    }
+                }
+
+                return null;
+            } catch (error: any) {
+                // Se a tabela não existir, retornar null silenciosamente
+                if (error.message?.includes('does not exist') || error.message?.includes('relation') || error.code === '42P01') {
+                    console.warn('Tabela seller_zonas não existe ainda. Execute: npx prisma db push');
+                    return null;
+                }
+                console.error('Erro ao buscar executivo por zona:', error);
+                return null;
+            }
         };
 
         // Função helper para buscar valor de coluna com múltiplas variações
@@ -638,11 +705,20 @@ export async function importExcelFile(formData: FormData) {
                         }
 
                         const neighborhood = getColumnValue(row, ['Bairro', 'Neighborhood', 'neighborhood', 'Distrito']) || '';
+                        const cep = getColumnValue(row, ['CEP', 'Zip Code', 'zipCode', 'Código Postal']) || '';
 
-                        // Encontrar vendedor
-                        const sellerId = findSellerForRegion(city, neighborhood);
+                        // Buscar zona por CEP
+                        let zonaId: string | null = null;
+                        let sellerId: string | null = null;
 
-                        // Criar restaurante
+                        if (cep) {
+                            zonaId = await findZonaByCep(cep);
+                            if (zonaId) {
+                                sellerId = await findSellerByZona(zonaId);
+                            }
+                        }
+
+                        // Criar restaurante com zona e executivo já atribuídos
                         await prisma.restaurant.create({
                             data: {
                                 name: name,
@@ -663,14 +739,16 @@ export async function importExcelFile(formData: FormData) {
                                     return val ? parseInt(String(val).replace(/[^\d]/g, '')) : 0;
                                 })(),
                                 salesPotential: getColumnValue(row, ['Potencial Vendas', 'Potencial', 'potencial', 'Sales Potential']) || 'N/A',
-                                category: getColumnValue(row, ['Categoria', 'Category', 'category', 'Tipo']) || 'N/A',
                                 address: {
                                     street: getColumnValue(row, ['Endereço (Rua)', 'EndereÃ§o (Rua)', 'Rua', 'Endereço', 'Street']) || '',
                                     neighborhood: neighborhood,
                                     city: city,
                                     state: getColumnValue(row, ['Estado', 'State', 'state', 'UF']) || '',
-                                    zip: getColumnValue(row, ['CEP', 'Zip Code', 'zipCode', 'Código Postal']) || '',
+                                    zip: cep,
                                 },
+                                zonaId: zonaId || undefined,
+                                sellerId: sellerId || undefined,
+                                assignedAt: sellerId ? new Date() : undefined,
                                 lastCollectionDate: (() => {
                                     const val = getColumnValue(row, ['Data Coleta', 'Data de Coleta', 'Collection Date', 'Última Coleta']);
                                     return val ? (val instanceof Date ? val : new Date(String(val))) : null;
@@ -680,8 +758,6 @@ export async function importExcelFile(formData: FormData) {
                                     return String(potencial).toUpperCase().includes('ALTISSIMO') || String(potencial).toUpperCase().includes('ALTÍSSIMO') ? 'Qualificado' : 'A Analisar';
                                 })(),
                                 sourceFile: file.name,
-                                sellerId: sellerId,
-                                assignedAt: sellerId ? new Date() : null,
                                 comments: {
                                     create: comments.map(content => ({ content }))
                                 }
@@ -1016,5 +1092,525 @@ export async function getVisits(restaurantId?: string, sellerId?: string) {
         console.error('Erro ao buscar visitas:', error);
         // Retornar array vazio em caso de erro
         return [];
+    }
+}
+
+// Função para garantir que a coluna zona_id existe na tabela restaurants
+async function ensureZonaIdColumnExists(prisma: any) {
+    try {
+        // Verificar se a coluna existe
+        const result = await prisma.$queryRaw<Array<{ column_name: string }>>`
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = 'restaurants' AND column_name = 'zona_id'
+        `;
+        
+        if (result.length === 0) {
+            // Coluna não existe, criar
+            console.log('Criando coluna zona_id na tabela restaurants...');
+            
+            // Primeiro, criar a coluna
+            await prisma.$executeRaw`
+                ALTER TABLE restaurants 
+                ADD COLUMN IF NOT EXISTS zona_id UUID
+            `;
+            
+            // Verificar se a constraint já existe antes de criar
+            try {
+                const constraintCheck = await prisma.$queryRaw<Array<{ constraint_name: string }>>`
+                    SELECT constraint_name 
+                    FROM information_schema.table_constraints 
+                    WHERE table_name = 'restaurants' 
+                    AND constraint_name = 'fk_restaurants_zona_id'
+                `;
+                
+                if (constraintCheck.length === 0) {
+                    // Tentar criar a foreign key (pode falhar se zonas_cep não existir)
+                    try {
+                        await prisma.$executeRaw`
+                            ALTER TABLE restaurants 
+                            ADD CONSTRAINT fk_restaurants_zona_id 
+                            FOREIGN KEY (zona_id) REFERENCES zonas_cep(id) ON DELETE SET NULL
+                        `;
+                    } catch (fkError: any) {
+                        console.warn('Não foi possível criar foreign key (zonas_cep pode não existir ainda):', fkError.message);
+                    }
+                }
+            } catch (checkError: any) {
+                console.warn('Erro ao verificar constraint:', checkError.message);
+            }
+            
+            // Criar índice se não existir
+            await prisma.$executeRaw`
+                CREATE INDEX IF NOT EXISTS idx_restaurants_zona_id ON restaurants(zona_id)
+            `;
+            
+            console.log('Coluna zona_id criada com sucesso!');
+        }
+    } catch (error: any) {
+        // Se a tabela zonas_cep não existir, criar sem foreign key primeiro
+        if (error.message?.includes('zonas_cep') || error.code === '42P01') {
+            console.warn('Tabela zonas_cep não existe ainda, criando coluna sem foreign key...');
+            try {
+                await prisma.$executeRaw`
+                    ALTER TABLE restaurants 
+                    ADD COLUMN IF NOT EXISTS zona_id UUID
+                `;
+                await prisma.$executeRaw`
+                    CREATE INDEX IF NOT EXISTS idx_restaurants_zona_id ON restaurants(zona_id)
+                `;
+            } catch (e: any) {
+                console.error('Erro ao criar coluna zona_id:', e.message);
+            }
+        } else {
+            console.error('Erro ao verificar/criar coluna zona_id:', error.message);
+        }
+    }
+}
+
+// Função para alocar restaurantes existentes às suas zonas baseado no CEP
+export async function allocateRestaurantsToZones() {
+    'use server';
+    
+    try {
+        const { prisma } = await import('@/lib/db');
+        
+        // Garantir que a coluna zona_id existe
+        await ensureZonaIdColumnExists(prisma);
+        
+        // Limpar CEP
+        const cleanCep = (cep: string): string => {
+            return cep.replace(/[^0-9]/g, '');
+        };
+        
+        // Função para encontrar zona por CEP (local, não importada)
+        const findZonaByCep = async (cep: string): Promise<string | null> => {
+            try {
+                const cleanedCep = cleanCep(cep);
+                if (cleanedCep.length !== 8) {
+                    return null;
+                }
+
+                const cepNum = parseInt(cleanedCep, 10);
+
+                // Garantir que a tabela existe
+                try {
+                    await prisma.$queryRaw`SELECT 1 FROM zonas_cep LIMIT 1`;
+                } catch (e) {
+                    // Se não existir, retornar null
+                    return null;
+                }
+
+                // Buscar zonas (usar modelo se disponível, senão SQL direto)
+                let zonas: any[] = [];
+                
+                if (prisma && typeof (prisma as any).zonaCep !== 'undefined') {
+                    zonas = await (prisma as any).zonaCep.findMany({
+                        where: {
+                            ativo: true
+                        }
+                    });
+                } else {
+                    // Fallback: usar SQL direto
+                    const result = await prisma.$queryRaw<Array<{
+                        id: string;
+                        zona_nome: string;
+                        cep_inicial: string;
+                        cep_final: string;
+                        ativo: boolean;
+                    }>>`SELECT * FROM zonas_cep WHERE ativo = true`;
+                    zonas = result.map(z => ({
+                        id: z.id,
+                        zonaNome: z.zona_nome,
+                        cepInicial: z.cep_inicial,
+                        cepFinal: z.cep_final,
+                        ativo: z.ativo
+                    }));
+                }
+
+                // Buscar zona que contém o CEP
+                for (const zona of zonas) {
+                    const cepInicial = (zona as any).cepInicial || (zona as any).cep_inicial;
+                    const cepFinal = (zona as any).cepFinal || (zona as any).cep_final;
+                    const zonaInicio = parseInt(cleanCep(cepInicial), 10);
+                    const zonaFim = parseInt(cleanCep(cepFinal), 10);
+                    if (cepNum >= zonaInicio && cepNum <= zonaFim) {
+                        return (zona as any).id;
+                    }
+                }
+
+                return null;
+            } catch (error) {
+                console.error('Erro ao buscar zona por CEP:', error);
+                return null;
+            }
+        };
+        
+        // Buscar todos os restaurantes (incluindo os que já têm zona para revalidar)
+        // Usar SQL direto para evitar problemas com Prisma Client e campos não reconhecidos
+        let restaurants: Array<{ id: string; address: any; zonaId: string | null }> = [];
+        
+        try {
+            // Verificar se a coluna existe antes de buscar
+            const columnCheck = await prisma.$queryRaw<Array<{ column_name: string }>>`
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name = 'restaurants' AND column_name = 'zona_id'
+            `;
+            
+            if (columnCheck.length > 0) {
+                // Coluna existe, usar SQL direto
+                const result = await prisma.$queryRaw<Array<{
+                    id: string;
+                    address: any;
+                    zona_id: string | null;
+                }>>`
+                    SELECT id, address, zona_id
+                    FROM restaurants
+                `;
+                restaurants = result.map(r => ({
+                    id: r.id,
+                    address: typeof r.address === 'string' ? JSON.parse(r.address) : r.address,
+                    zonaId: r.zona_id
+                }));
+            } else {
+                // Coluna não existe ainda, buscar sem ela e adicionar null
+                const result = await prisma.$queryRaw<Array<{
+                    id: string;
+                    address: any;
+                }>>`
+                    SELECT id, address
+                    FROM restaurants
+                `;
+                restaurants = result.map(r => ({
+                    id: r.id,
+                    address: typeof r.address === 'string' ? JSON.parse(r.address) : r.address,
+                    zonaId: null
+                }));
+            }
+        } catch (sqlError: any) {
+            // Se SQL direto falhar, tentar Prisma como fallback
+            console.warn('Erro ao buscar restaurantes com SQL direto, tentando Prisma:', sqlError.message);
+            try {
+                const prismaResult = await prisma.restaurant.findMany({
+                    select: {
+                        id: true,
+                        address: true,
+                    }
+                });
+                
+                restaurants = prismaResult.map(r => ({
+                    id: r.id,
+                    address: r.address as any,
+                    zonaId: null // Inicializar como null se não conseguir buscar
+                }));
+            } catch (prismaError: any) {
+                console.error('Erro ao buscar restaurantes:', prismaError);
+                throw new Error(`Não foi possível buscar restaurantes: ${prismaError.message}`);
+            }
+        }
+
+        let allocated = 0;
+        let updated = 0;
+        let errors = 0;
+        const unallocated: string[] = [];
+
+        for (const restaurant of restaurants) {
+            try {
+                const address = restaurant.address as any;
+                
+                // Tentar vários formatos de CEP
+                let cep: string | null = null;
+                
+                if (typeof address === 'string') {
+                    try {
+                        const parsed = JSON.parse(address);
+                        cep = parsed?.zip || parsed?.postalCode || parsed?.cep || parsed?.zipCode || parsed?.postal_code || parsed?.CEP;
+                    } catch {
+                        // Se não for JSON, tentar extrair CEP da string
+                        const cepMatch = address.match(/\d{5}-?\d{3}/);
+                        if (cepMatch) {
+                            cep = cepMatch[0];
+                        }
+                    }
+                } else if (address && typeof address === 'object') {
+                    // O formato padrão do sistema usa 'zip'
+                    cep = address?.zip || 
+                          address?.postalCode || 
+                          address?.cep || 
+                          address?.zipCode || 
+                          address?.postal_code ||
+                          address?.CEP;
+                }
+                
+                if (!cep) {
+                    console.log(`Restaurante ${restaurant.id} sem CEP. Address:`, JSON.stringify(address));
+                    unallocated.push(restaurant.id);
+                    continue;
+                }
+
+                // Limpar e validar CEP
+                const cleanedCep = cleanCep(cep);
+                if (cleanedCep.length !== 8) {
+                    console.log(`CEP inválido para restaurante ${restaurant.id}: ${cep} (limpo: ${cleanedCep})`);
+                    unallocated.push(restaurant.id);
+                    continue;
+                }
+
+                // Encontrar zona pelo CEP
+                const zonaId = await findZonaByCep(cep);
+                
+                if (zonaId) {
+                    const hadZona = restaurant.zonaId !== null;
+                    
+                    // Atualizar restaurante com a zona usando SQL direto
+                    try {
+                        await prisma.$executeRaw`
+                            UPDATE restaurants 
+                            SET zona_id = ${zonaId}::uuid
+                            WHERE id = ${restaurant.id}::uuid
+                        `;
+                    } catch (updateError: any) {
+                        // Se falhar, tentar com Prisma
+                        try {
+                            await prisma.restaurant.update({
+                                where: { id: restaurant.id },
+                                data: { zonaId }
+                            });
+                        } catch (prismaError: any) {
+                            console.error(`Erro ao atualizar zona do restaurante ${restaurant.id}:`, prismaError.message);
+                            throw prismaError;
+                        }
+                    }
+                    
+                    // Se houver executivo para esta zona, atribuir também
+                    const sellerId = await findSellerByZona(zonaId);
+                    if (sellerId) {
+                        try {
+                            await prisma.$executeRaw`
+                                UPDATE restaurants 
+                                SET seller_id = ${sellerId}::uuid,
+                                    assigned_at = NOW()
+                                WHERE id = ${restaurant.id}::uuid
+                            `;
+                        } catch (updateError: any) {
+                            // Se falhar, tentar com Prisma
+                            try {
+                                await prisma.restaurant.update({
+                                    where: { id: restaurant.id },
+                                    data: { 
+                                        sellerId,
+                                        assignedAt: new Date()
+                                    }
+                                });
+                            } catch (prismaError: any) {
+                                console.error(`Erro ao atualizar executivo do restaurante ${restaurant.id}:`, prismaError.message);
+                            }
+                        }
+                    }
+                    
+                    if (hadZona) {
+                        updated++;
+                    } else {
+                        allocated++;
+                    }
+                } else {
+                    unallocated.push(restaurant.id);
+                }
+            } catch (error: any) {
+                console.error(`Erro ao alocar restaurante ${restaurant.id}:`, error.message);
+                errors++;
+            }
+        }
+
+        revalidatePath('/clients');
+        revalidatePath('/carteira');
+        revalidatePath('/pipeline');
+
+        return {
+            success: true,
+            allocated,
+            updated,
+            errors,
+            unallocated: unallocated.length,
+            message: `${allocated} restaurantes alocados, ${updated} atualizados, ${unallocated.length} sem zona correspondente, ${errors} erros`
+        };
+    } catch (error: any) {
+        console.error('Erro ao alocar restaurantes:', error);
+        return {
+            success: false,
+            allocated: 0,
+            updated: 0,
+            errors: 0,
+            unallocated: 0,
+            message: `Erro: ${error.message}`
+        };
+    }
+}
+
+// Função para sincronizar todos os restaurantes com executivos baseado nas zonas
+export async function syncRestaurantsWithSellers() {
+    'use server';
+    
+    try {
+        const { prisma } = await import('@/lib/db');
+        
+        // Verificar se a coluna zona_id existe
+        let columnExists = false;
+        try {
+            const columnCheck = await prisma.$queryRaw<Array<{ column_name: string }>>`
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name = 'restaurants' AND column_name = 'zona_id'
+            `;
+            columnExists = columnCheck.length > 0;
+        } catch (e) {
+            return {
+                success: false,
+                message: 'Coluna zona_id não existe. Execute a alocação de zonas primeiro.'
+            };
+        }
+
+        if (!columnExists) {
+            return {
+                success: false,
+                message: 'Coluna zona_id não existe. Execute a alocação de zonas primeiro.'
+            };
+        }
+
+        // Buscar todos os executivos ativos com suas zonas
+        let sellersWithZonas: Array<{ seller_id: string; zona_id: string }> = [];
+        try {
+            sellersWithZonas = await prisma.$queryRaw<Array<{ seller_id: string; zona_id: string }>>`
+                SELECT sz.seller_id, sz.zona_id
+                FROM seller_zonas sz
+                INNER JOIN sellers s ON s.id = sz.seller_id
+                WHERE s.active = true
+            `;
+        } catch (e: any) {
+            return {
+                success: false,
+                message: `Erro ao buscar executivos: ${e.message}`
+            };
+        }
+
+        if (sellersWithZonas.length === 0) {
+            return {
+                success: true,
+                message: 'Nenhum executivo com zonas encontrado. Configure as zonas dos executivos primeiro.'
+            };
+        }
+
+        // Criar mapa de zona -> executivo (pegar o primeiro executivo ativo para cada zona)
+        const zonaToSellerMap = new Map<string, string>();
+        sellersWithZonas.forEach(sz => {
+            if (!zonaToSellerMap.has(sz.zona_id)) {
+                zonaToSellerMap.set(sz.zona_id, sz.seller_id);
+            }
+        });
+
+        // Buscar todos os restaurantes com zona mas sem executivo ou com executivo diferente
+        let restaurantsToUpdate: Array<{ id: string; zona_id: string; seller_id: string | null }> = [];
+        try {
+            restaurantsToUpdate = await prisma.$queryRaw<Array<{ id: string; zona_id: string; seller_id: string | null }>>`
+                SELECT id, zona_id, seller_id
+                FROM restaurants
+                WHERE zona_id IS NOT NULL
+            `;
+        } catch (e: any) {
+            return {
+                success: false,
+                message: `Erro ao buscar restaurantes: ${e.message}`
+            };
+        }
+
+        let updated = 0;
+        let skipped = 0;
+
+        // Atualizar cada restaurante
+        for (const restaurant of restaurantsToUpdate) {
+            const expectedSellerId = zonaToSellerMap.get(restaurant.zona_id);
+            
+            if (expectedSellerId) {
+                // Se o restaurante não tem executivo ou tem um executivo diferente, atualizar
+                if (!restaurant.seller_id || restaurant.seller_id !== expectedSellerId) {
+                    try {
+                        await prisma.$executeRaw`
+                            UPDATE restaurants 
+                            SET seller_id = ${expectedSellerId}::uuid,
+                                assigned_at = NOW()
+                            WHERE id = ${restaurant.id}::uuid
+                        `;
+                        updated++;
+                    } catch (e: any) {
+                        console.warn(`Erro ao atualizar restaurante ${restaurant.id}:`, e.message);
+                    }
+                } else {
+                    skipped++;
+                }
+            }
+        }
+
+        revalidatePath('/clients');
+        revalidatePath('/carteira');
+        revalidatePath('/pipeline');
+
+        return {
+            success: true,
+            message: `${updated} restaurantes sincronizados com executivos, ${skipped} já estavam corretos`
+        };
+    } catch (error: any) {
+        console.error('Erro ao sincronizar restaurantes:', error);
+        return {
+            success: false,
+            message: `Erro: ${error.message}`
+        };
+    }
+}
+
+// Função auxiliar para encontrar executivo por zona (reutilizada)
+async function findSellerByZona(zonaId: string): Promise<string | null> {
+    const { prisma } = await import('@/lib/db');
+    
+    try {
+        if (prisma && typeof (prisma as any).sellerZona !== 'undefined') {
+            const sellerZona = await (prisma as any).sellerZona.findFirst({
+                where: {
+                    zonaId: zonaId,
+                    seller: {
+                        active: true
+                    }
+                },
+                include: {
+                    seller: true
+                }
+            });
+
+            if (sellerZona && sellerZona.seller) {
+                return sellerZona.seller.id;
+            }
+        } else {
+            const result = await prisma.$queryRaw<Array<{
+                seller_id: string;
+            }>>`
+                SELECT sz.seller_id 
+                FROM seller_zonas sz
+                INNER JOIN sellers s ON s.id = sz.seller_id
+                WHERE sz.zona_id = ${zonaId} AND s.active = true
+                LIMIT 1
+            `;
+            
+            if (result && result.length > 0) {
+                return result[0].seller_id;
+            }
+        }
+
+        return null;
+    } catch (error: any) {
+        if (error.message?.includes('does not exist') || error.message?.includes('relation') || error.code === '42P01') {
+            return null;
+        }
+        console.error('Erro ao buscar executivo por zona:', error);
+        return null;
     }
 }

@@ -17,7 +17,6 @@ export interface Restaurant {
     totalComments: number;
     projectedDeliveries: number;
     salesPotential: string;
-    category: string;
     address: {
         street: string;
         neighborhood: string;
@@ -30,6 +29,8 @@ export interface Restaurant {
     status?: string;
     seller?: Seller;
     assignedAt?: string;
+    zonaId?: string;
+    zonaNome?: string;
 }
 
 export interface AnalysisResult {

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { createUser, updateUser, deleteUser, toggleUserStatus, resetPassword, unlockUserAndResetPassword, UserData } from './actions';
+import PermissionsEditor from './PermissionsEditor';
 import styles from './page.module.css';
 
 interface Props {
@@ -27,6 +28,7 @@ export default function UsersClient({ initialUsers, currentUserId }: Props) {
 
     const [showResetPassword, setShowResetPassword] = useState<string | null>(null);
     const [newPassword, setNewPassword] = useState('');
+    const [editingPermissions, setEditingPermissions] = useState<UserData | null>(null);
 
     const resetForm = () => {
         setFormData({
@@ -310,6 +312,14 @@ export default function UsersClient({ initialUsers, currentUserId }: Props) {
                                                 </button>
                                                 <button 
                                                     className={styles.actionBtn}
+                                                    onClick={() => setEditingPermissions(user)}
+                                                    title="Gerenciar Permissões"
+                                                    style={{ background: '#6366f120' }}
+                                                >
+                                                    🔐
+                                                </button>
+                                                <button 
+                                                    className={styles.actionBtn}
                                                     onClick={() => setShowResetPassword(user.id)}
                                                     title="Redefinir Senha"
                                                 >
@@ -480,6 +490,20 @@ export default function UsersClient({ initialUsers, currentUserId }: Props) {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Modal de Permissões */}
+            {editingPermissions && (
+                <PermissionsEditor
+                    userId={editingPermissions.id}
+                    userName={editingPermissions.name}
+                    userRole={editingPermissions.role}
+                    onClose={() => setEditingPermissions(null)}
+                    onSave={() => {
+                        // Atualizar a lista de usuários se o role mudar
+                        window.location.reload();
+                    }}
+                />
             )}
         </div>
     );

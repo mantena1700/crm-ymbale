@@ -63,7 +63,7 @@ export default function MapsModal({ isOpen, onClose, query, restaurant }: Props)
                         {restaurant && (
                             <div className={styles.headerMeta}>
                                 <span className={styles.rating}>⭐ {restaurant.rating}</span>
-                                <span className={styles.category}>{restaurant.category || 'Restaurante'}</span>
+                                <span className={styles.neighborhood}>{restaurant.address?.neighborhood || 'Restaurante'}</span>
                             </div>
                         )}
                     </div>
@@ -185,8 +185,8 @@ export default function MapsModal({ isOpen, onClose, query, restaurant }: Props)
                                         <span className={styles.statValue}>{restaurant.reviewCount?.toLocaleString()}</span>
                                     </div>
                                     <div className={styles.statItem}>
-                                        <span className={styles.statLabel}>Categoria</span>
-                                        <span className={styles.statValue}>{restaurant.category || 'N/A'}</span>
+                                        <span className={styles.statLabel}>Bairro</span>
+                                        <span className={styles.statValue}>{restaurant.address?.neighborhood || 'N/A'}</span>
                                     </div>
                                     <div className={styles.statItem}>
                                         <span className={styles.statLabel}>Potencial</span>

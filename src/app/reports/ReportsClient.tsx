@@ -71,12 +71,12 @@ export default function ReportsClient({ initialMetrics }: ReportsClientProps) {
             })));
             XLSX.utils.book_append_sheet(wb, ws4, 'Por Região');
             
-            // Sheet 5: By Category
-            const ws5 = XLSX.utils.json_to_sheet(metrics.byCategory.map(c => ({
-                'Categoria': c.category,
+            // Sheet 5: By City
+            const ws5 = XLSX.utils.json_to_sheet(metrics.byCity.map(c => ({
+                'Cidade': c.city,
                 'Quantidade': c.count
             })));
-            XLSX.utils.book_append_sheet(wb, ws5, 'Por Categoria');
+            XLSX.utils.book_append_sheet(wb, ws5, 'Por Cidade');
             
             // Sheet 6: Top Restaurants
             const ws6 = XLSX.utils.json_to_sheet(metrics.topRestaurants.map(r => ({
@@ -179,10 +179,10 @@ export default function ReportsClient({ initialMetrics }: ReportsClientProps) {
         ${metrics.byRegion.map(r => `<tr><td>${r.region}</td><td>${r.count}</td></tr>`).join('')}
     </table>
     
-    <h2>🍽️ Por Categoria</h2>
+    <h2>🏙️ Por Cidade</h2>
     <table>
-        <tr><th>Categoria</th><th>Quantidade</th></tr>
-        ${metrics.byCategory.map(c => `<tr><td>${c.category}</td><td>${c.count}</td></tr>`).join('')}
+        <tr><th>Cidade</th><th>Quantidade</th></tr>
+        ${metrics.byCity.map(c => `<tr><td>${c.city}</td><td>${c.count}</td></tr>`).join('')}
     </table>
     
     <div class="footer">
@@ -528,28 +528,18 @@ export default function ReportsClient({ initialMetrics }: ReportsClientProps) {
 
                 {activeTab === 'categories' && (
                     <div className={styles.categoryContainer}>
-                        <h3>🍽️ Leads por Categoria</h3>
+                        <h3>🏙️ Leads por Cidade</h3>
                         <div className={styles.categoryGrid}>
-                            {metrics.byCategory.map(c => (
-                                <div key={c.category} className={styles.categoryCard}>
-                                    <div className={styles.categoryIcon}>
-                                        {c.category.toLowerCase().includes('pizza') ? '🍕' :
-                                         c.category.toLowerCase().includes('hamburger') || c.category.toLowerCase().includes('burger') ? '🍔' :
-                                         c.category.toLowerCase().includes('jap') || c.category.toLowerCase().includes('sushi') ? '🍣' :
-                                         c.category.toLowerCase().includes('brasil') ? '🇧🇷' :
-                                         c.category.toLowerCase().includes('churrasco') ? '🥩' :
-                                         c.category.toLowerCase().includes('doce') || c.category.toLowerCase().includes('sobremesa') ? '🍰' :
-                                         c.category.toLowerCase().includes('café') ? '☕' :
-                                         c.category.toLowerCase().includes('fit') || c.category.toLowerCase().includes('saudável') ? '🥗' :
-                                         '🍽️'}
-                                    </div>
-                                    <span className={styles.categoryName}>{c.category}</span>
+                            {metrics.byCity.map(c => (
+                                <div key={c.city} className={styles.categoryCard}>
+                                    <div className={styles.categoryIcon}>📍</div>
+                                    <span className={styles.categoryName}>{c.city}</span>
                                     <span className={styles.categoryCount}>{c.count} leads</span>
                                     <div className={styles.categoryBar}>
                                         <div 
                                             className={styles.categoryFill}
                                             style={{ 
-                                                width: getProgressWidth((c.count / Math.max(...metrics.byCategory.map(x => x.count))) * 100)
+                                                width: getProgressWidth((c.count / Math.max(...metrics.byCity.map(x => x.count))) * 100)
                                             }}
                                         />
                                     </div>

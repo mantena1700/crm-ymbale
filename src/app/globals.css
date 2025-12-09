@@ -1,39 +1,40 @@
 @import '../styles/animations.css';
 
 :root {
-  /* Premium Dark Theme Palette (Default) */
-  --background: #030712;
+  /* Dark Theme - Design Limpo e Moderno */
+  --background: #0f172a;
   --foreground: #f8fafc;
 
-  /* Primary Accents - Mais vibrantes e profissionais */
-  --primary: #6366f1;
-  --primary-hover: #4f46e5;
-  --primary-glow: rgba(99, 102, 241, 0.4);
+  /* Primary - Azul Profissional */
+  --primary: #3b82f6;
+  --primary-hover: #2563eb;
+  --primary-light: #60a5fa;
+  --primary-glow: rgba(59, 130, 246, 0.2);
 
   --secondary: #1e293b;
   --secondary-hover: #334155;
 
-  --accent: #a855f7;
-  --accent-glow: rgba(168, 85, 247, 0.4);
+  --accent: #3b82f6;
+  --accent-glow: rgba(59, 130, 246, 0.2);
 
   --success: #22c55e;
   --warning: #f59e0b;
   --danger: #ef4444;
-  --info: #3b82f6;
+  --info: #0ea5e9;
 
-  /* Glassmorphism & Cards */
-  --card-bg: rgba(30, 41, 59, 0.6);
-  --card-border: rgba(255, 255, 255, 0.08);
-  --glass-bg: rgba(15, 23, 42, 0.7);
-  --glass-border: rgba(255, 255, 255, 0.1);
+  /* Cards */
+  --card-bg: #1e293b;
+  --card-border: #334155;
+  --glass-bg: rgba(30, 41, 59, 0.95);
+  --glass-border: #334155;
 
   --text-muted: #94a3b8;
-  --border: #1e293b;
+  --border: #334155;
 
   /* Gradients */
-  --text-gradient: linear-gradient(to right, #fff, #cbd5e1);
-  --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-  --card-gradient: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(30, 41, 59, 0.6));
+  --text-gradient: linear-gradient(to right, #fff, #e2e8f0);
+  --bg-gradient: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+  --card-gradient: linear-gradient(180deg, #1e293b 0%, #1e293b 100%);
 
   --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Inter', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
 
@@ -88,63 +89,49 @@
 }
 
 /* ========================================
-   LIGHT THEME - Professional CRM (High Contrast)
-   Paleta: Slate (Estrutura) + Royal Blue (Ação)
+   LIGHT THEME - Design Limpo e Moderno
    ======================================== */
 [data-theme="light"] {
-  /* Fundo principal - Slate 50 */
+  /* Fundo */
   --background: #f8fafc;
-  --foreground: #020617;
-  /* Slate 950 - Almost Black */
+  --foreground: #0f172a;
 
-  /* Primários - Royal Blue */
-  --primary: #2563eb;
-  /* Blue 600 */
-  --primary-hover: #1d4ed8;
-  /* Blue 700 */
-  --primary-glow: rgba(37, 99, 235, 0.15);
+  /* Primários */
+  --primary: #3b82f6;
+  --primary-hover: #2563eb;
+  --primary-light: #60a5fa;
+  --primary-glow: rgba(59, 130, 246, 0.1);
 
-  /* Secundários - Slate 100/200 */
+  /* Secundários */
   --secondary: #ffffff;
-  --secondary-hover: #e2e8f0;
-  /* Darker hover for visibility */
+  --secondary-hover: #f1f5f9;
 
   /* Acentos */
-  --accent: #4338ca;
-  /* Indigo 700 */
-  --accent-glow: rgba(67, 56, 202, 0.1);
+  --accent: #3b82f6;
+  --accent-glow: rgba(59, 130, 246, 0.08);
 
-  /* Status - Darker for better visibility */
-  --success: #047857;
-  /* Emerald 700 */
-  --warning: #b45309;
-  /* Amber 700 */
-  --danger: #b91c1c;
-  /* Red 700 */
-  --info: #0369a1;
-  /* Sky 700 */
+  /* Status */
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --info: #0ea5e9;
 
   /* Cards */
   --card-bg: #ffffff;
-  --card-border: #cbd5e1;
-  /* Slate 300 - Visible border */
-  --glass-bg: rgba(255, 255, 255, 0.95);
-  --glass-border: #cbd5e1;
+  --card-border: #e5e7eb;
+  --glass-bg: #ffffff;
+  --glass-border: #e5e7eb;
 
-  /* Texto - High Contrast */
-  --text-main: #020617;
-  /* Slate 950 */
-  --text-body: #1e293b;
-  /* Slate 800 */
-  --text-muted: #475569;
-  /* Slate 600 - Much darker than before */
-  --border: #cbd5e1;
-  /* Slate 300 */
+  /* Texto */
+  --text-main: #111827;
+  --text-body: #374151;
+  --text-muted: #6b7280;
+  --border: #e5e7eb;
 
-  /* Gradients Light Mode */
-  --text-gradient: linear-gradient(to right, #0f172a, #334155);
-  --bg-gradient: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  --card-gradient: linear-gradient(135deg, #ffffff, #f8fafc);
+  /* Gradients */
+  --text-gradient: linear-gradient(to right, #111827, #374151);
+  --bg-gradient: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  --card-gradient: linear-gradient(180deg, #ffffff 0%, #ffffff 100%);
 }
 
 /* ===== BODY E FUNDO ===== */
@@ -1097,21 +1084,22 @@ textarea:focus {
 
 .main-content {
   flex: 1;
-  margin-left: 280px;
-  padding: var(--space-2);
-  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s ease;
-  width: calc(100% - 280px);
+  margin-left: 260px;
+  padding: 24px;
+  transition: margin-left 0.2s ease, width 0.2s ease;
+  width: calc(100% - 260px);
   min-height: 100vh;
   max-width: 100%;
   overflow-x: hidden;
   box-sizing: border-box;
+  background: var(--background);
 }
 
-/* Sidebar Collapsed State - Layout flexível e inteligente */
+/* Sidebar Collapsed State */
 body.sidebar-collapsed .main-content {
-  margin-left: 80px;
-  width: calc(100% - 80px);
-  max-width: calc(100vw - 80px);
+  margin-left: 72px;
+  width: calc(100% - 72px);
+  max-width: calc(100vw - 72px);
 }
 
 /* Garantir que o conteúdo use todo o espaço disponível quando sidebar está recolhido */

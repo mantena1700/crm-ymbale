@@ -11,6 +11,26 @@ const isBuildTime = () => {
 // Restaurantes
 export async function getRestaurants(): Promise<Restaurant[]> {
     try {
+        // Buscar zonas primeiro para mapear
+        const zonasMap = new Map<string, string>();
+        try {
+            if (prisma && typeof (prisma as any).zonaCep !== 'undefined') {
+                const zonas = await (prisma as any).zonaCep.findMany({
+                    select: { id: true, zonaNome: true }
+                });
+                zonas.forEach((z: any) => zonasMap.set(z.id, z.zonaNome));
+            } else {
+                const zonas = await prisma.$queryRaw<Array<{ id: string; zona_nome: string }>>`
+                    SELECT id, zona_nome FROM zonas_cep
+                `;
+                zonas.forEach(z => zonasMap.set(z.id, z.zona_nome));
+            }
+        } catch (e) {
+            // Se não conseguir buscar zonas, continuar sem elas
+            console.warn('Erro ao buscar zonas:', e);
+        }
+
+        // Buscar restaurantes com Prisma
         const restaurants = await prisma.restaurant.findMany({
             include: {
                 comments: true,
@@ -19,32 +39,60 @@ export async function getRestaurants(): Promise<Restaurant[]> {
             orderBy: { createdAt: 'desc' }
         });
 
-        return restaurants.map(r => ({
-            id: r.id,
-            name: r.name,
-            rating: Number(r.rating || 0),
-            reviewCount: r.reviewCount ?? 0,
-            totalComments: r.totalComments ?? 0,
-            projectedDeliveries: r.projectedDeliveries ?? 0,
-            salesPotential: r.salesPotential || 'N/A',
-            category: r.category || 'N/A',
-            address: r.address as any,
-            lastCollectionDate: r.lastCollectionDate?.toISOString() || '',
-            comments: r.comments.map(c => c.content),
-            status: r.status || undefined,
-            email: (r.address as any)?.email || '',
-            seller: r.seller ? {
-                id: r.seller.id,
-                name: r.seller.name,
-                email: r.seller.email || undefined,
-                phone: r.seller.phone || undefined,
-                photoUrl: r.seller.photoUrl || undefined,
-                regions: r.seller.regions as string[],
-                neighborhoods: (r.seller.neighborhoods as string[]) || [],
-                active: r.seller.active || false
-            } : undefined,
-            assignedAt: r.assignedAt?.toISOString()
-        }));
+        // Buscar zonaId separadamente via SQL para garantir que está presente
+        let zonaIdMap = new Map<string, string | null>();
+        try {
+            // Verificar se a coluna existe
+            const columnCheck = await prisma.$queryRaw<Array<{ column_name: string }>>`
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name = 'restaurants' AND column_name = 'zona_id'
+            `;
+            
+            if (columnCheck.length > 0) {
+                // Coluna existe, buscar zonaId
+                const zonaIds = await prisma.$queryRaw<Array<{ id: string; zona_id: string | null }>>`
+                    SELECT id, zona_id FROM restaurants
+                `;
+                zonaIds.forEach(z => zonaIdMap.set(z.id, z.zona_id));
+            }
+        } catch (e) {
+            console.warn('Erro ao buscar zonaId dos restaurantes:', e);
+        }
+
+        return restaurants.map(r => {
+            // Tentar pegar zonaId do SQL primeiro, senão do Prisma
+            const zonaId = zonaIdMap.get(r.id) || (r as any).zonaId || undefined;
+            const zonaNome = zonaId ? (zonasMap.get(zonaId) || undefined) : undefined;
+            
+            return {
+                id: r.id,
+                name: r.name,
+                rating: Number(r.rating || 0),
+                reviewCount: r.reviewCount ?? 0,
+                totalComments: r.totalComments ?? 0,
+                projectedDeliveries: r.projectedDeliveries ?? 0,
+                salesPotential: r.salesPotential || 'N/A',
+                address: r.address as any,
+                lastCollectionDate: r.lastCollectionDate?.toISOString() || '',
+                comments: r.comments.map(c => c.content),
+                status: r.status || undefined,
+                email: (r.address as any)?.email || '',
+                zonaId: zonaId || undefined,
+                zonaNome: zonaNome || undefined,
+                seller: r.seller ? {
+                    id: r.seller.id,
+                    name: r.seller.name,
+                    email: r.seller.email || undefined,
+                    phone: r.seller.phone || undefined,
+                    photoUrl: r.seller.photoUrl || undefined,
+                    regions: r.seller.regions as string[],
+                    neighborhoods: (r.seller.neighborhoods as string[]) || [],
+                    active: r.seller.active || false
+                } : undefined,
+                assignedAt: r.assignedAt?.toISOString()
+            };
+        });
     } catch (error) {
         console.error('Erro ao buscar restaurantes:', error);
         return [];
@@ -333,7 +381,6 @@ export async function getDashboardStats() {
             pendingAnalysis,
             hotLeadsCount: hotLeads.length,
             avgRating: avgRatingResult._avg.rating ? Number(avgRatingResult._avg.rating).toFixed(1) : '0',
-            projectedRevenue: hotLeads.reduce((sum, r) => sum + (r.projectedDeliveries ?? 0), 0) * 2.5,
             hotLeads: hotLeads.map(r => ({
                 id: r.id,
                 name: r.name,
@@ -342,7 +389,6 @@ export async function getDashboardStats() {
                 totalComments: r.totalComments ?? 0,
                 projectedDeliveries: r.projectedDeliveries ?? 0,
                 salesPotential: r.salesPotential || 'N/A',
-                category: r.category || 'N/A',
                 address: r.address as any,
                 lastCollectionDate: r.lastCollectionDate?.toISOString() || '',
                 comments: [],
@@ -361,7 +407,6 @@ export async function getDashboardStats() {
             pendingAnalysis: 0,
             hotLeadsCount: 0,
             avgRating: '0',
-            projectedRevenue: 0,
             hotLeads: [],
         };
     }

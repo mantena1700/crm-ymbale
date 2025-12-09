@@ -14,7 +14,7 @@ export interface ReportMetrics {
     totalProjectedDeliveries: number;
     byStatus: { status: string; count: number }[];
     byRegion: { region: string; count: number }[];
-    byCategory: { category: string; count: number }[];
+    byCity: { city: string; count: number }[];
     topRestaurants: { name: string; score: number; potential: string }[];
     recentAnalyses: { name: string; date: string; score: number }[];
     conversionFunnel: { stage: string; count: number; percentage: number }[];
@@ -50,11 +50,11 @@ export async function getReportMetrics(): Promise<ReportMetrics> {
         regionCounts.set(region, (regionCounts.get(region) || 0) + 1);
     });
     
-    // By category
-    const categoryCounts = new Map<string, number>();
+    // By city
+    const cityCounts = new Map<string, number>();
     restaurants.forEach(r => {
-        const category = r.category || 'Outros';
-        categoryCounts.set(category, (categoryCounts.get(category) || 0) + 1);
+        const city = r.address?.city || 'Não informada';
+        cityCounts.set(city, (cityCounts.get(city) || 0) + 1);
     });
     
     // Top restaurants by score
@@ -97,7 +97,7 @@ export async function getReportMetrics(): Promise<ReportMetrics> {
         totalProjectedDeliveries: restaurants.reduce((sum, r) => sum + (r.projectedDeliveries || 0), 0),
         byStatus: Array.from(statusCounts.entries()).map(([status, count]) => ({ status, count })),
         byRegion: Array.from(regionCounts.entries()).map(([region, count]) => ({ region, count })).slice(0, 10),
-        byCategory: Array.from(categoryCounts.entries()).map(([category, count]) => ({ category, count })).slice(0, 10),
+        byCity: Array.from(cityCounts.entries()).map(([city, count]) => ({ city, count })).slice(0, 10),
         topRestaurants,
         recentAnalyses: validAnalyses.slice(0, 5).map((a, i) => ({
             name: restaurants[i]?.name || 'Desconhecido',
@@ -133,7 +133,7 @@ export async function getExportData(): Promise<ExportData> {
     return {
         restaurants: restaurants.map((r, i) => ({
             nome: r.name,
-            categoria: r.category || 'N/A',
+            bairro: r.address?.neighborhood || 'N/A',
             cidade: r.address?.city || 'N/A',
             estado: r.address?.state || 'N/A',
             avaliacao: r.rating,
@@ -193,8 +193,8 @@ MÉTRICAS:
 FUNIL DE CONVERSÃO:
 ${metrics.conversionFunnel.map(f => `- ${f.stage}: ${f.count} (${f.percentage}%)`).join('\n')}
 
-TOP CATEGORIAS:
-${metrics.byCategory.slice(0, 5).map(c => `- ${c.category}: ${c.count} leads`).join('\n')}
+TOP CIDADES:
+${metrics.byCity.slice(0, 5).map(c => `- ${c.city}: ${c.count} leads`).join('\n')}
 
 Gere um relatório executivo com:
 1. Resumo da situação atual

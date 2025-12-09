@@ -72,12 +72,6 @@ export function mapRestaurantFields(row: any, comments: string[]) {
         'Potencial de Vendas'
     ]) || 'N/A';
     
-    // Categoria
-    const category = getColumnValue(row, [
-        'Categoria', 'categoria', 'CATEGORIA', 'Category', 'category',
-        'Tipo', 'tipo', 'TIPO', 'Tipo de Restaurante'
-    ]) || 'N/A';
-    
     // Endereço
     const street = getColumnValue(row, [
         'Endereço (Rua)', 'EndereÃ§o (Rua)', 'endereço (rua)',
@@ -120,7 +114,6 @@ export function mapRestaurantFields(row: any, comments: string[]) {
         totalComments,
         projectedDeliveries,
         salesPotential: String(salesPotential),
-        category: String(category),
         address: {
             street: String(street),
             neighborhood: String(neighborhood),

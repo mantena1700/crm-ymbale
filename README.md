@@ -12,16 +12,24 @@ Sistema de CRM (Customer Relationship Management) para gestão de leads e client
 
 ## 📋 Funcionalidades
 
+### Core
 - ✅ Dashboard com métricas
 - ✅ Gestão de leads/clientes
 - ✅ Pipeline de vendas
 - ✅ Agenda de follow-ups
-- ✅ Gestão de vendedores
+- ✅ Gestão de executivos (antigo "vendedores")
 - ✅ Campanhas de marketing
 - ✅ Relatórios
 - ✅ Análise em lote com IA
 - ✅ Sistema de metas
 - ✅ Autenticação de usuários
+
+### 🆕 Novidades (v2.0.0)
+- ✅ **Sistema de Zonas de Atendimento** - Gestão geográfica baseada em CEP
+- ✅ **Atribuição Automática** - Restaurantes atribuídos automaticamente aos executivos por zona
+- ✅ **Carteira Padrão** - Visão consolidada de todas as carteiras
+- ✅ **Redesign Completo** - UI/UX moderno e profissional
+- ✅ **Importação Inteligente** - Identificação automática de zona na importação Excel
 
 ## 🔧 Instalação Local
 
@@ -73,7 +81,10 @@ Acesse: http://localhost:3000
 
 ## 🌐 Deploy em VPS
 
-Consulte o arquivo [DEPLOY_VPS.md](./DEPLOY_VPS.md) para instruções completas de instalação em servidor.
+Consulte os arquivos:
+- [DEPLOYMENT.md](./DEPLOYMENT.md) - **Guia completo de deploy e atualização na VPS**
+- [DEPLOY_VPS.md](./DEPLOY_VPS.md) - Instruções de instalação inicial
+- [CHANGELOG.md](./CHANGELOG.md) - **Documentação completa de funcionalidades e mudanças**
 
 ## 👤 Credenciais Padrão
 

@@ -73,7 +73,6 @@ export async function getRestaurants(): Promise<Restaurant[]> {
                     totalComments: parseInt(row['Total Comentários']) || 0,
                     projectedDeliveries: parseInt(row['Projeção Entregas/Mês']) || 0,
                     salesPotential: row['Potencial Vendas'] || 'N/A',
-                    category: row['Categoria'] || 'N/A',
                     address: {
                         street: row['Endereço (Rua)'] || '',
                         neighborhood: row['Bairro'] || '',

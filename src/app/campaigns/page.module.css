@@ -1,118 +1,123 @@
+/* Campaigns - Design Profissional ATUALIZADO */
+@import '../../styles/design-system.css';
+
 .container {
-    padding: var(--space-4);
+    padding: 0;
     max-width: 1400px;
     margin: 0 auto;
+    width: 100%;
 }
 
+/* Header */
 .header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: var(--space-6);
+    margin-bottom: 1.5rem;
     flex-wrap: wrap;
-    gap: var(--space-4);
+    gap: 1rem;
 }
 
 .header h1 {
-    font-size: var(--text-3xl);
+    font-size: 1.75rem;
     font-weight: 700;
-    margin: 0 0 var(--space-1);
-    background: linear-gradient(135deg, var(--primary), var(--accent));
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
+    margin: 0 0 0.25rem 0;
+    color: var(--ds-text);
 }
 
 .header p {
-    color: var(--text-muted);
+    color: var(--ds-text-muted);
     margin: 0;
+    font-size: 0.875rem;
 }
 
 .headerActions {
     display: flex;
-    gap: var(--space-2);
+    gap: 0.75rem;
 }
 
 .newButton {
-    padding: var(--space-3) var(--space-5);
-    background: linear-gradient(135deg, var(--primary), var(--accent));
+    padding: 0.625rem 1.25rem;
+    background: var(--ds-primary);
     border: none;
-    border-radius: var(--radius-lg);
+    border-radius: 0.5rem;
     color: white;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.15s;
     white-space: nowrap;
 }
 
 .newButton:hover {
+    background: var(--ds-primary-hover);
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px var(--primary-glow);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
 .loading {
     text-align: center;
-    padding: var(--space-8);
-    color: var(--text-muted);
+    padding: 2rem;
+    color: var(--ds-text-muted);
 }
 
 /* Tabs */
 .tabs {
     display: flex;
-    gap: var(--space-2);
-    margin-bottom: var(--space-6);
-    border-bottom: 2px solid var(--border);
-    padding-bottom: var(--space-2);
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 2px solid var(--ds-border);
+    padding-bottom: 0.5rem;
 }
 
 .tab {
-    padding: var(--space-2) var(--space-4);
+    padding: 0.625rem 1.25rem;
     background: transparent;
     border: none;
-    border-radius: var(--radius-md);
-    color: var(--text-muted);
+    border-radius: 0.5rem;
+    color: var(--ds-text-muted);
     font-weight: 500;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.15s;
+    font-size: 0.875rem;
 }
 
 .tab:hover {
-    background: rgba(99, 102, 241, 0.1);
-    color: var(--foreground);
+    background: var(--ds-gray-100);
+    color: var(--ds-text);
 }
 
 .tab.active {
-    background: var(--primary);
+    background: var(--ds-primary);
     color: white;
 }
 
 /* Filters */
 .filters {
     display: flex;
-    gap: var(--space-2);
-    margin-bottom: var(--space-4);
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
     flex-wrap: wrap;
 }
 
 .filterBtn {
-    padding: var(--space-2) var(--space-4);
-    background: var(--card-bg);
-    border: 1px solid var(--card-border);
-    border-radius: var(--radius-md);
-    color: var(--text-muted);
-    font-size: var(--text-sm);
+    padding: 0.5rem 1rem;
+    background: var(--ds-card);
+    border: 1px solid var(--ds-border);
+    border-radius: 0.5rem;
+    color: var(--ds-text);
+    font-size: 0.875rem;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.15s;
 }
 
 .filterBtn:hover {
-    border-color: var(--primary);
-    color: var(--foreground);
+    border-color: var(--ds-primary);
+    color: var(--ds-text);
 }
 
 .filterBtn.active {
-    background: var(--primary);
-    border-color: var(--primary);
+    background: var(--ds-primary);
+    border-color: var(--ds-primary);
     color: white;
 }
 
@@ -120,127 +125,108 @@
 .campaignsGrid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-    gap: var(--space-4);
+    gap: 1.25rem;
 }
 
 .campaignCard {
-    background: var(--card-bg);
-    border: 1px solid var(--card-border);
-    border-radius: var(--radius-xl);
-    padding: var(--space-5);
-    transition: all 0.3s ease;
+    background: var(--ds-card);
+    border: 1px solid var(--ds-border);
+    border-radius: 0.875rem;
+    padding: 1.5rem;
+    transition: all 0.2s ease;
 }
 
 .campaignCard:hover {
     transform: translateY(-4px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-    border-color: var(--primary);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+    border-color: var(--ds-primary);
 }
 
 .campaignHeader {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: var(--space-3);
+    margin-bottom: 1rem;
 }
 
 .campaignHeader h3 {
-    font-size: var(--text-lg);
+    font-size: 1.0625rem;
     font-weight: 700;
-    color: var(--foreground);
-    margin: 0 0 var(--space-2);
+    color: var(--ds-text);
+    margin: 0 0 0.5rem 0;
 }
 
 .campaignActions {
     display: flex;
-    gap: var(--space-2);
+    gap: 0.5rem;
 }
 
 .actionBtn {
-    padding: var(--space-1) var(--space-3);
-    background: rgba(99, 102, 241, 0.1);
-    border: 1px solid rgba(99, 102, 241, 0.2);
-    border-radius: var(--radius-sm);
-    color: var(--primary);
-    font-size: var(--text-xs);
+    padding: 0.375rem 0.75rem;
+    background: var(--ds-primary-light);
+    border: 1px solid var(--ds-primary);
+    border-radius: 0.375rem;
+    color: var(--ds-primary);
+    font-size: 0.75rem;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.15s;
 }
 
 .actionBtn:hover {
-    background: var(--primary);
+    background: var(--ds-primary);
     color: white;
 }
 
 .deleteBtn {
-    padding: var(--space-1) var(--space-3);
-    background: rgba(239, 68, 68, 0.1);
-    border: 1px solid rgba(239, 68, 68, 0.2);
-    border-radius: var(--radius-sm);
-    color: #ef4444;
-    font-size: var(--text-xs);
+    padding: 0.375rem 0.75rem;
+    background: var(--ds-danger-bg);
+    border: 1px solid var(--ds-danger);
+    border-radius: 0.375rem;
+    color: var(--ds-danger);
+    font-size: 0.75rem;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.15s;
 }
 
 .deleteBtn:hover {
-    background: #ef4444;
+    background: var(--ds-danger);
     color: white;
 }
 
 .statusBadge {
     display: inline-block;
-    padding: 4px 10px;
-    border-radius: var(--radius-sm);
-    font-size: var(--text-xs);
+    padding: 0.25rem 0.625rem;
+    border-radius: 0.375rem;
+    font-size: 0.75rem;
     font-weight: 600;
 }
 
-.statusDraft {
-    background: rgba(107, 114, 128, 0.15);
-    color: #6b7280;
-}
-
-.statusScheduled {
-    background: rgba(59, 130, 246, 0.15);
-    color: #3b82f6;
-}
-
-.statusActive {
-    background: rgba(16, 185, 129, 0.15);
-    color: #10b981;
-}
-
-.statusPaused {
-    background: rgba(245, 158, 11, 0.15);
-    color: #f59e0b;
-}
-
-.statusCompleted {
-    background: rgba(99, 102, 241, 0.15);
-    color: var(--primary);
-}
-
-.statusCancelled {
-    background: rgba(239, 68, 68, 0.15);
-    color: #ef4444;
-}
+.statusDraft { background: var(--ds-gray-100); color: var(--ds-gray-700); }
+.statusScheduled { background: var(--ds-info-bg); color: var(--ds-info); }
+.statusActive { background: var(--ds-success-bg); color: var(--ds-success); }
+.statusPaused { background: var(--ds-warning-bg); color: var(--ds-warning); }
+.statusCompleted { background: var(--ds-primary-light); color: var(--ds-primary); }
+.statusCancelled { background: var(--ds-danger-bg); color: var(--ds-danger); }
 
 .campaignDescription {
-    color: var(--text-muted);
-    font-size: var(--text-sm);
-    margin: 0 0 var(--space-4);
+    color: var(--ds-text-muted);
+    font-size: 0.875rem;
+    margin: 0 0 1rem 0;
     line-height: 1.6;
 }
 
 .campaignMetrics {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
-    gap: var(--space-3);
-    margin-bottom: var(--space-4);
-    padding: var(--space-3);
-    background: rgba(15, 23, 42, 0.3);
-    border-radius: var(--radius-lg);
+    gap: 1rem;
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background: var(--ds-gray-50);
+    border-radius: 0.75rem;
+}
+
+[data-theme="dark"] .campaignMetrics {
+    background: rgba(0,0,0,0.2);
 }
 
 .metric {
@@ -249,25 +235,25 @@
 
 .metricValue {
     display: block;
-    font-size: var(--text-xl);
+    font-size: 1.25rem;
     font-weight: 700;
-    color: var(--foreground);
-    margin-bottom: 4px;
+    color: var(--ds-text);
+    margin-bottom: 0.25rem;
 }
 
 .metricLabel {
-    font-size: var(--text-xs);
-    color: var(--text-muted);
+    font-size: 0.75rem;
+    color: var(--ds-text-muted);
 }
 
 .campaignFooter {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding-top: var(--space-3);
-    border-top: 1px solid var(--border);
-    font-size: var(--text-xs);
-    color: var(--text-muted);
+    padding-top: 1rem;
+    border-top: 1px solid var(--ds-border);
+    font-size: 0.75rem;
+    color: var(--ds-text-muted);
 }
 
 .campaignType {
@@ -275,93 +261,94 @@
 }
 
 .campaignDate {
-    color: var(--text-muted);
+    color: var(--ds-text-muted);
 }
 
 /* Empty State */
 .emptyState {
     text-align: center;
-    padding: var(--space-8);
-    background: var(--card-bg);
-    border: 1px dashed var(--card-border);
-    border-radius: var(--radius-xl);
+    padding: 3rem 2rem;
+    background: var(--ds-card);
+    border: 1px dashed var(--ds-border);
+    border-radius: 0.875rem;
 }
 
 .emptyState p {
-    color: var(--text-muted);
-    margin-bottom: var(--space-4);
+    color: var(--ds-text-muted);
+    margin-bottom: 1.5rem;
+    font-size: 0.875rem;
 }
 
 /* Workflows */
 .workflowsList {
     display: flex;
     flex-direction: column;
-    gap: var(--space-4);
+    gap: 1.25rem;
 }
 
 .workflowCard {
-    background: var(--card-bg);
-    border: 1px solid var(--card-border);
-    border-radius: var(--radius-xl);
-    padding: var(--space-5);
-    transition: all 0.3s ease;
+    background: var(--ds-card);
+    border: 1px solid var(--ds-border);
+    border-radius: 0.875rem;
+    padding: 1.5rem;
+    transition: all 0.2s ease;
 }
 
 .workflowCard:hover {
     transform: translateX(4px);
-    border-color: var(--primary);
+    border-color: var(--ds-primary);
 }
 
 .workflowHeader {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: var(--space-3);
+    margin-bottom: 1rem;
 }
 
 .workflowHeader h3 {
-    font-size: var(--text-lg);
+    font-size: 1.0625rem;
     font-weight: 700;
-    color: var(--foreground);
-    margin: 0 0 var(--space-2);
+    color: var(--ds-text);
+    margin: 0 0 0.5rem 0;
 }
 
 .workflowActions {
     display: flex;
-    gap: var(--space-2);
+    gap: 0.5rem;
 }
 
 .activeBadge {
     display: inline-block;
-    padding: 4px 10px;
-    background: rgba(16, 185, 129, 0.15);
-    color: #10b981;
-    border-radius: var(--radius-sm);
-    font-size: var(--text-xs);
+    padding: 0.25rem 0.625rem;
+    background: var(--ds-success-bg);
+    color: var(--ds-success);
+    border-radius: 0.375rem;
+    font-size: 0.75rem;
     font-weight: 600;
 }
 
 .inactiveBadge {
     display: inline-block;
-    padding: 4px 10px;
-    background: rgba(107, 114, 128, 0.15);
-    color: #6b7280;
-    border-radius: var(--radius-sm);
-    font-size: var(--text-xs);
+    padding: 0.25rem 0.625rem;
+    background: var(--ds-gray-100);
+    color: var(--ds-gray-700);
+    border-radius: 0.375rem;
+    font-size: 0.75rem;
     font-weight: 600;
 }
 
 .workflowDescription {
-    color: var(--text-muted);
-    font-size: var(--text-sm);
-    margin: 0 0 var(--space-3);
+    color: var(--ds-text-muted);
+    font-size: 0.875rem;
+    margin: 0 0 1rem 0;
 }
 
 .workflowInfo {
     display: flex;
-    gap: var(--space-4);
-    font-size: var(--text-xs);
-    color: var(--text-muted);
+    gap: 1.25rem;
+    font-size: 0.75rem;
+    color: var(--ds-text-muted);
     flex-wrap: wrap;
 }
 
@@ -369,85 +356,90 @@
 .workflowSteps {
     display: flex;
     flex-direction: column;
-    gap: var(--space-3);
-    margin-top: var(--space-3);
+    gap: 1rem;
+    margin-top: 1rem;
 }
 
 .workflowStep {
-    background: rgba(15, 23, 42, 0.3);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    padding: var(--space-4);
+    background: var(--ds-gray-50);
+    border: 1px solid var(--ds-border);
+    border-radius: 0.75rem;
+    padding: 1rem;
+}
+
+[data-theme="dark"] .workflowStep {
+    background: rgba(0,0,0,0.2);
 }
 
 .stepHeader {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: var(--space-3);
+    margin-bottom: 0.75rem;
 }
 
 .stepNumber {
-    font-size: var(--text-sm);
+    font-size: 0.875rem;
     font-weight: 700;
-    color: var(--primary);
+    color: var(--ds-primary);
 }
 
 .removeStepBtn {
-    width: 24px;
-    height: 24px;
+    width: 1.5rem;
+    height: 1.5rem;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(239, 68, 68, 0.1);
-    border: 1px solid rgba(239, 68, 68, 0.2);
-    border-radius: var(--radius-sm);
-    color: #ef4444;
+    background: var(--ds-danger-bg);
+    border: 1px solid var(--ds-danger);
+    border-radius: 0.375rem;
+    color: var(--ds-danger);
     cursor: pointer;
-    font-size: 12px;
-    transition: all 0.2s ease;
+    font-size: 0.75rem;
+    transition: all 0.15s;
 }
 
 .removeStepBtn:hover {
-    background: #ef4444;
+    background: var(--ds-danger);
     color: white;
 }
 
 .addStepBtn {
-    padding: var(--space-3);
-    background: rgba(99, 102, 241, 0.1);
-    border: 1px dashed rgba(99, 102, 241, 0.3);
-    border-radius: var(--radius-md);
-    color: var(--primary);
+    padding: 1rem;
+    background: var(--ds-primary-light);
+    border: 1px dashed var(--ds-primary);
+    border-radius: 0.5rem;
+    color: var(--ds-primary);
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.15s;
     width: 100%;
 }
 
 .addStepBtn:hover {
-    background: rgba(99, 102, 241, 0.2);
-    border-color: var(--primary);
+    background: var(--ds-primary);
+    color: white;
+    border-style: solid;
 }
 
 /* Templates */
 .templatesList {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-    gap: var(--space-4);
+    gap: 1.25rem;
 }
 
 .templateCard {
-    background: var(--card-bg);
-    border: 1px solid var(--card-border);
-    border-radius: var(--radius-xl);
-    padding: var(--space-5);
-    transition: all 0.3s ease;
+    background: var(--ds-card);
+    border: 1px solid var(--ds-border);
+    border-radius: 0.875rem;
+    padding: 1.5rem;
+    transition: all 0.2s ease;
 }
 
 .templateCard:hover {
     transform: translateY(-2px);
-    border-color: var(--primary);
+    border-color: var(--ds-primary);
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
 }
 
@@ -455,49 +447,49 @@
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: var(--space-3);
+    margin-bottom: 1rem;
 }
 
 .templateHeader h3 {
-    font-size: var(--text-lg);
+    font-size: 1.0625rem;
     font-weight: 700;
-    color: var(--foreground);
-    margin: 0 0 var(--space-2);
+    color: var(--ds-text);
+    margin: 0 0 0.5rem 0;
 }
 
 .templateActions {
     display: flex;
-    gap: var(--space-2);
+    gap: 0.5rem;
 }
 
 .defaultBadge {
     display: inline-block;
-    padding: 2px 8px;
-    background: rgba(251, 191, 36, 0.15);
-    color: #fbbf24;
-    border-radius: var(--radius-sm);
-    font-size: 10px;
+    padding: 0.125rem 0.5rem;
+    background: var(--ds-warning-bg);
+    color: var(--ds-warning);
+    border-radius: 0.375rem;
+    font-size: 0.625rem;
     font-weight: 600;
-    margin-left: var(--space-2);
+    margin-left: 0.5rem;
 }
 
 .templateCategory {
-    font-size: var(--text-xs);
-    color: var(--primary);
-    margin: 0 0 var(--space-2);
+    font-size: 0.75rem;
+    color: var(--ds-primary);
+    margin: 0 0 0.5rem 0;
     font-weight: 600;
 }
 
 .templateSubject {
-    font-size: var(--text-sm);
-    color: var(--foreground);
-    margin: 0 0 var(--space-2);
+    font-size: 0.875rem;
+    color: var(--ds-text);
+    margin: 0 0 0.5rem 0;
     font-weight: 500;
 }
 
 .templatePreview {
-    font-size: var(--text-sm);
-    color: var(--text-muted);
+    font-size: 0.875rem;
+    color: var(--ds-text-muted);
     margin: 0;
     line-height: 1.6;
 }
@@ -506,19 +498,19 @@
 .modalOverlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.8);
+    background: rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(4px);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 1000;
-    padding: var(--space-4);
+    padding: 1rem;
 }
 
 .modal {
-    background: var(--card-bg);
-    border: 1px solid var(--card-border);
-    border-radius: var(--radius-xl);
+    background: var(--ds-card);
+    border: 1px solid var(--ds-border);
+    border-radius: 1rem;
     width: 100%;
     max-width: 700px;
     max-height: 90vh;
@@ -531,38 +523,38 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: var(--space-5);
-    border-bottom: 1px solid var(--border);
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--ds-border);
 }
 
 .modalHeader h2 {
-    font-size: var(--text-xl);
+    font-size: 1.25rem;
     font-weight: 700;
-    color: var(--foreground);
+    color: var(--ds-text);
     margin: 0;
 }
 
 .closeBtn {
-    width: 32px;
-    height: 32px;
+    width: 2rem;
+    height: 2rem;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(239, 68, 68, 0.1);
-    border: 1px solid rgba(239, 68, 68, 0.2);
-    border-radius: var(--radius-md);
-    color: #ef4444;
+    background: var(--ds-danger-bg);
+    border: 1px solid var(--ds-danger);
+    border-radius: 0.5rem;
+    color: var(--ds-danger);
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.15s;
 }
 
 .closeBtn:hover {
-    background: #ef4444;
+    background: var(--ds-danger);
     color: white;
 }
 
 .modalBody {
-    padding: var(--space-5);
+    padding: 1.5rem;
     flex: 1;
     overflow-y: auto;
 }
@@ -570,59 +562,64 @@
 .modalFooter {
     display: flex;
     justify-content: flex-end;
-    gap: var(--space-3);
-    padding: var(--space-5);
-    border-top: 1px solid var(--border);
+    gap: 0.75rem;
+    padding: 1.5rem;
+    border-top: 1px solid var(--ds-border);
 }
 
 .formGroup {
-    margin-bottom: var(--space-4);
+    margin-bottom: 1.25rem;
 }
 
 .formGroup label {
     display: block;
-    font-size: var(--text-sm);
+    font-size: 0.875rem;
     font-weight: 600;
-    color: var(--foreground);
-    margin-bottom: var(--space-2);
+    color: var(--ds-text);
+    margin-bottom: 0.5rem;
 }
 
 .formGroup input,
 .formGroup textarea,
 .formGroup select {
     width: 100%;
-    padding: var(--space-3);
-    background: var(--secondary);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    color: var(--foreground);
-    font-size: var(--text-sm);
-    transition: all 0.2s ease;
+    padding: 0.625rem 0.875rem;
+    background: var(--ds-card);
+    border: 1px solid var(--ds-border);
+    border-radius: 0.5rem;
+    color: var(--ds-text);
+    font-size: 0.875rem;
+    transition: all 0.15s;
 }
 
 .formGroup input:focus,
 .formGroup textarea:focus,
 .formGroup select:focus {
     outline: none;
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    border-color: var(--ds-primary);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.formGroup textarea {
+    min-height: 120px;
+    resize: vertical;
 }
 
 .formRow {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: var(--space-4);
+    gap: 1.25rem;
 }
 
 .aiSection {
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
+    gap: 0.75rem;
 }
 
 .aiControls {
     display: flex;
-    gap: var(--space-2);
+    gap: 0.75rem;
 }
 
 .aiInput {
@@ -630,20 +627,20 @@
 }
 
 .aiButton {
-    padding: var(--space-3) var(--space-4);
-    background: linear-gradient(135deg, var(--accent), var(--primary));
+    padding: 0.625rem 1.25rem;
+    background: linear-gradient(135deg, var(--ds-primary), var(--ds-primary-hover));
     border: none;
-    border-radius: var(--radius-md);
+    border-radius: 0.5rem;
     color: white;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.15s;
     white-space: nowrap;
 }
 
 .aiButton:hover:not(:disabled) {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px var(--primary-glow);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
 .aiButton:disabled {
@@ -654,56 +651,63 @@
 .segmentation {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: var(--space-3);
-    padding: var(--space-3);
-    background: rgba(15, 23, 42, 0.3);
-    border-radius: var(--radius-md);
+    gap: 0.75rem;
+    padding: 1rem;
+    background: var(--ds-gray-50);
+    border-radius: 0.5rem;
+}
+
+[data-theme="dark"] .segmentation {
+    background: rgba(0,0,0,0.2);
 }
 
 .checkboxLabel {
     display: flex;
     align-items: center;
-    gap: var(--space-2);
+    gap: 0.5rem;
     font-weight: normal;
     cursor: pointer;
+    font-size: 0.875rem;
+    color: var(--ds-text);
 }
 
 .checkboxLabel input[type="checkbox"] {
     width: auto;
     margin: 0;
+    cursor: pointer;
 }
 
 .cancelBtn {
-    padding: var(--space-3) var(--space-5);
-    background: var(--card-bg);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    color: var(--text-muted);
+    padding: 0.625rem 1.25rem;
+    background: var(--ds-card);
+    border: 1px solid var(--ds-border);
+    border-radius: 0.5rem;
+    color: var(--ds-text);
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.15s;
 }
 
 .cancelBtn:hover {
-    background: var(--secondary);
-    border-color: var(--primary);
-    color: var(--foreground);
+    background: var(--ds-gray-100);
+    border-color: var(--ds-primary);
 }
 
 .confirmBtn {
-    padding: var(--space-3) var(--space-5);
-    background: linear-gradient(135deg, var(--primary), var(--accent));
+    padding: 0.625rem 1.25rem;
+    background: var(--ds-primary);
     border: none;
-    border-radius: var(--radius-md);
+    border-radius: 0.5rem;
     color: white;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.15s;
 }
 
 .confirmBtn:hover:not(:disabled) {
+    background: var(--ds-primary-hover);
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px var(--primary-glow);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
 .confirmBtn:disabled {

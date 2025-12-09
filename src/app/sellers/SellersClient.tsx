@@ -2,8 +2,16 @@
 
 import { useState } from 'react';
 import { createSeller, updateSeller, deleteSeller } from './actions';
+import { syncRestaurantsWithSellers } from '@/app/actions';
 import PhotoUpload from '@/components/PhotoUpload';
 import styles from './page.module.css';
+
+interface Zona {
+    id: string;
+    zonaNome: string;
+    cepInicial: string;
+    cepFinal: string;
+}
 
 interface Seller {
     id: string;
@@ -11,16 +19,28 @@ interface Seller {
     email: string;
     phone: string;
     photoUrl?: string;
-    regions: string[];
-    neighborhoods: string[];
+    zonasIds: string[];
     active: boolean;
 }
 
 interface SellersClientProps {
     initialSellers: Seller[];
+    availableZonas: Zona[];
 }
 
-export default function SellersClient({ initialSellers }: SellersClientProps) {
+// Formatar CEP para exibição
+function formatCep(cep: string): string {
+    const cleaned = cep.replace(/[^0-9]/g, '');
+    if (cleaned.length === 8) {
+        return `${cleaned.slice(0, 5)}-${cleaned.slice(5)}`;
+    }
+    return cep;
+}
+
+export default function SellersClient({ initialSellers, availableZonas }: SellersClientProps) {
+    // Debug: verificar zonas recebidas
+    console.log('SellersClient - Zonas disponíveis recebidas:', availableZonas?.length || 0, availableZonas);
+    
     const [sellers, setSellers] = useState<Seller[]>(initialSellers);
     const [showModal, setShowModal] = useState(false);
     const [editingSeller, setEditingSeller] = useState<Seller | null>(null);
@@ -28,23 +48,29 @@ export default function SellersClient({ initialSellers }: SellersClientProps) {
         name: '',
         email: '',
         phone: '',
-        regions: '',
-        neighborhoods: '',
+        zonasIds: [] as string[],
         active: true
     });
     const [photoFile, setPhotoFile] = useState<File | null>(null);
     const [photoPreview, setPhotoPreview] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
+    const [syncing, setSyncing] = useState(false);
+
+    const activeSellers = sellers.filter(s => s.active);
+    const totalZonas = new Set(sellers.flatMap(s => s.zonasIds)).size;
 
     const handleOpenModal = (seller?: Seller) => {
         if (seller) {
+            // Garantir que zonasIds é sempre um array
+            const zonasIds = Array.isArray(seller.zonasIds) ? seller.zonasIds : [];
+            console.log('Editando executivo:', seller.name, 'Zonas IDs:', zonasIds);
+            
             setEditingSeller(seller);
             setFormData({
                 name: seller.name,
                 email: seller.email,
                 phone: seller.phone,
-                regions: seller.regions.join(', '),
-                neighborhoods: seller.neighborhoods.join(', '),
+                zonasIds: zonasIds,
                 active: seller.active
             });
             setPhotoPreview(seller.photoUrl || null);
@@ -55,8 +81,7 @@ export default function SellersClient({ initialSellers }: SellersClientProps) {
                 name: '',
                 email: '',
                 phone: '',
-                regions: '',
-                neighborhoods: '',
+                zonasIds: [],
                 active: true
             });
             setPhotoPreview(null);
@@ -72,12 +97,20 @@ export default function SellersClient({ initialSellers }: SellersClientProps) {
             name: '',
             email: '',
             phone: '',
-            regions: '',
-            neighborhoods: '',
+            zonasIds: [],
             active: true
         });
         setPhotoPreview(null);
         setPhotoFile(null);
+    };
+
+    const handleToggleZona = (zonaId: string) => {
+        setFormData(prev => ({
+            ...prev,
+            zonasIds: prev.zonasIds.includes(zonaId)
+                ? prev.zonasIds.filter(id => id !== zonaId)
+                : [...prev.zonasIds, zonaId]
+        }));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -87,354 +120,328 @@ export default function SellersClient({ initialSellers }: SellersClientProps) {
         try {
             let photoUrl = photoPreview || undefined;
 
-            // Fazer upload da foto se houver arquivo novo
             if (photoFile) {
-                try {
-                    console.log('📤 Iniciando upload da foto...', photoFile.name, photoFile.size);
-                    const uploadFormData = new FormData();
-                    uploadFormData.append('photo', photoFile);
-                    
-                    console.log('📤 Enviando para API /api/sellers/upload...');
-                    const response = await fetch('/api/sellers/upload', {
-                        method: 'POST',
-                        body: uploadFormData,
-                    });
-                    
-                    if (!response.ok) {
-                        const errorData = await response.json();
-                        throw new Error(errorData.error || 'Erro ao fazer upload');
-                    }
-                    
-                    const uploadResult = await response.json();
-                    console.log('✅ Upload resultado:', uploadResult);
-                    
-                    if (uploadResult && uploadResult.photoUrl) {
-                        photoUrl = uploadResult.photoUrl;
-                        console.log('✅ Foto URL obtida:', photoUrl);
-                    } else {
-                        throw new Error('Upload retornou sem URL da foto');
-                    }
-                } catch (uploadError: any) {
-                    console.error('❌ Erro completo no upload:', uploadError);
-                    const errorMessage = uploadError?.message || uploadError?.toString() || 'Erro desconhecido';
-                    alert('Erro ao fazer upload da foto:\n\n' + errorMessage + '\n\nVerifique o console para mais detalhes.');
-                    setLoading(false);
-                    return;
+                const uploadFormData = new FormData();
+                uploadFormData.append('photo', photoFile);
+                
+                const response = await fetch('/api/sellers/upload', {
+                    method: 'POST',
+                    body: uploadFormData,
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    photoUrl = data.url;
                 }
             }
 
-            const regionsArray = formData.regions
-                .split(',')
-                .map(r => r.trim())
-                .filter(r => r.length > 0);
-
-            const neighborhoodsArray = formData.neighborhoods
-                .split(',')
-                .map(r => r.trim())
-                .filter(r => r.length > 0);
+            const sellerData = {
+                name: formData.name,
+                email: formData.email,
+                phone: formData.phone,
+                zonasIds: formData.zonasIds,
+                active: formData.active,
+                photoUrl
+            };
 
             if (editingSeller) {
-                const updated = await updateSeller(editingSeller.id, {
-                    name: formData.name,
-                    email: formData.email,
-                    phone: formData.phone,
-                    photoUrl: photoUrl,
-                    regions: regionsArray,
-                    neighborhoods: neighborhoodsArray,
-                    active: formData.active
-                });
-                setSellers(sellers.map(s => s.id === editingSeller.id ? updated : s));
+                const updated = await updateSeller(editingSeller.id, sellerData);
+                setSellers(prev => prev.map(s => s.id === updated.id ? {
+                    ...updated,
+                    zonasIds: formData.zonasIds
+                } : s));
+                // Recarregar a página para garantir que os dados estão atualizados
+                setTimeout(() => {
+                    window.location.reload();
+                }, 500);
             } else {
-                const newSeller = await createSeller({
-                    name: formData.name,
-                    email: formData.email,
-                    phone: formData.phone,
-                    photoUrl: photoUrl,
-                    regions: regionsArray,
-                    neighborhoods: neighborhoodsArray,
-                    active: formData.active
-                });
-                setSellers([...sellers, newSeller]);
+                const created = await createSeller(sellerData);
+                setSellers(prev => [{
+                    ...created,
+                    zonasIds: formData.zonasIds
+                }, ...prev]);
             }
 
             handleCloseModal();
-        } catch (error: any) {
-            alert('Erro ao salvar vendedor: ' + error.message);
+        } catch (error) {
+            console.error('Erro ao salvar:', error);
+            alert('Erro ao salvar executivo');
         } finally {
             setLoading(false);
         }
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm('Tem certeza que deseja excluir este vendedor?')) return;
+        if (!confirm('Tem certeza que deseja excluir este executivo?')) return;
 
         try {
             await deleteSeller(id);
-            setSellers(sellers.filter(s => s.id !== id));
-        } catch (error: any) {
-            alert('Erro ao excluir vendedor: ' + error.message);
+            setSellers(prev => prev.filter(s => s.id !== id));
+        } catch (error) {
+            console.error('Erro ao excluir:', error);
+            alert('Erro ao excluir executivo');
         }
     };
 
-    const handleToggleActive = async (seller: Seller) => {
-        try {
-            const updated = await updateSeller(seller.id, {
-                ...seller,
-                active: !seller.active
-            });
-            setSellers(sellers.map(s => s.id === seller.id ? updated : s));
-        } catch (error: any) {
-            alert('Erro ao atualizar vendedor: ' + error.message);
+    const handleSyncRestaurants = async () => {
+        if (!confirm('Deseja sincronizar todos os restaurantes com os executivos baseado nas zonas?\n\nIsso irá atribuir automaticamente os restaurantes aos executivos que cobrem suas zonas.')) {
+            return;
         }
+
+        setSyncing(true);
+        try {
+            const result = await syncRestaurantsWithSellers();
+            if (result.success) {
+                alert(`✅ ${result.message || 'Sincronização concluída!'}`);
+                window.location.reload();
+            } else {
+                alert(`❌ ${result.message || 'Erro ao sincronizar'}`);
+            }
+        } catch (error: any) {
+            console.error('Erro ao sincronizar:', error);
+            alert('❌ Erro ao sincronizar restaurantes: ' + (error.message || 'Erro desconhecido'));
+        } finally {
+            setSyncing(false);
+        }
+    };
+
+    const getZonaById = (zonaId: string): Zona | undefined => {
+        return availableZonas.find(z => z.id === zonaId);
     };
 
     return (
         <div className={styles.container}>
-            <header className={styles.header}>
+            {/* Header */}
+            <div className={styles.header}>
                 <div>
-                    <h1>👥 Gerenciar Vendedores</h1>
-                    <p>Configure os vendedores e suas regiões de atuação</p>
+                    <h1>👔 Gerenciar Executivos</h1>
+                    <p>Configure os executivos e suas zonas de atendimento</p>
                 </div>
-                <button
-                    onClick={() => handleOpenModal()}
-                    className={styles.addButton}
-                >
-                    + Novo Vendedor
-                </button>
-            </header>
-
-            <div className={styles.stats}>
-                <div className={styles.statCard}>
-                    <span className={styles.statValue}>{sellers.length}</span>
-                    <span className={styles.statLabel}>Total de Vendedores</span>
-                </div>
-                <div className={styles.statCard}>
-                    <span className={styles.statValue}>{sellers.filter(s => s.active).length}</span>
-                    <span className={styles.statLabel}>Vendedores Ativos</span>
-                </div>
-                <div className={styles.statCard}>
-                    <span className={styles.statValue}>
-                        {sellers.reduce((acc, s) => acc + s.regions.length, 0)}
-                    </span>
-                    <span className={styles.statLabel}>Regiões Cobertas</span>
-                </div>
-                <div className={styles.statCard}>
-                    <span className={styles.statValue}>
-                        {sellers.reduce((acc, s) => acc + (s.neighborhoods?.length || 0), 0)}
-                    </span>
-                    <span className={styles.statLabel}>Bairros Cobertos</span>
+                <div className={styles.headerActions}>
+                    <button 
+                        className={`${styles.newButton} ${styles.syncButton}`}
+                        onClick={handleSyncRestaurants}
+                        disabled={syncing}
+                    >
+                        {syncing ? '⏳ Sincronizando...' : '🔄 Sincronizar Restaurantes'}
+                    </button>
+                    <button className={styles.newButton} onClick={() => handleOpenModal()}>
+                        ➕ Novo Executivo
+                    </button>
                 </div>
             </div>
 
-            <div className={styles.sellersGrid}>
-                {sellers.map(seller => (
-                    <div key={seller.id} className={`${styles.sellerCard} ${!seller.active ? styles.inactive : ''}`}>
-                        <div className={styles.sellerHeader}>
-                            <div className={styles.sellerHeaderLeft}>
-                                {seller.photoUrl ? (
-                                    <img 
-                                        src={seller.photoUrl} 
-                                        alt={seller.name}
-                                        className={styles.sellerPhoto}
-                                    />
-                                ) : (
-                                    <div className={styles.sellerPhotoPlaceholder}>
-                                        {seller.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+            {/* Stats */}
+            <div className={styles.stats}>
+                <div className={styles.statCard}>
+                    <div className={styles.statIcon} style={{ background: '#eff6ff' }}>
+                        <span>👥</span>
+                    </div>
+                    <div className={styles.statContent}>
+                        <div className={styles.statLabel}>Total de Executivos</div>
+                        <div className={styles.statValue}>{sellers.length}</div>
+                    </div>
+                </div>
+                
+                <div className={styles.statCard}>
+                    <div className={styles.statIcon} style={{ background: '#dcfce7' }}>
+                        <span>✅</span>
+                    </div>
+                    <div className={styles.statContent}>
+                        <div className={styles.statLabel}>Executivos Ativos</div>
+                        <div className={styles.statValue}>{activeSellers.length}</div>
+                    </div>
+                </div>
+                
+                <div className={styles.statCard}>
+                    <div className={styles.statIcon} style={{ background: '#fef3c7' }}>
+                        <span>🗺️</span>
+                    </div>
+                    <div className={styles.statContent}>
+                        <div className={styles.statLabel}>Zonas Atendidas</div>
+                        <div className={styles.statValue}>{totalZonas}</div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Lista de Executivos */}
+            <div className={styles.grid}>
+                {sellers.map(seller => {
+                    const sellerZonas = seller.zonasIds.map(id => getZonaById(id)).filter(Boolean) as Zona[];
+                    return (
+                        <div key={seller.id} className={styles.card}>
+                            <div className={styles.cardHeader}>
+                                <div className={styles.avatar}>
+                                    {seller.photoUrl ? (
+                                        <img src={seller.photoUrl} alt={seller.name} />
+                                    ) : (
+                                        <span>{seller.name.charAt(0).toUpperCase()}</span>
+                                    )}
+                                </div>
+                                <div className={styles.cardActions}>
+                                    <button 
+                                        className={styles.btnIcon} 
+                                        onClick={() => handleOpenModal(seller)} 
+                                        title="Editar"
+                                    >
+                                        ✏️
+                                    </button>
+                                    <button 
+                                        className={`${styles.btnIcon} ${styles.delete}`} 
+                                        onClick={() => handleDelete(seller.id)} 
+                                        title="Excluir"
+                                    >
+                                        🗑️
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className={styles.cardBody}>
+                                <h3>{seller.name}</h3>
+                                <div className={styles.cardInfo}>
+                                    <div className={styles.infoItem}>
+                                        <span className={styles.infoIcon}>📧</span>
+                                        <span className={styles.infoText}>{seller.email}</span>
                                     </div>
-                                )}
-                                <div>
-                                    <h3>{seller.name}</h3>
-                                    <span className={`${styles.statusBadge} ${seller.active ? styles.active : styles.inactive}`}>
-                                        {seller.active ? '✅ Ativo' : '⏸️ Inativo'}
-                                    </span>
+                                    <div className={styles.infoItem}>
+                                        <span className={styles.infoIcon}>📱</span>
+                                        <span className={styles.infoText}>{seller.phone}</span>
+                                    </div>
+                                </div>
+                                
+                                <div className={styles.regions}>
+                                    <div className={styles.regionsLabel}>Zonas de Atendimento:</div>
+                                    <div className={styles.regionTags}>
+                                        {sellerZonas.slice(0, 3).map((zona, i) => (
+                                            <span key={i} className={styles.regionTag}>
+                                                {zona.zonaNome}
+                                            </span>
+                                        ))}
+                                        {sellerZonas.length > 3 && (
+                                            <span className={styles.tagMore}>+{sellerZonas.length - 3}</span>
+                                        )}
+                                        {sellerZonas.length === 0 && (
+                                            <span className={styles.tagMore}>Nenhuma zona</span>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
-                            <div className={styles.sellerActions}>
-                                <button
-                                    onClick={() => handleToggleActive(seller)}
-                                    className={styles.toggleButton}
-                                    title={seller.active ? 'Desativar' : 'Ativar'}
-                                >
-                                    {seller.active ? '⏸️' : '▶️'}
-                                </button>
-                                <button
-                                    onClick={() => handleOpenModal(seller)}
-                                    className={styles.editButton}
-                                    title="Editar vendedor"
-                                >
-                                    ✏️
-                                </button>
-                                <button
-                                    onClick={() => handleDelete(seller.id)}
-                                    className={styles.deleteButton}
-                                    title="Excluir vendedor"
-                                >
-                                    🗑️
-                                </button>
+                            
+                            <div className={styles.cardFooter}>
+                                <span className={seller.active ? styles.statusActive : styles.statusInactive}>
+                                    {seller.active ? '✅ Ativo' : '❌ Inativo'}
+                                </span>
                             </div>
                         </div>
-
-                        <div className={styles.sellerInfo}>
-                            {seller.email && (
-                                <div className={styles.infoItem}>
-                                    <span className={styles.infoLabel}>📧 Email:</span>
-                                    <span>{seller.email}</span>
-                                </div>
-                            )}
-                            {seller.phone && (
-                                <div className={styles.infoItem}>
-                                    <span className={styles.infoLabel}>📞 Telefone:</span>
-                                    <span>{seller.phone}</span>
-                                </div>
-                            )}
-                            <div className={styles.infoItem}>
-                                <span className={styles.infoLabel}>📍 Regiões:</span>
-                                <div className={styles.regionsList}>
-                                    {seller.regions.length > 0 ? (
-                                        seller.regions.map((region, index) => (
-                                            <span key={index} className={styles.regionTag}>
-                                                {region}
-                                            </span>
-                                        ))
-                                    ) : (
-                                        <span className={styles.noRegions}>Nenhuma região configurada</span>
-                                    )}
-                                </div>
-                            </div>
-                            <div className={styles.infoItem}>
-                                <span className={styles.infoLabel}>🏘️ Bairros:</span>
-                                <div className={styles.regionsList}>
-                                    {seller.neighborhoods && seller.neighborhoods.length > 0 ? (
-                                        seller.neighborhoods.map((neighborhood, index) => (
-                                            <span key={index} className={styles.regionTag} style={{ backgroundColor: '#e0f2fe', color: '#0369a1' }}>
-                                                {neighborhood}
-                                            </span>
-                                        ))
-                                    ) : (
-                                        <span className={styles.noRegions}>Nenhum bairro configurado</span>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                ))}
-
-                {sellers.length === 0 && (
-                    <div className={styles.emptyState}>
-                        <p>Nenhum vendedor cadastrado</p>
-                        <button onClick={() => handleOpenModal()} className={styles.addButton}>
-                            + Criar Primeiro Vendedor
-                        </button>
-                    </div>
-                )}
+                    );
+                })}
             </div>
 
             {/* Modal */}
             {showModal && (
                 <div className={styles.modalOverlay} onClick={handleCloseModal}>
-                    <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+                    <div className={styles.modal} onClick={e => e.stopPropagation()}>
                         <div className={styles.modalHeader}>
-                            <h2>{editingSeller ? '✏️ Editar Vendedor' : '+ Novo Vendedor'}</h2>
-                            <button onClick={handleCloseModal} className={styles.closeButton}>×</button>
+                            <h2>{editingSeller ? '✏️ Editar Executivo' : '➕ Novo Executivo'}</h2>
+                            <button className={styles.btnClose} onClick={handleCloseModal}>✕</button>
                         </div>
 
                         <form onSubmit={handleSubmit} className={styles.form}>
                             <PhotoUpload
-                                currentPhotoUrl={photoPreview || undefined}
+                                currentPhotoUrl={photoPreview}
                                 onPhotoChange={(file) => {
                                     setPhotoFile(file);
                                     if (file) {
                                         const reader = new FileReader();
-                                        reader.onloadend = () => {
-                                            setPhotoPreview(reader.result as string);
-                                        };
+                                        reader.onloadend = () => setPhotoPreview(reader.result as string);
                                         reader.readAsDataURL(file);
-                                    } else {
-                                        setPhotoPreview(null);
                                     }
                                 }}
-                                sellerName={formData.name}
                             />
 
                             <div className={styles.formGroup}>
-                                <label>Nome do Vendedor *</label>
+                                <label>Nome Completo *</label>
                                 <input
                                     type="text"
                                     value={formData.name}
-                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                    onChange={e => setFormData({...formData, name: e.target.value})}
                                     required
                                     placeholder="Ex: João Silva"
                                 />
                             </div>
 
-                            <div className={styles.formGroup}>
-                                <label>Email</label>
-                                <input
-                                    type="email"
-                                    value={formData.email}
-                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                    placeholder="vendedor@exemplo.com"
-                                />
+                            <div className={styles.formRow}>
+                                <div className={styles.formGroup}>
+                                    <label>Email *</label>
+                                    <input
+                                        type="email"
+                                        value={formData.email}
+                                        onChange={e => setFormData({...formData, email: e.target.value})}
+                                        required
+                                        placeholder="exemplo@email.com"
+                                    />
+                                </div>
+
+                                <div className={styles.formGroup}>
+                                    <label>Telefone *</label>
+                                    <input
+                                        type="tel"
+                                        value={formData.phone}
+                                        onChange={e => setFormData({...formData, phone: e.target.value})}
+                                        required
+                                        placeholder="(11) 99999-9999"
+                                    />
+                                </div>
                             </div>
 
                             <div className={styles.formGroup}>
-                                <label>Telefone</label>
-                                <input
-                                    type="text"
-                                    value={formData.phone}
-                                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                    placeholder="(11) 99999-9999"
-                                />
+                                <label>Zonas de Atendimento *</label>
+                                <div className={styles.zonasList}>
+                                    {availableZonas.length === 0 ? (
+                                        <p className={styles.noZonas}>
+                                            Nenhuma zona cadastrada. <a href="/admin/zonas" target="_blank">Cadastrar zonas</a>
+                                        </p>
+                                    ) : (
+                                        <>
+                                            {formData.zonasIds.length === 0 && availableZonas.length > 0 && (
+                                                <p style={{ color: '#f59e0b', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
+                                                    ⚠️ Selecione pelo menos uma zona de atendimento
+                                                </p>
+                                            )}
+                                            {availableZonas.map(zona => (
+                                                <label key={zona.id} className={styles.zonaCheckbox}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={formData.zonasIds.includes(zona.id)}
+                                                        onChange={() => handleToggleZona(zona.id)}
+                                                    />
+                                                    <span>
+                                                        {zona.zonaNome} (CEP: {formatCep(zona.cepInicial)} até {formatCep(zona.cepFinal)})
+                                                    </span>
+                                                </label>
+                                            ))}
+                                        </>
+                                    )}
+                                </div>
                             </div>
 
                             <div className={styles.formGroup}>
-                                <label>Regiões de Atuação *</label>
-                                <input
-                                    type="text"
-                                    value={formData.regions}
-                                    onChange={(e) => setFormData({ ...formData, regions: e.target.value })}
-                                    required
-                                    placeholder="Sorocaba, Votorantim, Piedade (separadas por vírgula)"
-                                />
-                                <small>Separe as cidades por vírgula. Ex: Sorocaba, Votorantim, Piedade</small>
-                            </div>
-
-                            <div className={styles.formGroup}>
-                                <label>Bairros de Atuação</label>
-                                <input
-                                    type="text"
-                                    value={formData.neighborhoods}
-                                    onChange={(e) => setFormData({ ...formData, neighborhoods: e.target.value })}
-                                    placeholder="Centro, Campolim, Éden (separados por vírgula)"
-                                />
-                                <small>Separe os bairros por vírgula.</small>
-                            </div>
-
-                            <div className={styles.formGroup}>
-                                <label className={styles.checkboxLabel}>
+                                <label className={styles.checkbox}>
                                     <input
                                         type="checkbox"
                                         checked={formData.active}
-                                        onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
+                                        onChange={e => setFormData({...formData, active: e.target.checked})}
                                     />
-                                    <span>Vendedor ativo</span>
+                                    <span>Executivo Ativo</span>
                                 </label>
                             </div>
 
-                            <div className={styles.formActions}>
-                                <button
-                                    type="button"
-                                    onClick={handleCloseModal}
-                                    className={styles.cancelButton}
-                                >
+                            <div className={styles.modalFooter}>
+                                <button type="button" className={styles.btnSecondary} onClick={handleCloseModal}>
                                     Cancelar
                                 </button>
-                                <button
-                                    type="submit"
-                                    disabled={loading}
-                                    className={styles.saveButton}
-                                >
-                                    {loading ? 'Salvando...' : editingSeller ? 'Atualizar' : 'Criar Vendedor'}
+                                <button type="submit" className={styles.btnPrimary} disabled={loading}>
+                                    {loading ? '⏳ Salvando...' : '💾 Salvar'}
                                 </button>
                             </div>
                         </form>
@@ -444,4 +451,3 @@ export default function SellersClient({ initialSellers }: SellersClientProps) {
         </div>
     );
 }
-

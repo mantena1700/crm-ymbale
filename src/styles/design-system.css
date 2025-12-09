@@ -1,0 +1,220 @@
+/* ========================================
+   DESIGN SYSTEM - CRM Profissional
+   Baseado em Tailwind/Shadcn
+   ======================================== */
+
+:root {
+    /* Cores Primárias */
+    --ds-primary: #3b82f6;
+    --ds-primary-hover: #2563eb;
+    --ds-primary-light: #eff6ff;
+    
+    /* Status */
+    --ds-success: #22c55e;
+    --ds-success-bg: #dcfce7;
+    --ds-warning: #f59e0b;
+    --ds-warning-bg: #fef3c7;
+    --ds-danger: #ef4444;
+    --ds-danger-bg: #fee2e2;
+    --ds-info: #0ea5e9;
+    --ds-info-bg: #e0f2fe;
+    
+    /* Neutros */
+    --ds-gray-50: #f9fafb;
+    --ds-gray-100: #f3f4f6;
+    --ds-gray-200: #e5e7eb;
+    --ds-gray-300: #d1d5db;
+    --ds-gray-500: #6b7280;
+    --ds-gray-600: #4b5563;
+    --ds-gray-700: #374151;
+    --ds-gray-900: #111827;
+    
+    /* Aplicação */
+    --ds-bg: #f8fafc;
+    --ds-card: #ffffff;
+    --ds-text: #111827;
+    --ds-text-muted: #6b7280;
+    --ds-border: #e5e7eb;
+    
+    /* Espaçamento */
+    --ds-space-1: 0.25rem;
+    --ds-space-2: 0.5rem;
+    --ds-space-3: 0.75rem;
+    --ds-space-4: 1rem;
+    --ds-space-6: 1.5rem;
+    --ds-space-8: 2rem;
+    
+    /* Bordas */
+    --ds-radius: 0.75rem;
+    --ds-radius-sm: 0.5rem;
+    --ds-radius-lg: 1rem;
+    
+    /* Sombras */
+    --ds-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    --ds-shadow-md: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+[data-theme="dark"] {
+    --ds-bg: #0f172a;
+    --ds-card: #1e293b;
+    --ds-text: #f8fafc;
+    --ds-text-muted: #94a3b8;
+    --ds-border: #334155;
+}
+
+/* === CARDS === */
+.ds-card {
+    background: var(--ds-card);
+    border: 1px solid var(--ds-border);
+    border-radius: var(--ds-radius);
+    padding: var(--ds-space-6);
+    transition: box-shadow 0.2s;
+}
+
+.ds-card:hover {
+    box-shadow: var(--ds-shadow-md);
+}
+
+/* === BOTÕES === */
+.ds-btn {
+    padding: 0.625rem 1.25rem;
+    border-radius: var(--ds-radius-sm);
+    font-weight: 500;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.ds-btn-primary {
+    background: var(--ds-primary);
+    color: white;
+}
+
+.ds-btn-primary:hover {
+    background: var(--ds-primary-hover);
+}
+
+.ds-btn-secondary {
+    background: var(--ds-gray-100);
+    color: var(--ds-text);
+    border: 1px solid var(--ds-border);
+}
+
+.ds-btn-secondary:hover {
+    background: var(--ds-gray-200);
+}
+
+.ds-btn-sm {
+    padding: 0.5rem 0.875rem;
+    font-size: 0.8125rem;
+}
+
+/* === BADGES === */
+.ds-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.ds-badge-success { background: var(--ds-success-bg); color: var(--ds-success); }
+.ds-badge-warning { background: var(--ds-warning-bg); color: var(--ds-warning); }
+.ds-badge-danger { background: var(--ds-danger-bg); color: var(--ds-danger); }
+.ds-badge-info { background: var(--ds-info-bg); color: var(--ds-info); }
+.ds-badge-default { background: var(--ds-gray-100); color: var(--ds-gray-700); }
+
+/* === INPUTS === */
+.ds-input {
+    width: 100%;
+    padding: 0.625rem 0.875rem;
+    border: 1px solid var(--ds-border);
+    border-radius: var(--ds-radius-sm);
+    font-size: 0.875rem;
+    background: var(--ds-card);
+    color: var(--ds-text);
+}
+
+.ds-input:focus {
+    outline: none;
+    border-color: var(--ds-primary);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* === STAT CARDS === */
+.ds-stat {
+    background: var(--ds-card);
+    border: 1px solid var(--ds-border);
+    border-radius: var(--ds-radius);
+    padding: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.ds-stat-icon {
+    width: 3rem;
+    height: 3rem;
+    border-radius: var(--ds-radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.ds-stat-content {
+    flex: 1;
+}
+
+.ds-stat-label {
+    font-size: 0.75rem;
+    color: var(--ds-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 0 0 0.25rem 0;
+}
+
+.ds-stat-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--ds-text);
+    margin: 0;
+}
+
+/* === TABELA === */
+.ds-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.ds-table thead {
+    background: var(--ds-gray-50);
+    border-bottom: 1px solid var(--ds-border);
+}
+
+.ds-table th {
+    padding: 0.875rem 1rem;
+    text-align: left;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--ds-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.ds-table td {
+    padding: 1rem;
+    border-bottom: 1px solid var(--ds-border);
+    color: var(--ds-text);
+}
+
+.ds-table tbody tr:hover {
+    background: var(--ds-gray-50);
+}

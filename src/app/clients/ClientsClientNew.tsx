@@ -1,25 +1,41 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Restaurant } from '@/lib/types';
 import { PageLayout, Card, Grid, Badge, Button } from '@/components/PageLayout';
 import { Table } from '@/components/Table';
-import { updateRestaurantStatus } from '@/app/actions';
+import { updateRestaurantStatus, allocateRestaurantsToZones } from '@/app/actions';
 import styles from './ClientsNew.module.css';
+
+interface Zona {
+    id: string;
+    zonaNome: string;
+}
 
 interface Props {
     initialRestaurants: Restaurant[];
+    availableZonas: Zona[];
 }
 
-export default function ClientsClientNew({ initialRestaurants }: Props) {
+export default function ClientsClientNew({ initialRestaurants, availableZonas = [] }: Props) {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCity, setSelectedCity] = useState('Todos');
     const [selectedStatus, setSelectedStatus] = useState('Todos');
     const [selectedPotential, setSelectedPotential] = useState('Todos');
+    const [selectedZona, setSelectedZona] = useState('Todos');
     const [sortOption, setSortOption] = useState('default');
     const [restaurants, setRestaurants] = useState(initialRestaurants);
     const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
     const [activeTab, setActiveTab] = useState<'active' | 'discarded'>('active');
+    const [allocating, setAllocating] = useState(false);
+
+    // Debug: verificar quantos restaurantes têm zona
+    useEffect(() => {
+        const withZona = restaurants.filter(r => r.zonaNome).length;
+        const withoutZona = restaurants.filter(r => !r.zonaNome).length;
+        console.log(`Restaurantes com zona: ${withZona}, sem zona: ${withoutZona}`);
+        console.log('Zonas disponíveis:', availableZonas.map(z => z.zonaNome));
+    }, [restaurants, availableZonas]);
 
     // Extract unique values for filters
     const cities = useMemo(() => {
@@ -29,6 +45,13 @@ export default function ClientsClientNew({ initialRestaurants }: Props) {
 
     const statuses = ['Todos', 'A Analisar', 'Qualificado', 'Contatado', 'Negociação', 'Fechado'];
     const potentials = ['Todos', 'ALTÍSSIMO', 'ALTO', 'MÉDIO', 'BAIXO'];
+    // Adicionar "Sem Zona" se houver restaurantes sem zona
+    const hasRestaurantsWithoutZona = restaurants.some(r => !r.zonaNome);
+    const zonasOptions = [
+        'Todos', 
+        ...(availableZonas || []).map(z => z.zonaNome),
+        ...(hasRestaurantsWithoutZona ? ['Sem Zona'] : [])
+    ];
 
     const filteredRestaurants = useMemo(() => {
         return restaurants.filter(r => {
@@ -37,12 +60,17 @@ export default function ClientsClientNew({ initialRestaurants }: Props) {
             if (activeTab === 'discarded' && r.status !== 'Descartado') return false;
 
             const matchesSearch = r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                (r.category?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
+                (r.address?.city?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
+                (r.zonaNome?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
             const matchesCity = selectedCity === 'Todos' || (r.address?.city || 'Outros') === selectedCity;
             const matchesStatus = selectedStatus === 'Todos' || (r.status || 'A Analisar') === selectedStatus;
             const matchesPotential = selectedPotential === 'Todos' || r.salesPotential === selectedPotential;
+            // Filtro de zona: comparar o nome da zona exatamente
+            const matchesZona = selectedZona === 'Todos' || 
+                (r.zonaNome && r.zonaNome === selectedZona) ||
+                (!r.zonaNome && selectedZona === 'Sem Zona');
 
-            return matchesSearch && matchesCity && matchesStatus && matchesPotential;
+            return matchesSearch && matchesCity && matchesStatus && matchesPotential && matchesZona;
         }).sort((a, b) => {
             if (sortOption === 'name') return a.name.localeCompare(b.name);
             if (sortOption === 'rating-high') return b.rating - a.rating;
@@ -51,7 +79,7 @@ export default function ClientsClientNew({ initialRestaurants }: Props) {
             if (sortOption === 'reviews-low') return (a.reviewCount || 0) - (b.reviewCount || 0);
             return 0;
         });
-    }, [restaurants, searchTerm, selectedCity, selectedStatus, selectedPotential, sortOption, activeTab]);
+    }, [restaurants, searchTerm, selectedCity, selectedStatus, selectedPotential, selectedZona, sortOption, activeTab]);
 
     // Calculate stats
     const stats = useMemo(() => {
@@ -75,7 +103,7 @@ export default function ClientsClientNew({ initialRestaurants }: Props) {
             render: (value: string, row: Restaurant) => (
                 <div className={styles.restaurantCell}>
                     <span className={styles.restaurantName}>{value}</span>
-                    <span className={styles.restaurantCategory}>{row.category}</span>
+                    <span className={styles.restaurantLocation}>{row.address?.neighborhood || 'N/A'}</span>
                 </div>
             )
         },
@@ -84,6 +112,12 @@ export default function ClientsClientNew({ initialRestaurants }: Props) {
             label: 'Localização',
             width: '150px',
             render: (value: any) => value?.city || 'N/A'
+        },
+        {
+            key: 'zonaNome',
+            label: 'Zona',
+            width: '150px',
+            render: (value: string) => value ? <Badge variant="info">{value}</Badge> : <span style={{ color: '#999' }}>Sem Zona</span>
         },
         {
             key: 'salesPotential',
@@ -144,6 +178,29 @@ export default function ClientsClientNew({ initialRestaurants }: Props) {
         }
     };
 
+    const handleAllocateZones = async () => {
+        if (!confirm('Deseja alocar todos os restaurantes às suas zonas baseado no CEP?\n\nIsso irá analisar o CEP de cada restaurante e atribuí-lo à zona correspondente.')) {
+            return;
+        }
+
+        setAllocating(true);
+        try {
+            const result = await allocateRestaurantsToZones();
+            if (result.success) {
+                alert(`✅ ${result.message || 'Alocação concluída!'}\n\nRecarregando a página para atualizar os dados...`);
+                // Forçar recarregamento completo da página
+                window.location.href = window.location.href;
+            } else {
+                alert(`❌ ${result.message || 'Erro ao alocar restaurantes'}`);
+            }
+        } catch (error: any) {
+            console.error('Erro ao alocar restaurantes:', error);
+            alert('❌ Erro ao alocar restaurantes: ' + (error.message || 'Erro desconhecido'));
+        } finally {
+            setAllocating(false);
+        }
+    };
+
     return (
         <PageLayout
             title="Base de Clientes"
@@ -151,6 +208,13 @@ export default function ClientsClientNew({ initialRestaurants }: Props) {
             icon="👥"
             actions={
                 <>
+                    <Button 
+                        variant="secondary" 
+                        onClick={handleAllocateZones}
+                        disabled={allocating}
+                    >
+                        {allocating ? '⏳ Alocando...' : '🗺️ Alocar por CEP'}
+                    </Button>
                     <Button variant="secondary" onClick={() => window.location.href = '/batch-analysis'}>
                         🤖 Análise em Lote
                     </Button>
@@ -242,7 +306,7 @@ export default function ClientsClientNew({ initialRestaurants }: Props) {
                 <div className={styles.filters}>
                     <input
                         type="text"
-                        placeholder="🔍 Buscar por nome ou categoria..."
+                        placeholder="🔍 Buscar por nome ou cidade..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className={styles.searchInput}
@@ -275,6 +339,16 @@ export default function ClientsClientNew({ initialRestaurants }: Props) {
                     >
                         {potentials.map(potential => (
                             <option key={potential} value={potential}>{potential}</option>
+                        ))}
+                    </select>
+
+                    <select
+                        value={selectedZona}
+                        onChange={(e) => setSelectedZona(e.target.value)}
+                        className={styles.filterSelect}
+                    >
+                        {zonasOptions.map(zona => (
+                            <option key={zona} value={zona}>{zona}</option>
                         ))}
                     </select>
 
@@ -324,10 +398,12 @@ export default function ClientsClientNew({ initialRestaurants }: Props) {
                                     <span>{restaurant.address?.city || 'N/A'}</span>
                                 </div>
 
-                                <div className={styles.cardInfo}>
-                                    <span className={styles.infoLabel}>🍽️</span>
-                                    <span>{restaurant.category}</span>
-                                </div>
+                                {restaurant.zonaNome && (
+                                    <div className={styles.cardInfo}>
+                                        <span className={styles.infoLabel}>🗺️</span>
+                                        <span>{restaurant.zonaNome}</span>
+                                    </div>
+                                )}
 
                                 <div className={styles.cardInfo}>
                                     <span className={styles.infoLabel}>⭐</span>

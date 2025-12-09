@@ -155,16 +155,16 @@ export default function NotificationsClient({ initialNotifications }: Props) {
                     filteredNotifications.map(n => (
                         <div 
                             key={n.id} 
-                            className={`${styles.notification} ${!n.read ? styles.unread : ''}`}
+                            className={`${styles.notificationItem} ${!n.read ? styles.unread : ''}`}
                             onClick={() => !n.read && handleMarkAsRead(n.id)}
                         >
-                            <div className={`${styles.icon} ${styles[n.type]}`}>
+                            <div className={styles.notificationIcon}>
                                 {getIcon(n.type)}
                             </div>
-                            <div className={styles.content}>
-                                <h4>{n.title}</h4>
-                                <p>{n.message}</p>
-                                <span className={styles.time}>{getTimeAgo(n.createdAt)}</span>
+                            <div className={styles.notificationContent}>
+                                <h4 className={styles.notificationTitle}>{n.title}</h4>
+                                <p className={styles.notificationMessage}>{n.message}</p>
+                                <span className={styles.notificationTime}>{getTimeAgo(n.createdAt)}</span>
                             </div>
                             <div className={styles.notificationActions}>
                                 {!n.read && <span className={styles.dot}></span>}

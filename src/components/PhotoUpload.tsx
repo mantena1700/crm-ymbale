@@ -69,7 +69,7 @@ export default function PhotoUpload({ currentPhotoUrl, onPhotoChange, sellerName
 
     return (
         <div className={styles.container}>
-            <label className={styles.label}>Foto do Vendedor</label>
+            <label className={styles.label}>Foto do Executivo</label>
             
             <div
                 className={`${styles.uploadArea} ${isDragging ? styles.dragging : ''}`}
