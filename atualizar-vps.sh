@@ -93,6 +93,30 @@ else
 fi
 echo ""
 
+# 6.1. Preparar arquivos standalone (CRÍTICO para modo standalone)
+echo "6.1. Preparando arquivos standalone..."
+if [ -d ".next/standalone" ]; then
+    # Copiar arquivos públicos e estáticos para standalone
+    if [ -d "public" ]; then
+        cp -r public .next/standalone/ 2>/dev/null || true
+        echo -e "${GREEN}✅ Arquivos públicos copiados${NC}"
+    fi
+    if [ -d ".next/static" ]; then
+        mkdir -p .next/standalone/.next 2>/dev/null || true
+        cp -r .next/static .next/standalone/.next/ 2>/dev/null || true
+        echo -e "${GREEN}✅ Arquivos estáticos copiados${NC}"
+    fi
+    if [ -f ".next/standalone/server.js" ]; then
+        echo -e "${GREEN}✅ Servidor standalone pronto${NC}"
+    else
+        echo -e "${YELLOW}⚠️  Aviso: server.js não encontrado em .next/standalone${NC}"
+    fi
+else
+    echo -e "${YELLOW}⚠️  Aviso: Diretório .next/standalone não encontrado${NC}"
+    echo "   O build pode não ter gerado o modo standalone corretamente"
+fi
+echo ""
+
 # 7. Parar Aplicação Antiga
 echo "7. Parando aplicação antiga..."
 if command -v pm2 &> /dev/null; then
