@@ -132,40 +132,6 @@ export default function ZonasClient({ initialZonas }: ZonasClientProps) {
         }
     };
 
-    const handleSeedZonas = async () => {
-        if (!confirm('Deseja popular as zonas pré-cadastradas? Isso irá adicionar 19 zonas padrão (SP Capital, Grande SP, ABC e Interior).')) return;
-        
-        setSeeding(true);
-        try {
-            const result = await seedZonasPadrao();
-            alert(`✅ ${result.message || `${result.created} zonas criadas, ${result.skipped} já existiam`}`);
-            // Recarregar a página para ver as novas zonas
-            window.location.reload();
-        } catch (error: any) {
-            alert(`❌ Erro: ${error.message || 'Erro ao popular zonas padrão'}`);
-        } finally {
-            setSeeding(false);
-        }
-    };
-
-    const handleSeedZonasSorocaba = async () => {
-        if (!confirm('Deseja adicionar as zonas de Sorocaba e atribuí-las ao executivo Cicero?\n\nIsso criará 5 zonas de Sorocaba e as atribuirá automaticamente ao executivo Cicero.')) return;
-        
-        setSeedingSorocaba(true);
-        try {
-            const result = await seedZonasSorocaba();
-            if (result.success) {
-                alert(`✅ ${result.message || `${result.created} zonas criadas`}`);
-                window.location.reload();
-            } else {
-                alert(`❌ ${result.message || 'Erro ao adicionar zonas de Sorocaba'}`);
-            }
-        } catch (error: any) {
-            alert(error.message || 'Erro ao adicionar zonas de Sorocaba');
-        } finally {
-            setSeedingSorocaba(false);
-        }
-    };
 
     return (
         <div className={styles.container}>
