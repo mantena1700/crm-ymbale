@@ -27,11 +27,22 @@ async function ensureTableExists() {
                     zona_nome VARCHAR(100) NOT NULL,
                     cep_inicial VARCHAR(9) NOT NULL,
                     cep_final VARCHAR(9) NOT NULL,
+                    regiao VARCHAR(50),
                     ativo BOOLEAN DEFAULT true,
                     created_at TIMESTAMPTZ(6) DEFAULT NOW(),
                     updated_at TIMESTAMPTZ(6) DEFAULT NOW()
                 )
             `;
+            
+            // Adicionar coluna regiao se não existir (para tabelas já criadas)
+            try {
+                await prisma.$executeRaw`ALTER TABLE zonas_cep ADD COLUMN IF NOT EXISTS regiao VARCHAR(50)`;
+            } catch (e: any) {
+                // Ignorar erro se coluna já existir
+                if (!e.message?.includes('duplicate column')) {
+                    console.warn('Erro ao adicionar coluna regiao:', e.message);
+                }
+            }
             
             // Criar índices
             await prisma.$executeRaw`

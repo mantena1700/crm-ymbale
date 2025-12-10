@@ -100,14 +100,16 @@ export default function ZonasClient({ initialZonas }: ZonasClientProps) {
                 setZonas(prev => prev.map(z => z.id === updated.id ? {
                     ...updated,
                     cepInicial: updated.cepInicial,
-                    cepFinal: updated.cepFinal
+                    cepFinal: updated.cepFinal,
+                    regiao: (updated as any).regiao
                 } : z));
             } else {
                 const created = await createZona(formData);
                 setZonas(prev => [{
                     ...created,
                     cepInicial: created.cepInicial,
-                    cepFinal: created.cepFinal
+                    cepFinal: created.cepFinal,
+                    regiao: (created as any).regiao
                 }, ...prev]);
             }
 
@@ -131,16 +133,16 @@ export default function ZonasClient({ initialZonas }: ZonasClientProps) {
     };
 
     const handleSeedZonas = async () => {
-        if (!confirm('Deseja popular o sistema com as zonas padrão de São Paulo? Isso criará 20 zonas pré-configuradas.')) return;
+        if (!confirm('Deseja popular as zonas pré-cadastradas? Isso irá adicionar 19 zonas padrão (SP Capital, Grande SP, ABC e Interior).')) return;
         
         setSeeding(true);
         try {
             const result = await seedZonasPadrao();
-            alert(result.message || `${result.created} zonas criadas, ${result.skipped} já existiam`);
+            alert(`✅ ${result.message || `${result.created} zonas criadas, ${result.skipped} já existiam`}`);
             // Recarregar a página para ver as novas zonas
             window.location.reload();
         } catch (error: any) {
-            alert(error.message || 'Erro ao popular zonas padrão');
+            alert(`❌ Erro: ${error.message || 'Erro ao popular zonas padrão'}`);
         } finally {
             setSeeding(false);
         }
