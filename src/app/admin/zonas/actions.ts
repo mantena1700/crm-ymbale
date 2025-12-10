@@ -422,11 +422,39 @@ export async function seedZonasPadrao() {
                     continue;
                 }
 
-                // Criar a zona
-                await prisma.$executeRaw`
-                    INSERT INTO zonas_cep (id, zona_nome, cep_inicial, cep_final, regiao, ativo, created_at, updated_at)
-                    VALUES (gen_random_uuid(), ${zona.zonaNome}, ${zona.cepInicial}, ${zona.cepFinal}, ${zona.regiao || null}, true, NOW(), NOW())
-                `;
+                // Garantir que a tabela e coluna regiao existem
+                await ensureTableExists();
+                
+                // Criar a zona (tentar com regiao primeiro)
+                try {
+                    await prisma.$executeRaw`
+                        INSERT INTO zonas_cep (id, zona_nome, cep_inicial, cep_final, regiao, ativo, created_at, updated_at)
+                        VALUES (gen_random_uuid(), ${zona.zonaNome}, ${zona.cepInicial}, ${zona.cepFinal}, ${zona.regiao || null}, true, NOW(), NOW())
+                    `;
+                } catch (insertError: any) {
+                    // Se a coluna regiao não existir, inserir sem ela
+                    if (insertError.code === '42703' || insertError.message?.includes('column') && insertError.message?.includes('regiao')) {
+                        await prisma.$executeRaw`
+                            INSERT INTO zonas_cep (id, zona_nome, cep_inicial, cep_final, ativo, created_at, updated_at)
+                            VALUES (gen_random_uuid(), ${zona.zonaNome}, ${zona.cepInicial}, ${zona.cepFinal}, true, NOW(), NOW())
+                        `;
+                        // Depois adicionar regiao se possível
+                        try {
+                            const zonaId = await prisma.$queryRaw<Array<{ id: string }>>`
+                                SELECT id FROM zonas_cep WHERE zona_nome = ${zona.zonaNome} LIMIT 1
+                            `;
+                            if (zonaId && zonaId.length > 0) {
+                                await prisma.$executeRaw`
+                                    UPDATE zonas_cep SET regiao = ${zona.regiao || null} WHERE id = ${zonaId[0].id}::uuid
+                                `;
+                            }
+                        } catch (e: any) {
+                            // Ignorar se não conseguir adicionar regiao
+                        }
+                    } else {
+                        throw insertError;
+                    }
+                }
                 created++;
             } catch (error: any) {
                 console.error(`Erro ao criar zona ${zona.zonaNome}:`, error.message);
