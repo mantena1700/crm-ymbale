@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { Button } from '@/components/PageLayout';
 import styles from './Settings.module.css';
 
 interface SystemSettings {
@@ -243,21 +244,23 @@ export default function WhiteLabelClient() {
                 </div>
 
                 <div className={styles.actions}>
-                    <button 
-                        type="submit" 
-                        className={styles.saveBtn}
+                    <Button 
+                        variant="primary"
+                        onClick={(e: any) => {
+                            e.preventDefault();
+                            handleSubmit(e);
+                        }}
                         disabled={saving}
                     >
                         {saving ? '⏳ Salvando...' : '💾 Salvar Configurações'}
-                    </button>
-                    <button 
-                        type="button" 
-                        className={styles.cancelBtn}
+                    </Button>
+                    <Button 
+                        variant="secondary"
                         onClick={fetchSettings}
                         disabled={saving}
                     >
                         🔄 Restaurar
-                    </button>
+                    </Button>
                 </div>
             </form>
         </div>

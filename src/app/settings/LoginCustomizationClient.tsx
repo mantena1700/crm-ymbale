@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import styles from './page.module.css';
+import { Button } from '@/components/PageLayout';
+import styles from './Settings.module.css';
 
 interface LoginSettings {
     loginTitle: string | null;
@@ -109,7 +110,7 @@ export default function LoginCustomizationClient() {
                 </div>
             )}
 
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit} style={{ display: 'block' }}>
                 <div className={styles.field}>
                     <label htmlFor="loginTitle">Título da Página</label>
                     <input
@@ -198,17 +199,19 @@ export default function LoginCustomizationClient() {
                     </p>
                 </div>
 
-                <div style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem' }}>
-                    <button
-                        type="submit"
-                        className={styles.button}
+                <div className={styles.actions}>
+                    <Button
+                        variant="primary"
+                        onClick={(e: any) => {
+                            e.preventDefault();
+                            handleSubmit(e);
+                        }}
                         disabled={saving}
                     >
-                        {saving ? 'Salvando...' : '💾 Salvar Configurações'}
-                    </button>
-                    <button
-                        type="button"
-                        className={styles.button}
+                        {saving ? '⏳ Salvando...' : '💾 Salvar Configurações'}
+                    </Button>
+                    <Button
+                        variant="secondary"
                         onClick={() => {
                             setSettings({
                                 loginTitle: null,
@@ -219,10 +222,10 @@ export default function LoginCustomizationClient() {
                                 loginLogo: null,
                             });
                         }}
-                        style={{ backgroundColor: 'var(--ds-gray-600)', opacity: 0.8 }}
+                        disabled={saving}
                     >
                         🔄 Restaurar Padrão
-                    </button>
+                    </Button>
                 </div>
             </form>
         </div>
