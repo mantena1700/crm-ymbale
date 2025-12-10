@@ -1,10 +1,37 @@
 import { prisma } from '@/lib/db';
 import SellersClient from './SellersClient';
+import { seedZonasPadrao } from '@/app/admin/zonas/actions';
 
 export const dynamic = 'force-dynamic';
 
 export default async function SellersPage() {
     try {
+        // Seed automático: verificar se há zonas e popular se necessário
+        try {
+            const zonasCount = await prisma.$queryRaw<Array<{ count: bigint }>>`
+                SELECT COUNT(*) as count FROM zonas_cep
+            `;
+            const count = Number(zonasCount[0]?.count || 0);
+            
+            if (count === 0) {
+                console.log('🌱 Nenhuma zona encontrada na página de executivos. Populando zonas pré-cadastradas automaticamente...');
+                await seedZonasPadrao();
+                console.log('✅ Zonas pré-cadastradas populadas com sucesso!');
+            }
+        } catch (error: any) {
+            // Se a tabela não existir, tentar criar e popular
+            if (error.code === '42P01' || error.message?.includes('does not exist') || error.message?.includes('relation')) {
+                console.log('📋 Tabela zonas_cep não existe na página de executivos. Criando e populando...');
+                try {
+                    await seedZonasPadrao();
+                    console.log('✅ Tabela criada e zonas populadas!');
+                } catch (seedError: any) {
+                    console.warn('⚠️ Erro ao popular zonas automaticamente:', seedError.message);
+                }
+            } else {
+                console.warn('⚠️ Erro ao verificar zonas na página de executivos:', error.message);
+            }
+        }
         // Função helper para verificar se modelo existe
         const hasModel = (modelName: string): boolean => {
             try {
