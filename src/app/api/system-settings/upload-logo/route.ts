@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
 
         const formData = await request.formData();
         const file = formData.get('logo') as File;
-        const type = formData.get('type') as string; // 'crmLogo' ou 'crmFavicon'
+        const type = formData.get('type') as string; // 'crmLogo', 'crmFavicon' ou 'loginLogo'
         
         if (!file || file.size === 0) {
             return NextResponse.json(
@@ -114,6 +114,7 @@ export async function POST(request: NextRequest) {
         const logoUrl = urlData.publicUrl;
         console.log('✅ URL pública gerada:', logoUrl);
 
+        // Retornar URL - o componente cliente irá salvar via API normal
         return NextResponse.json({ success: true, logoUrl, type });
     } catch (error: any) {
         console.error('❌ Erro completo no upload:', error);

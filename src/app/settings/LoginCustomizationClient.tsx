@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import styles from './Settings.module.css';
 
 interface LoginSettings {
@@ -23,7 +23,9 @@ export default function LoginCustomizationClient() {
     });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [uploading, setUploading] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+    const loginLogoFileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         fetchSettings();
@@ -56,6 +58,8 @@ export default function LoginCustomizationClient() {
         setMessage(null);
 
         try {
+            console.log('💾 Salvando configurações de login:', settings);
+            
             const response = await fetch('/api/system-settings', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
@@ -63,16 +67,25 @@ export default function LoginCustomizationClient() {
             });
 
             const data = await response.json();
+            console.log('📥 Resposta do servidor:', { status: response.status, data });
 
             if (response.ok) {
                 setMessage({ type: 'success', text: '✅ Configurações de login salvas com sucesso!' });
                 setSettings(data.settings);
             } else {
-                setMessage({ type: 'error', text: `❌ ${data.error || 'Erro ao salvar configurações'}` });
+                const errorMsg = data.error || data.message || 'Erro ao salvar configurações';
+                console.error('❌ Erro na resposta:', errorMsg, data);
+                setMessage({ 
+                    type: 'error', 
+                    text: `❌ ${errorMsg}${data.details ? ` (${JSON.stringify(data.details)})` : ''}` 
+                });
             }
-        } catch (error) {
-            console.error('Erro ao salvar:', error);
-            setMessage({ type: 'error', text: '❌ Erro ao salvar configurações' });
+        } catch (error: any) {
+            console.error('❌ Erro ao salvar:', error);
+            setMessage({ 
+                type: 'error', 
+                text: `❌ Erro ao salvar configurações: ${error.message || 'Erro desconhecido'}` 
+            });
         } finally {
             setSaving(false);
         }
@@ -80,6 +93,43 @@ export default function LoginCustomizationClient() {
 
     const handleChange = (field: keyof LoginSettings, value: string | boolean) => {
         setSettings(prev => ({ ...prev, [field]: value }));
+    };
+
+    const handleLoginLogoUpload = async (file: File) => {
+        setUploading(true);
+        setMessage(null);
+        
+        try {
+            const formData = new FormData();
+            formData.append('logo', file);
+            formData.append('type', 'loginLogo');
+
+            const response = await fetch('/api/system-settings/upload-logo', {
+                method: 'POST',
+                body: formData,
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.logoUrl) {
+                setSettings(prev => ({ ...prev, loginLogo: data.logoUrl }));
+                setMessage({ type: 'success', text: '✅ Logo da página de login enviada com sucesso!' });
+            } else {
+                setMessage({ type: 'error', text: `❌ ${data.error || 'Erro ao fazer upload da logo'}` });
+            }
+        } catch (error: any) {
+            console.error('Erro ao fazer upload:', error);
+            setMessage({ type: 'error', text: '❌ Erro ao fazer upload da logo' });
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            handleLoginLogoUpload(file);
+        }
     };
 
     if (loading) {
@@ -171,14 +221,59 @@ export default function LoginCustomizationClient() {
                     </div>
 
                     <div className={styles.formGroup}>
-                        <label>URL do Logo</label>
-                        <input
-                            type="text"
-                            value={settings.loginLogo || ''}
-                            onChange={(e) => handleChange('loginLogo', e.target.value)}
-                            placeholder="https://exemplo.com/logo.png ou /logo.png"
-                        />
-                        <small>URL completa ou caminho relativo para a imagem do logo</small>
+                        <label>Logo da Página de Login</label>
+                        <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+                            <div style={{ flex: '0 0 auto' }}>
+                                {settings.loginLogo && (
+                                    <div style={{ 
+                                        width: '120px', 
+                                        height: '120px', 
+                                        border: '1px solid var(--card-border)', 
+                                        borderRadius: '0.5rem',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        overflow: 'hidden',
+                                        background: 'var(--background)'
+                                    }}>
+                                        <img 
+                                            src={settings.loginLogo} 
+                                            alt="Logo Login" 
+                                            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                                        />
+                                    </div>
+                                )}
+                                <input
+                                    ref={loginLogoFileInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleFileInputChange}
+                                    style={{ display: 'none' }}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => loginLogoFileInputRef.current?.click()}
+                                    disabled={uploading}
+                                    className={`${styles.button} ${styles.secondary}`}
+                                    style={{ marginTop: '0.5rem', width: '100%' }}
+                                >
+                                    {uploading ? '⏳ Enviando...' : settings.loginLogo ? '📷 Alterar Logo' : '📷 Fazer Upload'}
+                                </button>
+                            </div>
+                            <div style={{ flex: 1 }}>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 600 }}>
+                                    Ou insira uma URL:
+                                </label>
+                                <input
+                                    type="text"
+                                    value={settings.loginLogo || ''}
+                                    onChange={(e) => handleChange('loginLogo', e.target.value)}
+                                    placeholder="https://exemplo.com/logo.png ou /logo.png"
+                                    style={{ width: '100%' }}
+                                />
+                                <small>URL completa ou caminho relativo para a imagem do logo</small>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
