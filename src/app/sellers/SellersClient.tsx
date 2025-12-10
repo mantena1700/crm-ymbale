@@ -40,7 +40,15 @@ function formatCep(cep: string): string {
 
 export default function SellersClient({ initialSellers, availableZonas }: SellersClientProps) {
     // Debug: verificar zonas recebidas
-    console.log('SellersClient - Zonas disponíveis recebidas:', availableZonas?.length || 0, availableZonas);
+    console.log('🔍 SellersClient - Zonas disponíveis recebidas:', {
+        total: availableZonas?.length || 0,
+        isArray: Array.isArray(availableZonas),
+        zonas: availableZonas?.map(z => ({ id: z.id, nome: z.zonaNome })) || []
+    });
+    
+    if (!availableZonas || availableZonas.length === 0) {
+        console.warn('⚠️ AVISO: SellersClient recebeu array vazio de zonas. Verifique o seed no servidor.');
+    }
     
     const [sellers, setSellers] = useState<Seller[]>(initialSellers);
     const [showModal, setShowModal] = useState(false);

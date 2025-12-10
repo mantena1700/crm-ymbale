@@ -200,15 +200,27 @@ export default async function SellersPage() {
             zonasCount: s.zonasIds.length
         })));
 
+        // Preparar zonas para passar ao componente
+        const zonasParaComponente = zonas.map(z => ({
+            id: z.id,
+            zonaNome: z.zonaNome,
+            cepInicial: z.cepInicial,
+            cepFinal: z.cepFinal,
+            regiao: z.regiao
+        }));
+
+        console.log('🔍 DEBUG FINAL - Zonas sendo passadas para SellersClient:', {
+            total: zonasParaComponente.length,
+            zonas: zonasParaComponente.map(z => ({ id: z.id, nome: z.zonaNome, regiao: z.regiao }))
+        });
+
+        if (zonasParaComponente.length === 0) {
+            console.warn('⚠️ AVISO: Nenhuma zona encontrada. Verifique se o seed foi executado corretamente.');
+        }
+
         return <SellersClient 
             initialSellers={sellersWithZonas}
-            availableZonas={zonas.map(z => ({
-                id: z.id,
-                zonaNome: z.zonaNome,
-                cepInicial: z.cepInicial,
-                cepFinal: z.cepFinal,
-                regiao: z.regiao
-            }))}
+            availableZonas={zonasParaComponente}
         />;
     } catch (error: any) {
         console.error('Erro ao carregar executivos:', error);
