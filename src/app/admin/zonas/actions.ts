@@ -274,6 +274,9 @@ export async function createZona(data: Omit<ZonaCepData, 'id'>) {
 
 export async function updateZona(id: string, data: Omit<ZonaCepData, 'id'>) {
     try {
+        // Garantir que a tabela e coluna regiao existem
+        await ensureTableExists();
+        
         // Validar CEPs
         if (!validateCep(data.cepInicial) || !validateCep(data.cepFinal)) {
             throw new Error('CEP deve ter 8 dígitos');
