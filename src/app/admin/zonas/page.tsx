@@ -1,11 +1,38 @@
 import { prisma } from '@/lib/db';
 import ZonasClient from './ZonasClient';
 import { PageLayout } from '@/components/PageLayout';
+import { seedZonasPadrao } from './actions';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ZonasPage() {
     try {
+        // Seed automático: verificar se há zonas e popular se necessário
+        try {
+            const zonasCount = await prisma.$queryRaw<Array<{ count: bigint }>>`
+                SELECT COUNT(*) as count FROM zonas_cep
+            `;
+            const count = Number(zonasCount[0]?.count || 0);
+            
+            if (count === 0) {
+                console.log('🌱 Nenhuma zona encontrada. Populando zonas pré-cadastradas automaticamente...');
+                await seedZonasPadrao();
+                console.log('✅ Zonas pré-cadastradas populadas com sucesso!');
+            }
+        } catch (error: any) {
+            // Se a tabela não existir, tentar criar e popular
+            if (error.code === '42P01' || error.message?.includes('does not exist') || error.message?.includes('relation')) {
+                console.log('📋 Tabela zonas_cep não existe. Criando e populando...');
+                try {
+                    await seedZonasPadrao();
+                    console.log('✅ Tabela criada e zonas populadas!');
+                } catch (seedError: any) {
+                    console.warn('⚠️ Erro ao popular zonas automaticamente:', seedError.message);
+                }
+            } else {
+                console.warn('⚠️ Erro ao verificar zonas:', error.message);
+            }
+        }
         // Buscar zonas (usar modelo se disponível, senão SQL direto)
         let zonas: any[] = [];
         

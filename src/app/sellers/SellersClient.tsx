@@ -11,6 +11,7 @@ interface Zona {
     zonaNome: string;
     cepInicial: string;
     cepFinal: string;
+    regiao?: string;
 }
 
 interface Seller {
@@ -209,6 +210,17 @@ export default function SellersClient({ initialSellers, availableZonas }: Seller
         return availableZonas.find(z => z.id === zonaId);
     };
 
+    // Calcular ID numérico para cada zona (baseado na ordem: região -> nome)
+    const getZonaNumericId = (zonaId: string): number => {
+        const sortedZonas = [...availableZonas].sort((a, b) => {
+            if (a.regiao !== b.regiao) {
+                return (a.regiao || '').localeCompare(b.regiao || '');
+            }
+            return a.zonaNome.localeCompare(b.zonaNome);
+        });
+        return sortedZonas.findIndex(z => z.id === zonaId) + 1;
+    };
+
     return (
         <div className={styles.container}>
             {/* Header */}
@@ -312,11 +324,15 @@ export default function SellersClient({ initialSellers, availableZonas }: Seller
                                 <div className={styles.regions}>
                                     <div className={styles.regionsLabel}>Zonas de Atendimento:</div>
                                     <div className={styles.regionTags}>
-                                        {sellerZonas.slice(0, 3).map((zona, i) => (
-                                            <span key={i} className={styles.regionTag}>
-                                                {zona.zonaNome}
-                                            </span>
-                                        ))}
+                                        {sellerZonas.slice(0, 3).map((zona, i) => {
+                                            const zonaId = getZonaNumericId(zona.id);
+                                            return (
+                                                <span key={i} className={styles.regionTag}>
+                                                    <strong style={{ color: 'var(--primary)', marginRight: '4px' }}>#{zonaId}</strong>
+                                                    {zona.zonaNome}
+                                                </span>
+                                            );
+                                        })}
                                         {sellerZonas.length > 3 && (
                                             <span className={styles.tagMore}>+{sellerZonas.length - 3}</span>
                                         )}
@@ -408,18 +424,27 @@ export default function SellersClient({ initialSellers, availableZonas }: Seller
                                                     ⚠️ Selecione pelo menos uma zona de atendimento
                                                 </p>
                                             )}
-                                            {availableZonas.map(zona => (
-                                                <label key={zona.id} className={styles.zonaCheckbox}>
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={formData.zonasIds.includes(zona.id)}
-                                                        onChange={() => handleToggleZona(zona.id)}
-                                                    />
-                                                    <span>
-                                                        {zona.zonaNome} (CEP: {formatCep(zona.cepInicial)} até {formatCep(zona.cepFinal)})
-                                                    </span>
-                                                </label>
-                                            ))}
+                                            {availableZonas.map(zona => {
+                                                const zonaId = getZonaNumericId(zona.id);
+                                                return (
+                                                    <label key={zona.id} className={styles.zonaCheckbox}>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={formData.zonasIds.includes(zona.id)}
+                                                            onChange={() => handleToggleZona(zona.id)}
+                                                        />
+                                                        <span>
+                                                            <strong style={{ color: 'var(--primary)', marginRight: '6px' }}>#{zonaId}</strong>
+                                                            {zona.zonaNome} (CEP: {formatCep(zona.cepInicial)} até {formatCep(zona.cepFinal)})
+                                                            {zona.regiao && (
+                                                                <span style={{ marginLeft: '8px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                                                    [{zona.regiao}]
+                                                                </span>
+                                                            )}
+                                                        </span>
+                                                    </label>
+                                                );
+                                            })}
                                         </>
                                     )}
                                 </div>

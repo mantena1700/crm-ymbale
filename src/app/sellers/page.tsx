@@ -99,14 +99,16 @@ export default async function SellersPage() {
                 zona_nome: string;
                 cep_inicial: string;
                 cep_final: string;
+                regiao?: string;
                 ativo: boolean;
-            }>>`SELECT * FROM zonas_cep WHERE ativo = true ORDER BY zona_nome ASC`;
+            }>>`SELECT * FROM zonas_cep WHERE ativo = true ORDER BY regiao ASC, zona_nome ASC`;
             
             zonas = result.map(z => ({
                 id: z.id,
                 zonaNome: z.zona_nome,
                 cepInicial: z.cep_inicial,
                 cepFinal: z.cep_final,
+                regiao: (z as any).regiao,
                 ativo: z.ativo
             }));
             
@@ -148,7 +150,8 @@ export default async function SellersPage() {
                 id: z.id,
                 zonaNome: z.zonaNome,
                 cepInicial: z.cepInicial,
-                cepFinal: z.cepFinal
+                cepFinal: z.cepFinal,
+                regiao: z.regiao
             }))}
         />;
     } catch (error: any) {

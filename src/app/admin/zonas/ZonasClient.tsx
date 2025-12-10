@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { createZona, updateZona, deleteZona, seedZonasPadrao, seedZonasSorocaba, ZonaCepData } from './actions';
+import { createZona, updateZona, deleteZona, ZonaCepData } from './actions';
 import styles from './page.module.css';
 
 interface Zona {
@@ -176,20 +176,6 @@ export default function ZonasClient({ initialZonas }: ZonasClientProps) {
                     <p>Configure as zonas geográficas baseadas em ranges de CEP</p>
                 </div>
                 <div className={styles.headerActions}>
-                    <button 
-                        className={`${styles.seedButton} ${styles.seedButtonPrimary}`}
-                        onClick={handleSeedZonas}
-                        disabled={seeding}
-                    >
-                        {seeding ? '⏳ Populando...' : '🌱 Popular Zonas Pré-Cadastradas'}
-                    </button>
-                    <button 
-                        className={`${styles.seedButton} ${styles.seedButtonSorocaba}`}
-                        onClick={handleSeedZonasSorocaba}
-                        disabled={seedingSorocaba}
-                    >
-                        {seedingSorocaba ? '⏳ Adicionando...' : '🏙️ Adicionar Zonas Sorocaba'}
-                    </button>
                     <button className={styles.newButton} onClick={() => handleOpenModal()}>
                         ➕ Nova Zona
                     </button>
