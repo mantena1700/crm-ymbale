@@ -18,23 +18,25 @@ export default async function SellersPage() {
                 
                 if (count === 0) {
                     console.log('🌱 Nenhuma zona encontrada na página de executivos. Populando zonas pré-cadastradas automaticamente...');
-                    await seedZonasPadrao();
+                    const seedResult = await seedZonasPadrao();
                     zonasWereSeeded = true;
-                    console.log('✅ Zonas pré-cadastradas populadas com sucesso!');
+                    console.log('✅ Zonas pré-cadastradas populadas com sucesso!', seedResult);
+                } else {
+                    console.log(`✅ ${count} zonas já existem no banco de dados`);
                 }
             } catch (countError: any) {
                 // Se não conseguir contar, tentar popular diretamente
                 if (countError.code === '42P01' || countError.message?.includes('does not exist') || countError.message?.includes('relation')) {
                     console.log('📋 Tabela zonas_cep não existe na página de executivos. Criando e populando...');
                     try {
-                        await seedZonasPadrao();
+                        const seedResult = await seedZonasPadrao();
                         zonasWereSeeded = true;
-                        console.log('✅ Tabela criada e zonas populadas!');
+                        console.log('✅ Tabela criada e zonas populadas!', seedResult);
                     } catch (seedError: any) {
                         console.warn('⚠️ Erro ao popular zonas automaticamente:', seedError.message);
                     }
                 } else {
-                    throw countError;
+                    console.warn('⚠️ Erro ao contar zonas:', countError.message);
                 }
             }
         } catch (error: any) {
@@ -123,40 +125,59 @@ export default async function SellersPage() {
         }
 
         // Buscar zonas disponíveis (sempre usar SQL direto para garantir compatibilidade)
+        // IMPORTANTE: Buscar DEPOIS do seed para garantir que as zonas criadas sejam encontradas
         let zonas: any[] = [];
+        
+        // Se fez seed, dar um pequeno delay para garantir que o banco processou
+        if (zonasWereSeeded) {
+            await new Promise(resolve => setTimeout(resolve, 300));
+        }
+        
         try {
-            // Primeiro tentar verificar se a tabela existe
-            await prisma.$queryRaw`SELECT 1 FROM zonas_cep LIMIT 1`;
-            
-            // Se existir, buscar zonas
-            const result = await prisma.$queryRaw<Array<{
+            // Buscar TODAS as zonas primeiro (sem filtro de ativo para debug)
+            const resultAll = await prisma.$queryRaw<Array<{
                 id: string;
                 zona_nome: string;
                 cep_inicial: string;
                 cep_final: string;
                 regiao?: string;
                 ativo: boolean;
-            }>>`SELECT * FROM zonas_cep WHERE ativo = true ORDER BY regiao ASC, zona_nome ASC`;
+            }>>`SELECT * FROM zonas_cep ORDER BY regiao ASC NULLS LAST, zona_nome ASC`;
+            
+            console.log(`📊 Total de zonas no banco (todas): ${resultAll.length}`);
+            
+            // Filtrar apenas as ativas
+            const result = resultAll.filter(z => z.ativo === true);
             
             zonas = result.map(z => ({
                 id: z.id,
                 zonaNome: z.zona_nome,
                 cepInicial: z.cep_inicial,
                 cepFinal: z.cep_final,
-                regiao: (z as any).regiao,
+                regiao: (z as any).regiao || null,
                 ativo: z.ativo
             }));
             
-            console.log(`Zonas disponíveis encontradas: ${zonas.length}`);
+            console.log(`✅ Zonas ativas encontradas: ${zonas.length}`);
+            
+            // Se não encontrou zonas ativas mas encontrou zonas inativas, logar
+            if (zonas.length === 0 && resultAll.length > 0) {
+                console.warn(`⚠️ Encontradas ${resultAll.length} zonas, mas todas estão inativas!`);
+            }
         } catch (error: any) {
             // Se a tabela não existir, tentar criar ou usar array vazio
             if (error.code === '42P01' || error.message?.includes('does not exist') || error.message?.includes('relation')) {
-                console.warn('Tabela zonas_cep não existe ainda. Execute: npx prisma db push');
+                console.warn('⚠️ Tabela zonas_cep não existe ainda. Execute: npx prisma db push');
                 zonas = [];
             } else {
-                console.error('Erro ao buscar zonas:', error.message);
+                console.warn('⚠️ Erro ao buscar zonas:', error.message);
                 zonas = [];
             }
+        }
+        
+        // Log apenas se realmente não encontrou zonas (não quebrar a aplicação)
+        if (zonas.length === 0) {
+            console.log('⚠️ Nenhuma zona ativa encontrada. A página continuará funcionando normalmente.');
         }
 
         // Mapear sellers com suas zonas garantindo que zonasIds seja sempre um array
