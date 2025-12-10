@@ -48,12 +48,79 @@ echo ""
 
 # 3. Atualizar Código do GitHub
 echo "3. Atualizando código do GitHub..."
-if git pull origin main; then
-    echo -e "${GREEN}✅ Código atualizado${NC}"
-else
-    echo -e "${RED}❌ Erro ao atualizar código${NC}"
+
+# Configurar estratégia de merge (se não estiver configurada)
+git config pull.rebase false 2>/dev/null || true
+
+# Verificar status do Git
+if [ -n "$(git status --porcelain)" ]; then
+    echo -e "${YELLOW}⚠️  Há mudanças locais não commitadas${NC}"
+    echo "   Fazendo stash das mudanças locais..."
+    git stash push -m "Stash antes de atualizar - $(date +%Y%m%d_%H%M%S)" || true
+fi
+
+# Fazer fetch primeiro
+echo "   Fazendo fetch do repositório remoto..."
+if ! git fetch origin main; then
+    echo -e "${RED}❌ Erro ao fazer fetch${NC}"
     echo "   Verifique sua conexão e permissões do Git"
     exit 1
+fi
+
+# Verificar se há divergência
+LOCAL=$(git rev-parse @)
+REMOTE=$(git rev-parse @{u})
+BASE=$(git merge-base @ @{u})
+
+if [ "$LOCAL" = "$REMOTE" ]; then
+    echo -e "${GREEN}✅ Código já está atualizado${NC}"
+elif [ "$LOCAL" = "$BASE" ]; then
+    # Local está atrás, fazer pull simples
+    echo "   Local está atrás, fazendo pull..."
+    if git pull origin main --no-edit; then
+        echo -e "${GREEN}✅ Código atualizado${NC}"
+    else
+        echo -e "${RED}❌ Erro ao fazer pull${NC}"
+        exit 1
+    fi
+elif [ "$REMOTE" = "$BASE" ]; then
+    # Local está à frente, fazer push (opcional)
+    echo -e "${YELLOW}⚠️  Local está à frente do remoto${NC}"
+    echo "   Fazendo pull com merge..."
+    if git pull origin main --no-edit; then
+        echo -e "${GREEN}✅ Código atualizado${NC}"
+    else
+        echo -e "${YELLOW}⚠️  Conflitos detectados, fazendo reset hard para manter remoto${NC}"
+        echo "   ATENÇÃO: Mudanças locais serão perdidas!"
+        read -p "   Continuar? (s/N): " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Ss]$ ]]; then
+            git reset --hard origin/main
+            echo -e "${GREEN}✅ Código resetado para versão remota${NC}"
+        else
+            echo -e "${YELLOW}⚠️  Operação cancelada${NC}"
+            exit 1
+        fi
+    fi
+else
+    # Branches divergentes
+    echo -e "${YELLOW}⚠️  Branches divergentes detectadas${NC}"
+    echo "   Tentando fazer merge..."
+    if git pull origin main --no-edit; then
+        echo -e "${GREEN}✅ Código atualizado com merge${NC}"
+    else
+        echo -e "${YELLOW}⚠️  Merge falhou, fazendo reset hard para manter remoto${NC}"
+        echo "   ATENÇÃO: Mudanças locais serão perdidas!"
+        read -p "   Continuar? (s/N): " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Ss]$ ]]; then
+            git reset --hard origin/main
+            echo -e "${GREEN}✅ Código resetado para versão remota${NC}"
+        else
+            echo -e "${YELLOW}⚠️  Operação cancelada${NC}"
+            exit 1
+        fi
+    fi
 fi
 echo ""
 
