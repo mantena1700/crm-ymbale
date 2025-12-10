@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import styles from './Settings.module.css';
 
 interface SystemSettings {
@@ -31,7 +31,10 @@ export default function WhiteLabelClient() {
     });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [uploading, setUploading] = useState<string | null>(null); // 'crmLogo' ou 'crmFavicon'
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+    const logoFileInputRef = useRef<HTMLInputElement>(null);
+    const faviconFileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         fetchSettings();
@@ -57,6 +60,8 @@ export default function WhiteLabelClient() {
         setMessage(null);
 
         try {
+            console.log('💾 Salvando configurações:', settings);
+            
             const response = await fetch('/api/system-settings', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
@@ -64,16 +69,25 @@ export default function WhiteLabelClient() {
             });
 
             const data = await response.json();
+            console.log('📥 Resposta do servidor:', { status: response.status, data });
 
             if (response.ok) {
                 setMessage({ type: 'success', text: '✅ Configurações salvas com sucesso! Recarregue a página para ver as alterações.' });
                 setSettings(data.settings);
             } else {
-                setMessage({ type: 'error', text: `❌ ${data.error || 'Erro ao salvar configurações'}` });
+                const errorMsg = data.error || data.message || 'Erro ao salvar configurações';
+                console.error('❌ Erro na resposta:', errorMsg, data);
+                setMessage({ 
+                    type: 'error', 
+                    text: `❌ ${errorMsg}${data.details ? ` (${JSON.stringify(data.details)})` : ''}` 
+                });
             }
-        } catch (error) {
-            console.error('Erro ao salvar:', error);
-            setMessage({ type: 'error', text: '❌ Erro ao salvar configurações' });
+        } catch (error: any) {
+            console.error('❌ Erro ao salvar:', error);
+            setMessage({ 
+                type: 'error', 
+                text: `❌ Erro ao salvar configurações: ${error.message || 'Erro desconhecido'}` 
+            });
         } finally {
             setSaving(false);
         }
@@ -81,6 +95,77 @@ export default function WhiteLabelClient() {
 
     const handleChange = (field: keyof SystemSettings, value: string) => {
         setSettings(prev => ({ ...prev, [field]: value }));
+    };
+
+    const handleLogoUpload = async (file: File) => {
+        setUploading('crmLogo');
+        setMessage(null);
+        
+        try {
+            const formData = new FormData();
+            formData.append('logo', file);
+            formData.append('type', 'crmLogo');
+
+            const response = await fetch('/api/system-settings/upload-logo', {
+                method: 'POST',
+                body: formData,
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.logoUrl) {
+                setSettings(prev => ({ ...prev, crmLogo: data.logoUrl }));
+                setMessage({ type: 'success', text: '✅ Logo enviada com sucesso!' });
+            } else {
+                setMessage({ type: 'error', text: `❌ ${data.error || 'Erro ao fazer upload da logo'}` });
+            }
+        } catch (error: any) {
+            console.error('Erro ao fazer upload:', error);
+            setMessage({ type: 'error', text: '❌ Erro ao fazer upload da logo' });
+        } finally {
+            setUploading(null);
+        }
+    };
+
+    const handleFaviconUpload = async (file: File) => {
+        setUploading('crmFavicon');
+        setMessage(null);
+        
+        try {
+            const formData = new FormData();
+            formData.append('logo', file);
+            formData.append('type', 'crmFavicon');
+
+            const response = await fetch('/api/system-settings/upload-logo', {
+                method: 'POST',
+                body: formData,
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.logoUrl) {
+                setSettings(prev => ({ ...prev, crmFavicon: data.logoUrl }));
+                setMessage({ type: 'success', text: '✅ Favicon enviado com sucesso!' });
+            } else {
+                setMessage({ type: 'error', text: `❌ ${data.error || 'Erro ao fazer upload do favicon'}` });
+            }
+        } catch (error: any) {
+            console.error('Erro ao fazer upload:', error);
+            setMessage({ type: 'error', text: '❌ Erro ao fazer upload do favicon' });
+        } finally {
+            setUploading(null);
+        }
+    };
+
+    const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'crmLogo' | 'crmFavicon') => {
+        const file = e.target.files?.[0];
+        if (file) {
+            if (type === 'crmLogo') {
+                handleLogoUpload(file);
+            } else {
+                handleFaviconUpload(file);
+            }
+        }
     };
 
     if (loading) {
@@ -116,25 +201,115 @@ export default function WhiteLabelClient() {
                     </div>
 
                     <div className={styles.formGroup}>
-                        <label>URL da Logo</label>
-                        <input
-                            type="url"
-                            value={settings.crmLogo || ''}
-                            onChange={(e) => handleChange('crmLogo', e.target.value)}
-                            placeholder="https://exemplo.com/logo.png"
-                        />
-                        <small>Logo exibida na sidebar (opcional). Deixe vazio para usar inicial do nome.</small>
+                        <label>Logo do Sistema</label>
+                        <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+                            <div style={{ flex: '0 0 auto' }}>
+                                {settings.crmLogo && (
+                                    <div style={{ 
+                                        width: '120px', 
+                                        height: '120px', 
+                                        border: '1px solid var(--card-border)', 
+                                        borderRadius: '0.5rem',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        overflow: 'hidden',
+                                        background: 'var(--background)'
+                                    }}>
+                                        <img 
+                                            src={settings.crmLogo} 
+                                            alt="Logo" 
+                                            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                                        />
+                                    </div>
+                                )}
+                                <input
+                                    ref={logoFileInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={(e) => handleFileInputChange(e, 'crmLogo')}
+                                    style={{ display: 'none' }}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => logoFileInputRef.current?.click()}
+                                    disabled={uploading === 'crmLogo'}
+                                    className={`${styles.button} ${styles.secondary}`}
+                                    style={{ marginTop: '0.5rem', width: '100%' }}
+                                >
+                                    {uploading === 'crmLogo' ? '⏳ Enviando...' : settings.crmLogo ? '📷 Alterar Logo' : '📷 Fazer Upload'}
+                                </button>
+                            </div>
+                            <div style={{ flex: 1 }}>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 600 }}>
+                                    Ou insira uma URL:
+                                </label>
+                                <input
+                                    type="url"
+                                    value={settings.crmLogo || ''}
+                                    onChange={(e) => handleChange('crmLogo', e.target.value)}
+                                    placeholder="https://exemplo.com/logo.png"
+                                    style={{ width: '100%' }}
+                                />
+                                <small>Logo exibida na sidebar (opcional). Deixe vazio para usar inicial do nome.</small>
+                            </div>
+                        </div>
                     </div>
 
                     <div className={styles.formGroup}>
-                        <label>URL do Favicon</label>
-                        <input
-                            type="url"
-                            value={settings.crmFavicon || ''}
-                            onChange={(e) => handleChange('crmFavicon', e.target.value)}
-                            placeholder="https://exemplo.com/favicon.ico"
-                        />
-                        <small>Ícone exibido na aba do navegador (opcional)</small>
+                        <label>Favicon</label>
+                        <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+                            <div style={{ flex: '0 0 auto' }}>
+                                {settings.crmFavicon && (
+                                    <div style={{ 
+                                        width: '64px', 
+                                        height: '64px', 
+                                        border: '1px solid var(--card-border)', 
+                                        borderRadius: '0.5rem',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        overflow: 'hidden',
+                                        background: 'var(--background)'
+                                    }}>
+                                        <img 
+                                            src={settings.crmFavicon} 
+                                            alt="Favicon" 
+                                            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                                        />
+                                    </div>
+                                )}
+                                <input
+                                    ref={faviconFileInputRef}
+                                    type="file"
+                                    accept="image/*,.ico"
+                                    onChange={(e) => handleFileInputChange(e, 'crmFavicon')}
+                                    style={{ display: 'none' }}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => faviconFileInputRef.current?.click()}
+                                    disabled={uploading === 'crmFavicon'}
+                                    className={`${styles.button} ${styles.secondary}`}
+                                    style={{ marginTop: '0.5rem', width: '100%' }}
+                                >
+                                    {uploading === 'crmFavicon' ? '⏳ Enviando...' : settings.crmFavicon ? '📷 Alterar Favicon' : '📷 Fazer Upload'}
+                                </button>
+                            </div>
+                            <div style={{ flex: 1 }}>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 600 }}>
+                                    Ou insira uma URL:
+                                </label>
+                                <input
+                                    type="url"
+                                    value={settings.crmFavicon || ''}
+                                    onChange={(e) => handleChange('crmFavicon', e.target.value)}
+                                    placeholder="https://exemplo.com/favicon.ico"
+                                    style={{ width: '100%' }}
+                                />
+                                <small>Ícone exibido na aba do navegador (opcional). Tamanho recomendado: 32x32px ou 16x16px.</small>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
