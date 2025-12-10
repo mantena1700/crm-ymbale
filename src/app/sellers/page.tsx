@@ -142,7 +142,24 @@ export default async function SellersPage() {
                 cep_final: string;
                 regiao?: string;
                 ativo: boolean;
-            }>>`SELECT * FROM zonas_cep ORDER BY regiao ASC NULLS LAST, zona_nome ASC`;
+            }>>`SELECT id, zona_nome, cep_inicial, cep_final, ativo, created_at, updated_at FROM zonas_cep ORDER BY zona_nome ASC`;
+            
+            // Buscar regiao separadamente para cada zona
+            for (let i = 0; i < resultAll.length; i++) {
+                try {
+                    const regiaoResult = await prisma.$queryRaw<Array<{ regiao: string | null }>>`
+                        SELECT regiao FROM zonas_cep WHERE id = ${resultAll[i].id}::uuid LIMIT 1
+                    `;
+                    if (regiaoResult && regiaoResult.length > 0) {
+                        (resultAll[i] as any).regiao = regiaoResult[0].regiao;
+                    }
+                } catch (e: any) {
+                    // Se a coluna não existir, regiao será null
+                    if (e.code !== '42703' && !e.message?.includes('does not exist')) {
+                        console.warn(`Erro ao buscar regiao para zona ${resultAll[i].id}:`, e.message);
+                    }
+                }
+            }
             
             console.log(`📊 Total de zonas no banco (todas): ${resultAll.length}`);
             

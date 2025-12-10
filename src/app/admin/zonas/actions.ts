@@ -17,6 +17,24 @@ async function ensureTableExists() {
     try {
         // Verificar se a tabela existe
         await prisma.$queryRaw`SELECT 1 FROM zonas_cep LIMIT 1`;
+        
+        // Se a tabela existe, verificar se a coluna regiao existe
+        try {
+            await prisma.$queryRaw`SELECT regiao FROM zonas_cep LIMIT 1`;
+        } catch (regiaoError: any) {
+            // Se a coluna regiao não existir, adicionar
+            if (regiaoError.code === '42703' || regiaoError.message?.includes('does not exist') || regiaoError.message?.includes('column')) {
+                console.log('Adicionando coluna regiao à tabela zonas_cep...');
+                try {
+                    await prisma.$executeRaw`ALTER TABLE zonas_cep ADD COLUMN regiao VARCHAR(50)`;
+                    console.log('✅ Coluna regiao adicionada com sucesso!');
+                } catch (addError: any) {
+                    if (!addError.message?.includes('duplicate column') && !addError.message?.includes('already exists')) {
+                        console.warn('⚠️ Erro ao adicionar coluna regiao:', addError.message);
+                    }
+                }
+            }
+        }
     } catch (error: any) {
         // Se a tabela não existir (código 42P01), criar
         if (error.code === '42P01' || error.message?.includes('does not exist') || error.message?.includes('relation')) {
@@ -34,16 +52,6 @@ async function ensureTableExists() {
                 )
             `;
             
-            // Adicionar coluna regiao se não existir (para tabelas já criadas)
-            try {
-                await prisma.$executeRaw`ALTER TABLE zonas_cep ADD COLUMN IF NOT EXISTS regiao VARCHAR(50)`;
-            } catch (e: any) {
-                // Ignorar erro se coluna já existir
-                if (!e.message?.includes('duplicate column')) {
-                    console.warn('Erro ao adicionar coluna regiao:', e.message);
-                }
-            }
-            
             // Criar índices
             await prisma.$executeRaw`
                 CREATE INDEX IF NOT EXISTS idx_zonas_cep_ativo ON zonas_cep(ativo)
@@ -52,7 +60,7 @@ async function ensureTableExists() {
                 CREATE INDEX IF NOT EXISTS idx_zonas_cep_range ON zonas_cep(cep_inicial, cep_final)
             `;
             
-            console.log('Tabela zonas_cep criada com sucesso!');
+            console.log('✅ Tabela zonas_cep criada com sucesso!');
         } else {
             throw error;
         }
@@ -260,12 +268,25 @@ export async function updateZona(id: string, data: Omit<ZonaCepData, 'id'>) {
                 SET zona_nome = ${data.zonaNome},
                     cep_inicial = ${cleanCep(data.cepInicial)},
                     cep_final = ${cleanCep(data.cepFinal)},
-                    regiao = ${data.regiao || null},
                     ativo = ${data.ativo},
                     updated_at = NOW()
                 WHERE id = ${id}::uuid
-                RETURNING *
+                RETURNING id, zona_nome, cep_inicial, cep_final, ativo, created_at, updated_at
             `;
+            
+            // Atualizar regiao separadamente se a coluna existir
+            try {
+                await prisma.$executeRaw`
+                    UPDATE zonas_cep 
+                    SET regiao = ${data.regiao || null}
+                    WHERE id = ${id}::uuid
+                `;
+            } catch (regiaoError: any) {
+                // Se a coluna não existir, ignorar (será adicionada na próxima vez)
+                if (regiaoError.code !== '42703' && !regiaoError.message?.includes('does not exist')) {
+                    console.warn('Erro ao atualizar regiao:', regiaoError.message);
+                }
+            }
             const rawZona = Array.isArray(result) ? result[0] : result;
             // Converter snake_case para camelCase
             zona = {
