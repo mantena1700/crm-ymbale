@@ -41,10 +41,11 @@ export default function ClientsClientNew({ initialRestaurants, availableSellers 
     const potentials = ['Todos', 'ALTÍSSIMO', 'ALTO', 'MÉDIO', 'BAIXO'];
     // Opções de executivos: Todos + lista de executivos + "Sem Executivo" se houver restaurantes sem executivo
     const hasRestaurantsWithoutSeller = restaurants.some(r => !r.seller);
+    // Criar array de opções com IDs únicos para evitar chaves duplicadas
     const sellersOptions = [
-        'Todos',
-        ...(availableSellers || []).map(s => s.name),
-        ...(hasRestaurantsWithoutSeller ? ['Sem Executivo'] : [])
+        { value: 'Todos', label: 'Todos', id: 'todos' },
+        ...(availableSellers || []).map(s => ({ value: s.name, label: s.name, id: s.id })),
+        ...(hasRestaurantsWithoutSeller ? [{ value: 'Sem Executivo', label: 'Sem Executivo', id: 'sem-executivo' }] : [])
     ];
 
     const filteredRestaurants = useMemo(() => {
@@ -368,7 +369,7 @@ export default function ClientsClientNew({ initialRestaurants, availableSellers 
                             title="Filtre os clientes pelo executivo responsável pela conta"
                         >
                             {sellersOptions.map(seller => (
-                                <option key={seller} value={seller}>{seller}</option>
+                                <option key={seller.id} value={seller.value}>{seller.label}</option>
                             ))}
                         </select>
                     </div>
