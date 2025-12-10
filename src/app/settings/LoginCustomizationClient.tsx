@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Button } from '@/components/PageLayout';
 import styles from './Settings.module.css';
 
 interface LoginSettings {
@@ -200,18 +199,31 @@ export default function LoginCustomizationClient() {
                 </div>
 
                 <div className={styles.actions}>
-                    <Button
-                        variant="primary"
-                        onClick={(e: any) => {
-                            e.preventDefault();
-                            handleSubmit(e);
-                        }}
+                    <button
+                        type="submit"
                         disabled={saving}
+                        style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px',
+                            padding: '10px 16px',
+                            borderRadius: '8px',
+                            fontSize: '0.875rem',
+                            fontWeight: 500,
+                            border: 'none',
+                            cursor: saving ? 'not-allowed' : 'pointer',
+                            transition: 'all 0.15s ease',
+                            whiteSpace: 'nowrap',
+                            background: 'var(--primary)',
+                            color: 'white',
+                            opacity: saving ? 0.5 : 1
+                        }}
                     >
                         {saving ? '⏳ Salvando...' : '💾 Salvar Configurações'}
-                    </Button>
-                    <Button
-                        variant="secondary"
+                    </button>
+                    <button
+                        type="button"
                         onClick={() => {
                             setSettings({
                                 loginTitle: null,
@@ -223,9 +235,26 @@ export default function LoginCustomizationClient() {
                             });
                         }}
                         disabled={saving}
+                        style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px',
+                            padding: '10px 16px',
+                            borderRadius: '8px',
+                            fontSize: '0.875rem',
+                            fontWeight: 500,
+                            border: '1px solid var(--border)',
+                            cursor: saving ? 'not-allowed' : 'pointer',
+                            transition: 'all 0.15s ease',
+                            whiteSpace: 'nowrap',
+                            background: 'var(--secondary)',
+                            color: 'var(--foreground)',
+                            opacity: saving ? 0.5 : 1
+                        }}
                     >
                         🔄 Restaurar Padrão
-                    </Button>
+                    </button>
                 </div>
             </form>
         </div>
