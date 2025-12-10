@@ -40,7 +40,7 @@ export default function ClientsClientNew({ initialRestaurants, availableSellers 
     const statuses = ['Todos', 'A Analisar', 'Qualificado', 'Contatado', 'Negociação', 'Fechado'];
     const potentials = ['Todos', 'ALTÍSSIMO', 'ALTO', 'MÉDIO', 'BAIXO'];
     // Opções de executivos: Todos + lista de executivos + "Sem Executivo" se houver restaurantes sem executivo
-    const hasRestaurantsWithoutSeller = restaurants.some(r => !r.sellerId);
+    const hasRestaurantsWithoutSeller = restaurants.some(r => !r.seller);
     const sellersOptions = [
         'Todos',
         ...(availableSellers || []).map(s => s.name),
@@ -53,16 +53,17 @@ export default function ClientsClientNew({ initialRestaurants, availableSellers 
             if (activeTab === 'active' && r.status === 'Descartado') return false;
             if (activeTab === 'discarded' && r.status !== 'Descartado') return false;
 
+            const sellerName = r.seller?.name || '';
             const matchesSearch = r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 (r.address?.city?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
-                (r.sellerName?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
+                sellerName.toLowerCase().includes(searchTerm.toLowerCase());
             const matchesCity = selectedCity === 'Todos' || (r.address?.city || 'Outros') === selectedCity;
             const matchesStatus = selectedStatus === 'Todos' || (r.status || 'A Analisar') === selectedStatus;
             const matchesPotential = selectedPotential === 'Todos' || r.salesPotential === selectedPotential;
             // Filtro de executivo: comparar o nome do executivo
             const matchesSeller = selectedSeller === 'Todos' || 
-                (r.sellerName && r.sellerName === selectedSeller) ||
-                (!r.sellerName && selectedSeller === 'Sem Executivo');
+                (sellerName && sellerName === selectedSeller) ||
+                (!sellerName && selectedSeller === 'Sem Executivo');
 
             return matchesSearch && matchesCity && matchesStatus && matchesPotential && matchesSeller;
         }).sort((a, b) => {
@@ -111,10 +112,13 @@ export default function ClientsClientNew({ initialRestaurants, availableSellers 
             render: (value: any) => value?.city || 'N/A'
         },
         {
-            key: 'sellerName',
+            key: 'seller',
             label: 'Executivo',
             width: '150px',
-            render: (value: string) => value ? <Badge variant="info">{value}</Badge> : <span style={{ color: '#999' }}>Sem Executivo</span>
+            render: (value: any) => {
+                const sellerName = value?.name;
+                return sellerName ? <Badge variant="info">{sellerName}</Badge> : <span style={{ color: '#999' }}>Sem Executivo</span>;
+            }
         },
         {
             key: 'salesPotential',
