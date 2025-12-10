@@ -28,6 +28,7 @@ export default function LoginPage() {
         fetch('/api/system-settings')
             .then(res => res.json())
             .then(data => {
+                console.log('🔍 Configurações recebidas na página de login:', data);
                 setLoginSettings({
                     loginTitle: data.loginTitle,
                     loginSubtitle: data.loginSubtitle,
@@ -39,7 +40,8 @@ export default function LoginPage() {
                     crmLogo: data.crmLogo,
                 });
             })
-            .catch(() => {
+            .catch((error) => {
+                console.error('❌ Erro ao buscar configurações:', error);
                 setLoginSettings({
                     loginTitle: null,
                     loginSubtitle: null,
