@@ -262,13 +262,20 @@ export default function ZonasClient({ initialZonas }: ZonasClientProps) {
                                 </td>
                             </tr>
                         ) : (
-                            filteredZonas.map((zona, index) => {
-                                // Gerar ID numérico baseado na posição (1, 2, 3...)
-                                const zonaId = index + 1;
+                            filteredZonas.map((zona) => {
+                                // Gerar ID numérico baseado na posição ordenada (1, 2, 3...)
+                                // Ordenar por região e depois por nome para IDs consistentes
+                                const sortedZonas = [...zonas].sort((a, b) => {
+                                    if (a.regiao !== b.regiao) {
+                                        return (a.regiao || '').localeCompare(b.regiao || '');
+                                    }
+                                    return a.zonaNome.localeCompare(b.zonaNome);
+                                });
+                                const zonaId = sortedZonas.findIndex(z => z.id === zona.id) + 1;
                                 return (
                                     <tr key={zona.id}>
                                         <td>
-                                            <strong style={{ color: 'var(--primary)', fontSize: '0.875rem' }}>#{zonaId}</strong>
+                                            <strong style={{ color: 'var(--primary)', fontSize: '0.875rem', fontWeight: 700 }}>#{zonaId}</strong>
                                         </td>
                                         <td>
                                             <strong>{zona.zonaNome}</strong>
