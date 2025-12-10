@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import Sidebar from './Sidebar';
 import ThemeToggle from './ThemeToggle';
 import ChangePasswordModal from './ChangePasswordModal';
+import { ErrorBoundary } from './ErrorBoundary';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface AppLayoutProps {
@@ -20,30 +21,34 @@ export default function AppLayout({ children }: AppLayoutProps) {
     if (isAuthPage) {
         // Layout limpo para páginas de autenticação
         return (
-            <div className="auth-layout">
-                {children}
-                <ThemeToggle />
-            </div>
+            <ErrorBoundary>
+                <div className="auth-layout">
+                    {children}
+                    <ThemeToggle />
+                </div>
+            </ErrorBoundary>
         );
     }
 
     // Layout completo com sidebar para páginas autenticadas
     return (
-        <div className="app-container">
-            <Sidebar />
-            <main className="main-content">
-                {children}
-            </main>
-            <ThemeToggle />
-            
-            {/* Modal de troca de senha obrigatória */}
-            {!loading && user && mustChangePassword && (
-                <ChangePasswordModal 
-                    userId={user.id} 
-                    onSuccess={onPasswordChanged}
-                />
-            )}
-        </div>
+        <ErrorBoundary>
+            <div className="app-container">
+                <Sidebar />
+                <main className="main-content">
+                    {children}
+                </main>
+                <ThemeToggle />
+                
+                {/* Modal de troca de senha obrigatória */}
+                {!loading && user && mustChangePassword && (
+                    <ChangePasswordModal 
+                        userId={user.id} 
+                        onSuccess={onPasswordChanged}
+                    />
+                )}
+            </div>
+        </ErrorBoundary>
     );
 }
 

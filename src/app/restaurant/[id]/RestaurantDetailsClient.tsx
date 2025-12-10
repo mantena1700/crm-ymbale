@@ -24,25 +24,56 @@ export default function RestaurantDetailsClient({ restaurant, initialAnalysis, i
     const [isVisitOpen, setIsVisitOpen] = useState(false);
     const [visits, setVisits] = useState<Visit[]>([]);
     const [loadingVisits, setLoadingVisits] = useState(false);
-    const [status, setStatus] = useState(restaurant.status || 'A Analisar');
+    const [status, setStatus] = useState(restaurant?.status || 'A Analisar');
     const [isUpdating, setIsUpdating] = useState(false);
     const [activeTab, setActiveTab] = useState<'overview' | 'analysis' | 'notes'>('overview');
+    const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        loadVisits();
-    }, [restaurant.id]);
+    // Validações para evitar erros com dados faltando
+    if (!restaurant) {
+        return (
+            <div style={{ padding: '2rem', textAlign: 'center' }}>
+                <h2>Restaurante não encontrado</h2>
+                <Link href="/pipeline" className={styles.backLink}>
+                    ← Voltar para Pipeline
+                </Link>
+            </div>
+        );
+    }
+
+    const safeRating = restaurant.rating != null && !isNaN(Number(restaurant.rating)) ? Number(restaurant.rating) : 0;
+    const safeAddress = restaurant.address || {
+        street: 'Endereço não informado',
+        neighborhood: '',
+        city: 'Cidade não informada',
+        state: 'Estado não informado',
+        zip: ''
+    };
+    const safeProjectedDeliveries = restaurant.projectedDeliveries != null && !isNaN(Number(restaurant.projectedDeliveries)) ? Number(restaurant.projectedDeliveries) : 0;
+    const safeReviewCount = restaurant.reviewCount != null && !isNaN(Number(restaurant.reviewCount)) ? Number(restaurant.reviewCount) : 0;
+    const safeTotalComments = restaurant.totalComments != null && !isNaN(Number(restaurant.totalComments)) ? Number(restaurant.totalComments) : 0;
+    const safeSalesPotential = restaurant.salesPotential || 'MÉDIO';
+    const safeName = restaurant.name || 'Restaurante sem nome';
 
     const loadVisits = async () => {
+        if (!restaurant?.id) return;
         setLoadingVisits(true);
         try {
             const data = await getVisits(restaurant.id);
-            setVisits(data);
+            setVisits(data || []);
         } catch (error) {
             console.error('Erro ao carregar visitas:', error);
+            setError('Erro ao carregar visitas');
         } finally {
             setLoadingVisits(false);
         }
     };
+
+    useEffect(() => {
+        if (restaurant?.id) {
+            loadVisits();
+        }
+    }, [restaurant?.id]);
 
     const handleStatusChange = async (newStatus: string) => {
         setIsUpdating(true);
@@ -123,6 +154,18 @@ export default function RestaurantDetailsClient({ restaurant, initialAnalysis, i
         return steps.slice(0, 3);
     };
 
+    if (error) {
+        return (
+            <div style={{ padding: '2rem', textAlign: 'center' }}>
+                <h2>Erro ao carregar dados</h2>
+                <p>{error}</p>
+                <Link href="/pipeline" className={styles.backLink}>
+                    ← Voltar para Pipeline
+                </Link>
+            </div>
+        );
+    }
+
     return (
         <div className={styles.container}>
             <Link href="/pipeline" className={styles.backLink}>
@@ -138,16 +181,18 @@ export default function RestaurantDetailsClient({ restaurant, initialAnalysis, i
                             🍽️
                         </div>
                         <div className={styles.headerInfo}>
-                            <h1>{restaurant.name}</h1>
+                            <h1>{safeName}</h1>
                             <div className={styles.headerMeta}>
-                                <span className={styles.rating}>
-                                    ⭐ {restaurant.rating.toFixed(1)}
-                                </span>
+                                {safeRating > 0 && (
+                                    <span className={styles.rating}>
+                                        ⭐ {safeRating.toFixed(1)}
+                                    </span>
+                                )}
                                 <span className={`${styles.statusBadge} ${getStatusClass(status)}`}>
                                     {status}
                                 </span>
                                 <span className={styles.location}>
-                                    📍 {restaurant.address.city}, {restaurant.address.state}
+                                    📍 {safeAddress.city}, {safeAddress.state}
                                 </span>
                             </div>
                         </div>
@@ -179,28 +224,28 @@ export default function RestaurantDetailsClient({ restaurant, initialAnalysis, i
                         <div className={`${styles.metricIcon} ${styles.potential}`}>💰</div>
                         <div className={styles.metricContent}>
                             <div className={styles.metricLabel}>Potencial</div>
-                            <div className={styles.metricValue}>{restaurant.salesPotential}</div>
+                            <div className={styles.metricValue}>{safeSalesPotential}</div>
                         </div>
                     </div>
                     <div className={styles.metricCard}>
                         <div className={`${styles.metricIcon} ${styles.deliveries}`}>📦</div>
                         <div className={styles.metricContent}>
                             <div className={styles.metricLabel}>Entregas/Mês</div>
-                            <div className={styles.metricValue}>{restaurant.projectedDeliveries.toLocaleString('pt-BR')}</div>
+                            <div className={styles.metricValue}>{safeProjectedDeliveries.toLocaleString('pt-BR')}</div>
                         </div>
                     </div>
                     <div className={styles.metricCard}>
                         <div className={`${styles.metricIcon} ${styles.reviews}`}>⭐</div>
                         <div className={styles.metricContent}>
                             <div className={styles.metricLabel}>Avaliações</div>
-                            <div className={styles.metricValue}>{restaurant.reviewCount.toLocaleString('pt-BR')}</div>
+                            <div className={styles.metricValue}>{safeReviewCount.toLocaleString('pt-BR')}</div>
                         </div>
                     </div>
                     <div className={styles.metricCard}>
                         <div className={`${styles.metricIcon} ${styles.comments}`}>💬</div>
                         <div className={styles.metricContent}>
                             <div className={styles.metricLabel}>Comentários</div>
-                            <div className={styles.metricValue}>{restaurant.totalComments.toLocaleString('pt-BR')}</div>
+                            <div className={styles.metricValue}>{safeTotalComments.toLocaleString('pt-BR')}</div>
                         </div>
                     </div>
                 </div>
@@ -236,9 +281,9 @@ export default function RestaurantDetailsClient({ restaurant, initialAnalysis, i
                                     <div className={styles.addressInfo}>
                                         <h4>📍 Localização</h4>
                                         <p className={styles.addressLine}>
-                                            {restaurant.address.street}<br />
-                                            {restaurant.address.neighborhood} - CEP {restaurant.address.zip}<br />
-                                            {restaurant.address.city} - {restaurant.address.state}
+                                            {safeAddress.street}<br />
+                                            {safeAddress.neighborhood && `${safeAddress.neighborhood} - `}CEP {safeAddress.zip || 'N/A'}<br />
+                                            {safeAddress.city} - {safeAddress.state}
                                         </p>
                                     </div>
                                     <button onClick={() => setIsMapsOpen(true)} className={styles.mapsButton}>
@@ -248,21 +293,21 @@ export default function RestaurantDetailsClient({ restaurant, initialAnalysis, i
 
                                 {/* Score Section */}
                                 <div className={styles.scoreSection}>
-                                    <div className={`${styles.scoreCircle} ${getScoreClass(restaurant.salesPotential)}`}>
+                                    <div className={`${styles.scoreCircle} ${getScoreClass(safeSalesPotential)}`}>
                                         <span className={styles.scoreValue}>
-                                            {restaurant.salesPotential === 'ALTÍSSIMO' ? '🔥' : 
-                                             restaurant.salesPotential === 'ALTO' ? '⚡' :
-                                             restaurant.salesPotential === 'MÉDIO' ? '📊' : '📉'}
+                                            {safeSalesPotential === 'ALTÍSSIMO' ? '🔥' : 
+                                             safeSalesPotential === 'ALTO' ? '⚡' :
+                                             safeSalesPotential === 'MÉDIO' ? '📊' : '📉'}
                                         </span>
                                         <span className={styles.scoreLabel}>Score</span>
                                     </div>
                                     <div className={styles.scoreInfo}>
-                                        <h4>Potencial: {restaurant.salesPotential}</h4>
+                                        <h4>Potencial: {safeSalesPotential}</h4>
                                         <p>
-                                            {restaurant.salesPotential === 'ALTÍSSIMO' && 'Lead prioritário! Alto volume de avaliações e potencial de conversão elevado.'}
-                                            {restaurant.salesPotential === 'ALTO' && 'Ótima oportunidade. Bom volume de entregas e avaliações positivas.'}
-                                            {restaurant.salesPotential === 'MÉDIO' && 'Oportunidade moderada. Pode ser trabalhado com abordagem personalizada.'}
-                                            {restaurant.salesPotential === 'BAIXO' && 'Lead de menor prioridade. Considere para campanhas em massa.'}
+                                            {safeSalesPotential === 'ALTÍSSIMO' && 'Lead prioritário! Alto volume de avaliações e potencial de conversão elevado.'}
+                                            {safeSalesPotential === 'ALTO' && 'Ótima oportunidade. Bom volume de entregas e avaliações positivas.'}
+                                            {safeSalesPotential === 'MÉDIO' && 'Oportunidade moderada. Pode ser trabalhado com abordagem personalizada.'}
+                                            {safeSalesPotential === 'BAIXO' && 'Lead de menor prioridade. Considere para campanhas em massa.'}
                                         </p>
                                     </div>
                                 </div>
@@ -323,10 +368,10 @@ export default function RestaurantDetailsClient({ restaurant, initialAnalysis, i
                                 </div>
                                 
                                 <div className={styles.sellerTags}>
-                                    {restaurant.seller.regions?.includes(restaurant.address.city) && (
+                                    {restaurant.seller.regions?.includes(safeAddress.city) && (
                                         <span className={styles.regionTag}>📍 Área da Cidade</span>
                                     )}
-                                    {restaurant.seller.neighborhoods?.includes(restaurant.address.neighborhood) && (
+                                    {restaurant.seller.neighborhoods?.includes(safeAddress.neighborhood) && (
                                         <span className={styles.regionTag}>🏘️ Área do Bairro</span>
                                     )}
                                 </div>
@@ -360,8 +405,8 @@ export default function RestaurantDetailsClient({ restaurant, initialAnalysis, i
                                 {sellers.map(seller => (
                                     <option key={seller.id} value={seller.id}>
                                         {seller.name}
-                                        {seller.neighborhoods?.includes(restaurant.address.neighborhood) ? ' (Bairro)' : ''}
-                                        {seller.regions?.includes(restaurant.address.city) ? ' (Cidade)' : ''}
+                                        {seller.neighborhoods?.includes(safeAddress.neighborhood) ? ' (Bairro)' : ''}
+                                        {seller.regions?.includes(safeAddress.city) ? ' (Cidade)' : ''}
                                     </option>
                                 ))}
                             </select>
@@ -435,7 +480,7 @@ export default function RestaurantDetailsClient({ restaurant, initialAnalysis, i
             <MapsModal
                 isOpen={isMapsOpen}
                 onClose={() => setIsMapsOpen(false)}
-                query={`${restaurant.name} ${restaurant.address.street} ${restaurant.address.city}`}
+                query={`${restaurant.name} ${safeAddress.street} ${safeAddress.city}`}
                 restaurant={restaurant}
             />
 

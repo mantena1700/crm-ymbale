@@ -126,21 +126,21 @@ export default function QuickViewModal({
                                 <div className={styles.statCard}>
                                     <span className={styles.statIcon}>⭐</span>
                                     <div>
-                                        <strong>{restaurant.rating?.toFixed(1) || 'N/D'}</strong>
+                                        <strong>{(restaurant.rating != null && !isNaN(Number(restaurant.rating))) ? Number(restaurant.rating).toFixed(1) : 'N/D'}</strong>
                                         <span>Avaliação</span>
                                     </div>
                                 </div>
                                 <div className={styles.statCard}>
                                     <span className={styles.statIcon}>💬</span>
                                     <div>
-                                        <strong>{restaurant.commentsCount || restaurant.reviewCount || 0}</strong>
+                                        <strong>{restaurant.commentsCount || (restaurant.reviewCount != null ? Number(restaurant.reviewCount) : 0)}</strong>
                                         <span>Comentários</span>
                                     </div>
                                 </div>
                                 <div className={styles.statCard}>
                                     <span className={styles.statIcon}>📦</span>
                                     <div>
-                                        <strong>{restaurant.projectedDeliveries || 0}</strong>
+                                        <strong>{restaurant.projectedDeliveries != null ? Number(restaurant.projectedDeliveries).toLocaleString('pt-BR') : '0'}</strong>
                                         <span>Entregas/mês</span>
                                     </div>
                                 </div>
@@ -149,8 +149,8 @@ export default function QuickViewModal({
                             <div className={styles.badges}>
                                 <div className={styles.badgeItem}>
                                     <label>Status:</label>
-                                    <span className={`${styles.statusBadge} ${getStatusClass(restaurant.status)}`}>
-                                        {restaurant.status}
+                                    <span className={`${styles.statusBadge} ${getStatusClass(restaurant.status || 'A Analisar')}`}>
+                                        {restaurant.status || 'A Analisar'}
                                     </span>
                                 </div>
                                 <div className={styles.badgeItem}>

@@ -83,14 +83,17 @@ export default function ClientsClientNew({ initialRestaurants, availableZonas = 
 
     // Calculate stats
     const stats = useMemo(() => {
-        const active = restaurants.filter(r => r.status !== 'Descartado');
+        const active = restaurants.filter(r => r && r.status !== 'Descartado');
         return {
             total: active.length,
-            altissimo: active.filter(r => r.salesPotential === 'ALTÍSSIMO').length,
-            alto: active.filter(r => r.salesPotential === 'ALTO').length,
-            medio: active.filter(r => r.salesPotential === 'MÉDIO').length,
+            altissimo: active.filter(r => r?.salesPotential === 'ALTÍSSIMO').length,
+            alto: active.filter(r => r?.salesPotential === 'ALTO').length,
+            medio: active.filter(r => r?.salesPotential === 'MÉDIO').length,
             avgRating: active.length > 0 
-                ? (active.reduce((sum, r) => sum + r.rating, 0) / active.length).toFixed(1)
+                ? (active.reduce((sum, r) => {
+                    const rating = r?.rating != null && !isNaN(Number(r.rating)) ? Number(r.rating) : 0;
+                    return sum + rating;
+                }, 0) / active.length).toFixed(1)
                 : '0'
         };
     }, [restaurants]);
@@ -421,10 +424,10 @@ export default function ClientsClientNew({ initialRestaurants, availableZonas = 
                                     </Badge>
                                 </div>
 
-                                {restaurant.projectedDeliveries && (
+                                {restaurant.projectedDeliveries != null && Number(restaurant.projectedDeliveries) > 0 && (
                                     <div className={styles.cardInfo}>
                                         <span className={styles.infoLabel}>📦</span>
-                                        <span>{restaurant.projectedDeliveries} entregas/dia</span>
+                                        <span>{Number(restaurant.projectedDeliveries).toLocaleString('pt-BR')} entregas/dia</span>
                                     </div>
                                 )}
                             </div>

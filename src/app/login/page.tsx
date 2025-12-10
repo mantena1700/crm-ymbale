@@ -1,8 +1,19 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import styles from './page.module.css';
+
+interface LoginSettings {
+    loginTitle: string | null;
+    loginSubtitle: string | null;
+    loginMessage: string | null;
+    loginShowMessage: boolean;
+    loginBackgroundColor: string | null;
+    loginLogo: string | null;
+    crmName: string;
+    crmLogo: string | null;
+}
 
 export default function LoginPage() {
     const [username, setUsername] = useState('');
@@ -10,7 +21,37 @@ export default function LoginPage() {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
+    const [loginSettings, setLoginSettings] = useState<LoginSettings | null>(null);
     const router = useRouter();
+
+    useEffect(() => {
+        fetch('/api/system-settings')
+            .then(res => res.json())
+            .then(data => {
+                setLoginSettings({
+                    loginTitle: data.loginTitle,
+                    loginSubtitle: data.loginSubtitle,
+                    loginMessage: data.loginMessage,
+                    loginShowMessage: data.loginShowMessage || false,
+                    loginBackgroundColor: data.loginBackgroundColor,
+                    loginLogo: data.loginLogo,
+                    crmName: data.crmName || 'CRM Ymbale',
+                    crmLogo: data.crmLogo,
+                });
+            })
+            .catch(() => {
+                setLoginSettings({
+                    loginTitle: null,
+                    loginSubtitle: null,
+                    loginMessage: null,
+                    loginShowMessage: false,
+                    loginBackgroundColor: null,
+                    loginLogo: null,
+                    crmName: 'CRM Ymbale',
+                    crmLogo: null,
+                });
+            });
+    }, []);
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
@@ -39,8 +80,17 @@ export default function LoginPage() {
         }
     };
 
+    const bgColor = loginSettings?.loginBackgroundColor || undefined;
+    const title = loginSettings?.loginTitle || loginSettings?.crmName || 'CRM Ymbale';
+    const subtitle = loginSettings?.loginSubtitle || 'Sistema de Gestão Comercial';
+    const logoUrl = loginSettings?.loginLogo || loginSettings?.crmLogo;
+    const showMessage = loginSettings?.loginShowMessage && loginSettings?.loginMessage;
+
     return (
-        <div className={styles.container}>
+        <div 
+            className={styles.container}
+            style={bgColor ? { background: bgColor } : undefined}
+        >
             <div className={styles.background}>
                 <div className={styles.shape}></div>
                 <div className={styles.shape}></div>
@@ -49,11 +99,34 @@ export default function LoginPage() {
             <div className={styles.loginCard}>
                 <div className={styles.logoSection}>
                     <div className={styles.logo}>
-                        <span className={styles.logoIcon}>📦</span>
-                        <h1>CRM Ymbale</h1>
+                        {logoUrl ? (
+                            <img 
+                                src={logoUrl} 
+                                alt={title}
+                                style={{ width: '48px', height: '48px', objectFit: 'contain' }}
+                            />
+                        ) : (
+                            <span className={styles.logoIcon}>📦</span>
+                        )}
+                        <h1>{title}</h1>
                     </div>
-                    <p className={styles.subtitle}>Sistema de Gestão Comercial</p>
+                    <p className={styles.subtitle}>{subtitle}</p>
                 </div>
+
+                {showMessage && loginSettings?.loginMessage && (
+                    <div style={{
+                        padding: '12px 16px',
+                        marginBottom: '20px',
+                        background: 'rgba(59, 130, 246, 0.1)',
+                        border: '1px solid rgba(59, 130, 246, 0.2)',
+                        borderRadius: '12px',
+                        color: '#a5b4fc',
+                        fontSize: '0.875rem',
+                        textAlign: 'center'
+                    }}>
+                        {loginSettings.loginMessage}
+                    </div>
+                )}
 
                 <form onSubmit={handleSubmit} className={styles.form}>
                     <h2>Entrar</h2>
@@ -125,11 +198,6 @@ export default function LoginPage() {
                         )}
                     </button>
                 </form>
-
-                <div className={styles.footer}>
-                    <p>Primeiro acesso?</p>
-                    <p className={styles.hint}>Use: <strong>admin</strong> / <strong>admin</strong></p>
-                </div>
             </div>
         </div>
     );

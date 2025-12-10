@@ -65,19 +65,29 @@ export async function getRestaurants(): Promise<Restaurant[]> {
             const zonaId = zonaIdMap.get(r.id) || (r as any).zonaId || undefined;
             const zonaNome = zonaId ? (zonasMap.get(zonaId) || undefined) : undefined;
             
+            // Garantir que address sempre tenha valores padrão
+            const rawAddress = (r.address as any) || {};
+            const safeAddress = {
+                street: rawAddress.street || rawAddress.rua || 'Endereço não informado',
+                neighborhood: rawAddress.neighborhood || rawAddress.bairro || '',
+                city: rawAddress.city || rawAddress.cidade || 'Cidade não informada',
+                state: rawAddress.state || rawAddress.estado || 'Estado não informado',
+                zip: rawAddress.zip || rawAddress.cep || rawAddress.zipCode || '',
+            };
+            
             return {
                 id: r.id,
-                name: r.name,
+                name: r.name || 'Restaurante sem nome',
                 rating: Number(r.rating || 0),
                 reviewCount: r.reviewCount ?? 0,
                 totalComments: r.totalComments ?? 0,
                 projectedDeliveries: r.projectedDeliveries ?? 0,
-                salesPotential: r.salesPotential || 'N/A',
-                address: r.address as any,
+                salesPotential: r.salesPotential || 'MÉDIO',
+                address: safeAddress,
                 lastCollectionDate: r.lastCollectionDate?.toISOString() || '',
                 comments: r.comments.map(c => c.content),
-                status: r.status || undefined,
-                email: (r.address as any)?.email || '',
+                status: r.status || 'A Analisar',
+                email: rawAddress?.email || '',
                 zonaId: zonaId || undefined,
                 zonaNome: zonaNome || undefined,
                 seller: r.seller ? {

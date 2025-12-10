@@ -113,7 +113,7 @@ export default function SellerDetailsClient({ seller }: { seller: Seller }) {
                                 </td>
                                 <td style={{ padding: '1rem' }}>
                                     <div style={{ fontSize: '0.875rem' }}>
-                                        {restaurant.address?.city}
+                                        {restaurant.address?.city || 'Cidade não informada'}
                                         {restaurant.address?.neighborhood && ` - ${restaurant.address.neighborhood}`}
                                     </div>
                                 </td>
@@ -129,7 +129,7 @@ export default function SellerDetailsClient({ seller }: { seller: Seller }) {
                                     </span>
                                 </td>
                                 <td style={{ padding: '1rem' }}>
-                                    <span style={{ fontSize: '0.875rem' }}>{restaurant.status}</span>
+                                    <span style={{ fontSize: '0.875rem' }}>{restaurant.status || 'A Analisar'}</span>
                                 </td>
                                 <td style={{ padding: '1rem', textAlign: 'right' }}>
                                     <Link href={`/restaurant/${restaurant.id}`} style={{ color: '#2563eb', textDecoration: 'none', fontSize: '0.875rem', fontWeight: '500' }}>

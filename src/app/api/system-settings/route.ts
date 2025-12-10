@@ -58,6 +58,12 @@ export async function PUT(request: NextRequest) {
             companyName,
             companyEmail,
             companyPhone,
+            loginTitle,
+            loginSubtitle,
+            loginMessage,
+            loginShowMessage,
+            loginBackgroundColor,
+            loginLogo,
         } = body;
 
         // Atualizar ou criar configurações
@@ -73,6 +79,12 @@ export async function PUT(request: NextRequest) {
                 companyName,
                 companyEmail,
                 companyPhone,
+                loginTitle,
+                loginSubtitle,
+                loginMessage,
+                loginShowMessage,
+                loginBackgroundColor,
+                loginLogo,
                 updatedBy: authResult.user.id,
             },
             create: {
@@ -86,6 +98,12 @@ export async function PUT(request: NextRequest) {
                 companyName,
                 companyEmail,
                 companyPhone,
+                loginTitle,
+                loginSubtitle,
+                loginMessage,
+                loginShowMessage: loginShowMessage || false,
+                loginBackgroundColor,
+                loginLogo,
                 updatedBy: authResult.user.id,
             }
         });

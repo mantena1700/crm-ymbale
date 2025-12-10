@@ -247,11 +247,13 @@ export default function PipelineClient({ initialRestaurants, initialMetrics }: P
                     <div className={styles.cardStats}>
                         <div className={styles.cardStat}>
                             <span className={styles.statIcon}>⭐</span>
-                            <span>{restaurant.rating}</span>
+                            <span>{(restaurant.rating != null && !isNaN(Number(restaurant.rating))) ? Number(restaurant.rating).toFixed(1) : '0.0'}</span>
                         </div>
                         <div className={styles.cardStat}>
                             <span className={styles.statIcon}>📦</span>
-                            <span>{restaurant.projectedDeliveries ? ((restaurant.projectedDeliveries / 1000).toFixed(0) + 'K') : '0'}</span>
+                            <span>{restaurant.projectedDeliveries != null && !isNaN(Number(restaurant.projectedDeliveries)) && Number(restaurant.projectedDeliveries) > 0 
+                                ? ((Number(restaurant.projectedDeliveries) / 1000).toFixed(0) + 'K') 
+                                : '0'}</span>
                         </div>
                         {restaurant.analysis?.score !== undefined && restaurant.analysis.score > 0 && (
                             <div className={styles.cardStat}>
