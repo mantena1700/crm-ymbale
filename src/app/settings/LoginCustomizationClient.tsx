@@ -65,14 +65,14 @@ export default function LoginCustomizationClient() {
             const data = await response.json();
 
             if (response.ok) {
-                setMessage({ type: 'success', text: 'Configurações de login salvas com sucesso!' });
+                setMessage({ type: 'success', text: '✅ Configurações de login salvas com sucesso!' });
                 setSettings(data.settings);
             } else {
-                setMessage({ type: 'error', text: data.error || 'Erro ao salvar configurações' });
+                setMessage({ type: 'error', text: `❌ ${data.error || 'Erro ao salvar configurações'}` });
             }
         } catch (error) {
             console.error('Erro ao salvar:', error);
-            setMessage({ type: 'error', text: 'Erro ao salvar configurações' });
+            setMessage({ type: 'error', text: '❌ Erro ao salvar configurações' });
         } finally {
             setSaving(false);
         }
@@ -92,138 +92,105 @@ export default function LoginCustomizationClient() {
 
     return (
         <div>
-            <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.875rem' }}>
-                Personalize a aparência e mensagens da página de login do sistema.
-            </p>
-
             {message && (
-                <div className={`${styles.message} ${message.type === 'success' ? styles.successMessage : ''}`} style={{
-                    padding: '12px 16px',
-                    borderRadius: '8px',
-                    marginBottom: '1rem',
-                    backgroundColor: message.type === 'success' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                    color: message.type === 'success' ? '#10b981' : '#ef4444',
-                    border: `1px solid ${message.type === 'success' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`
-                }}>
-                    {message.type === 'success' ? '✅' : '❌'} {message.text}
+                <div className={`${styles.message} ${styles[message.type]}`}>
+                    {message.text}
                 </div>
             )}
 
-            <form onSubmit={handleSubmit} style={{ display: 'block' }}>
-                <div className={styles.field}>
-                    <label htmlFor="loginTitle">Título da Página</label>
-                    <input
-                        id="loginTitle"
-                        type="text"
-                        className={styles.input}
-                        value={settings.loginTitle || ''}
-                        onChange={(e) => handleChange('loginTitle', e.target.value)}
-                        placeholder="Ex: Bem-vindo ao CRM"
-                    />
-                </div>
-
-                <div className={styles.field}>
-                    <label htmlFor="loginSubtitle">Subtítulo</label>
-                    <input
-                        id="loginSubtitle"
-                        type="text"
-                        className={styles.input}
-                        value={settings.loginSubtitle || ''}
-                        onChange={(e) => handleChange('loginSubtitle', e.target.value)}
-                        placeholder="Ex: Sistema de Gestão Comercial"
-                    />
-                </div>
-
-                <div className={styles.field}>
-                    <label htmlFor="loginMessage">Mensagem Personalizada</label>
-                    <textarea
-                        id="loginMessage"
-                        className={styles.input}
-                        value={settings.loginMessage || ''}
-                        onChange={(e) => handleChange('loginMessage', e.target.value)}
-                        placeholder="Digite uma mensagem personalizada para exibir na página de login"
-                        rows={4}
-                        style={{ resize: 'vertical', minHeight: '100px' }}
-                    />
-                </div>
-
-                <div className={styles.field}>
-                    <label htmlFor="loginShowMessage" style={{ marginBottom: '0.5rem', display: 'block' }}>Exibir Mensagem</label>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.5rem' }}>
+            <form onSubmit={handleSubmit}>
+                <div className={styles.section}>
+                    <h3>Texto e Mensagens</h3>
+                    
+                    <div className={styles.formGroup}>
+                        <label>Título da Página</label>
                         <input
-                            id="loginShowMessage"
-                            type="checkbox"
-                            checked={settings.loginShowMessage}
-                            onChange={(e) => handleChange('loginShowMessage', e.target.checked)}
-                            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                            type="text"
+                            value={settings.loginTitle || ''}
+                            onChange={(e) => handleChange('loginTitle', e.target.value)}
+                            placeholder="Ex: Bem-vindo ao CRM"
                         />
-                        <label htmlFor="loginShowMessage" style={{ fontSize: '0.875rem', color: 'var(--text-muted)', cursor: 'pointer', margin: 0 }}>
-                            Mostrar mensagem personalizada na página de login
+                        <small>Título principal exibido na página de login</small>
+                    </div>
+
+                    <div className={styles.formGroup}>
+                        <label>Subtítulo</label>
+                        <input
+                            type="text"
+                            value={settings.loginSubtitle || ''}
+                            onChange={(e) => handleChange('loginSubtitle', e.target.value)}
+                            placeholder="Ex: Sistema de Gestão Comercial"
+                        />
+                        <small>Subtítulo exibido abaixo do título</small>
+                    </div>
+
+                    <div className={styles.formGroup}>
+                        <label>Mensagem Personalizada</label>
+                        <textarea
+                            value={settings.loginMessage || ''}
+                            onChange={(e) => handleChange('loginMessage', e.target.value)}
+                            placeholder="Digite uma mensagem personalizada para exibir na página de login"
+                            rows={4}
+                            style={{ resize: 'vertical', minHeight: '100px' }}
+                        />
+                        <small>Mensagem opcional para exibir na página de login</small>
+                    </div>
+
+                    <div className={styles.formGroup}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
+                            <input
+                                type="checkbox"
+                                checked={settings.loginShowMessage}
+                                onChange={(e) => handleChange('loginShowMessage', e.target.checked)}
+                                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                            />
+                            <span>Exibir mensagem personalizada na página de login</span>
                         </label>
                     </div>
                 </div>
 
-                <div className={styles.field}>
-                    <label htmlFor="loginBackgroundColor">Cor de Fundo</label>
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flex: 1 }}>
-                        <input
-                            id="loginBackgroundColor"
-                            type="color"
-                            value={settings.loginBackgroundColor || '#0f0c29'}
-                            onChange={(e) => handleChange('loginBackgroundColor', e.target.value)}
-                            style={{ width: '60px', height: '40px', borderRadius: '8px', border: '1px solid var(--ds-border)', cursor: 'pointer' }}
-                        />
+                <div className={styles.section}>
+                    <h3>Aparência</h3>
+                    
+                    <div className={styles.formGroup}>
+                        <label>Cor de Fundo</label>
+                        <div className={styles.colorInput}>
+                            <input
+                                type="color"
+                                value={settings.loginBackgroundColor || '#0f0c29'}
+                                onChange={(e) => handleChange('loginBackgroundColor', e.target.value)}
+                            />
+                            <input
+                                type="text"
+                                value={settings.loginBackgroundColor || ''}
+                                onChange={(e) => handleChange('loginBackgroundColor', e.target.value)}
+                                placeholder="#0f0c29"
+                            />
+                        </div>
+                        <small>Cor de fundo da página de login</small>
+                    </div>
+
+                    <div className={styles.formGroup}>
+                        <label>URL do Logo</label>
                         <input
                             type="text"
-                            className={styles.input}
-                            value={settings.loginBackgroundColor || ''}
-                            onChange={(e) => handleChange('loginBackgroundColor', e.target.value)}
-                            placeholder="#0f0c29"
-                            style={{ flex: 1 }}
+                            value={settings.loginLogo || ''}
+                            onChange={(e) => handleChange('loginLogo', e.target.value)}
+                            placeholder="https://exemplo.com/logo.png ou /logo.png"
                         />
+                        <small>URL completa ou caminho relativo para a imagem do logo</small>
                     </div>
                 </div>
 
-                <div className={styles.field}>
-                    <label htmlFor="loginLogo">URL do Logo</label>
-                    <input
-                        id="loginLogo"
-                        type="text"
-                        className={styles.input}
-                        value={settings.loginLogo || ''}
-                        onChange={(e) => handleChange('loginLogo', e.target.value)}
-                        placeholder="https://exemplo.com/logo.png ou /logo.png"
-                    />
-                    <p className={styles.helpText}>
-                        URL completa ou caminho relativo para a imagem do logo
-                    </p>
-                </div>
-
                 <div className={styles.actions}>
-                    <button
+                    <button 
                         type="submit"
                         disabled={saving}
-                        style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '8px',
-                            padding: '10px 16px',
-                            borderRadius: '8px',
-                            fontSize: '0.875rem',
-                            fontWeight: 500,
-                            border: 'none',
-                            cursor: saving ? 'not-allowed' : 'pointer',
-                            transition: 'all 0.15s ease',
-                            whiteSpace: 'nowrap',
-                            background: 'var(--primary)',
-                            color: 'white',
-                            opacity: saving ? 0.5 : 1
-                        }}
+                        className={`${styles.button} ${styles.primary}`}
                     >
                         {saving ? '⏳ Salvando...' : '💾 Salvar Configurações'}
                     </button>
-                    <button
+                    <button 
                         type="button"
                         onClick={() => {
                             setSettings({
@@ -236,23 +203,7 @@ export default function LoginCustomizationClient() {
                             });
                         }}
                         disabled={saving}
-                        style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '8px',
-                            padding: '10px 16px',
-                            borderRadius: '8px',
-                            fontSize: '0.875rem',
-                            fontWeight: 500,
-                            border: '1px solid var(--border)',
-                            cursor: saving ? 'not-allowed' : 'pointer',
-                            transition: 'all 0.15s ease',
-                            whiteSpace: 'nowrap',
-                            background: 'var(--secondary)',
-                            color: 'var(--foreground)',
-                            opacity: saving ? 0.5 : 1
-                        }}
+                        className={`${styles.button} ${styles.secondary}`}
                     >
                         🔄 Restaurar Padrão
                     </button>
@@ -261,4 +212,3 @@ export default function LoginCustomizationClient() {
         </div>
     );
 }
-

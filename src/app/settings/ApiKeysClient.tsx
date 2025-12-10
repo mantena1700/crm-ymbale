@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { getApiKeysConfig, saveApiKey, removeApiKey } from './api-keys-actions';
-import styles from './page.module.css';
+import styles from './Settings.module.css';
 
 interface ApiKeyConfig {
     openaiApiKey: string;
@@ -31,6 +31,7 @@ export default function ApiKeysClient() {
             setConfig(data);
         } catch (error) {
             console.error('Erro ao carregar config:', error);
+            setMessage({ type: 'error', text: 'Erro ao carregar configurações de API' });
         } finally {
             setLoading(false);
         }
@@ -38,7 +39,7 @@ export default function ApiKeysClient() {
 
     const handleSaveKey = async (keyType: 'openai' | 'googleMaps' | 'googleAi') => {
         if (!newKeyValue.trim()) {
-            setMessage({ type: 'error', text: 'Digite uma chave válida' });
+            setMessage({ type: 'error', text: '❌ Digite uma chave válida' });
             return;
         }
         setSaving(keyType);
@@ -46,15 +47,15 @@ export default function ApiKeysClient() {
         try {
             const result = await saveApiKey(keyType, newKeyValue.trim());
             if (result.success) {
-                setMessage({ type: 'success', text: result.message });
+                setMessage({ type: 'success', text: `✅ ${result.message}` });
                 setEditingKey(null);
                 setNewKeyValue('');
                 await loadConfig();
             } else {
-                setMessage({ type: 'error', text: result.message });
+                setMessage({ type: 'error', text: `❌ ${result.message}` });
             }
         } catch (error) {
-            setMessage({ type: 'error', text: 'Erro ao salvar chave' });
+            setMessage({ type: 'error', text: '❌ Erro ao salvar chave' });
         } finally {
             setSaving(null);
         }
@@ -63,20 +64,29 @@ export default function ApiKeysClient() {
     const handleRemoveKey = async (keyType: 'openai' | 'googleMaps' | 'googleAi') => {
         if (!confirm('Tem certeza que deseja remover esta chave?')) return;
         setSaving(keyType);
+        setMessage(null);
         try {
             const result = await removeApiKey(keyType);
             if (result.success) {
-                setMessage({ type: 'success', text: result.message });
+                setMessage({ type: 'success', text: `✅ ${result.message}` });
                 await loadConfig();
+            } else {
+                setMessage({ type: 'error', text: `❌ ${result.message}` });
             }
         } catch (error) {
-            setMessage({ type: 'error', text: 'Erro ao remover chave' });
+            setMessage({ type: 'error', text: '❌ Erro ao remover chave' });
         } finally {
             setSaving(null);
         }
     };
 
-    if (loading) return <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>Carregando...</div>;
+    if (loading) {
+        return (
+            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                Carregando...
+            </div>
+        );
+    }
 
     const renderKeyCard = (
         keyType: 'openai' | 'googleMaps' | 'googleAi',
@@ -87,13 +97,28 @@ export default function ApiKeysClient() {
         maskedKey: string,
         placeholder: string
     ) => (
-        <div className={styles.field} style={{ marginBottom: '1.5rem', padding: '1rem', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                <div>
-                    <label style={{ fontWeight: 600 }}>{icon} {title}</label>
-                    <p style={{ fontSize: '0.85rem', opacity: 0.7, margin: '0.25rem 0 0 0' }}>{description}</p>
+        <div className={styles.formGroup} style={{ 
+            padding: '1rem', 
+            background: 'var(--card-bg)', 
+            borderRadius: '8px',
+            border: '1px solid var(--card-border)',
+            marginBottom: '1rem'
+        }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+                <div style={{ flex: 1 }}>
+                    <label style={{ fontWeight: 600, fontSize: '0.875rem', display: 'block', marginBottom: '0.25rem' }}>
+                        {icon} {title}
+                    </label>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>
+                        {description}
+                    </p>
                 </div>
-                <span className={`${styles.badge} ${hasKey ? styles.connected : styles.disconnected}`}>
+                <span className={`${styles.badge} ${hasKey ? styles.connected : styles.disconnected}`} style={{ 
+                    fontSize: '0.75rem',
+                    padding: '0.25rem 0.75rem',
+                    borderRadius: '0.375rem',
+                    fontWeight: 600
+                }}>
                     {hasKey ? '✅ Configurada' : '⚠️ Não configurada'}
                 </span>
             </div>
@@ -108,19 +133,47 @@ export default function ApiKeysClient() {
                         style={{ flex: 1 }}
                         autoFocus
                     />
-                    <button onClick={() => handleSaveKey(keyType)} disabled={saving === keyType} className={styles.btnPrimary}>
-                        {saving === keyType ? '...' : '💾'}
+                    <button 
+                        onClick={() => handleSaveKey(keyType)} 
+                        disabled={saving === keyType} 
+                        className={`${styles.button} ${styles.primary}`}
+                        style={{ padding: '0.625rem 1rem', minWidth: 'auto' }}
+                    >
+                        {saving === keyType ? '⏳' : '💾'}
                     </button>
-                    <button onClick={() => { setEditingKey(null); setNewKeyValue(''); }} className={styles.btnSecondary}>✕</button>
+                    <button 
+                        onClick={() => { setEditingKey(null); setNewKeyValue(''); }} 
+                        className={`${styles.button} ${styles.secondary}`}
+                        style={{ padding: '0.625rem 1rem', minWidth: 'auto' }}
+                    >
+                        ✕
+                    </button>
                 </div>
             ) : (
                 <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
-                    <input type="text" value={maskedKey || 'Não configurada'} disabled className={styles.input} style={{ flex: 1 }} />
-                    <button onClick={() => setEditingKey(keyType)} className={styles.btnPrimary}>
+                    <input 
+                        type="text" 
+                        value={maskedKey || 'Não configurada'} 
+                        disabled 
+                        className={styles.input} 
+                        style={{ flex: 1, opacity: hasKey ? 1 : 0.6 }} 
+                    />
+                    <button 
+                        onClick={() => setEditingKey(keyType)} 
+                        className={`${styles.button} ${styles.primary}`}
+                        style={{ padding: '0.625rem 1rem', minWidth: 'auto' }}
+                    >
                         {hasKey ? '✏️' : '➕'}
                     </button>
                     {hasKey && (
-                        <button onClick={() => handleRemoveKey(keyType)} disabled={saving === keyType} className={styles.btnDanger}>🗑️</button>
+                        <button 
+                            onClick={() => handleRemoveKey(keyType)} 
+                            disabled={saving === keyType} 
+                            className={`${styles.button} ${styles.danger}`}
+                            style={{ padding: '0.625rem 1rem', minWidth: 'auto' }}
+                        >
+                            🗑️
+                        </button>
                     )}
                 </div>
             )}
@@ -129,13 +182,9 @@ export default function ApiKeysClient() {
 
     return (
         <div>
-            <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.875rem' }}>
-                Configure suas chaves para ativar funcionalidades de IA e mapas.
-            </p>
-            
             {message && (
-                <div style={{ padding: '0.75rem', borderRadius: '6px', marginBottom: '1rem', background: message.type === 'success' ? '#10b98120' : '#ef444420', color: message.type === 'success' ? '#10b981' : '#ef4444' }}>
-                    {message.type === 'success' ? '✅' : '❌'} {message.text}
+                <div className={`${styles.message} ${styles[message.type]}`}>
+                    {message.text}
                 </div>
             )}
 

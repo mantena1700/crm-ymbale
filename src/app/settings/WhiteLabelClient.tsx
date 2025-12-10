@@ -66,14 +66,14 @@ export default function WhiteLabelClient() {
             const data = await response.json();
 
             if (response.ok) {
-                setMessage({ type: 'success', text: 'Configurações salvas com sucesso! Recarregue a página para ver as alterações.' });
+                setMessage({ type: 'success', text: '✅ Configurações salvas com sucesso! Recarregue a página para ver as alterações.' });
                 setSettings(data.settings);
             } else {
-                setMessage({ type: 'error', text: data.error || 'Erro ao salvar configurações' });
+                setMessage({ type: 'error', text: `❌ ${data.error || 'Erro ao salvar configurações'}` });
             }
         } catch (error) {
             console.error('Erro ao salvar:', error);
-            setMessage({ type: 'error', text: 'Erro ao salvar configurações' });
+            setMessage({ type: 'error', text: '❌ Erro ao salvar configurações' });
         } finally {
             setSaving(false);
         }
@@ -93,17 +93,13 @@ export default function WhiteLabelClient() {
 
     return (
         <div>
-            <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.875rem' }}>
-                Personalize a identidade visual do seu CRM
-            </p>
-            
-            <form onSubmit={handleSubmit}>
-                {message && (
-                    <div className={`${styles.message} ${styles[message.type]}`}>
-                        {message.text}
-                    </div>
-                )}
+            {message && (
+                <div className={`${styles.message} ${styles[message.type]}`}>
+                    {message.text}
+                </div>
+            )}
 
+            <form onSubmit={handleSubmit}>
                 <div className={styles.section}>
                     <h3>Identidade da Marca</h3>
                     
@@ -245,50 +241,16 @@ export default function WhiteLabelClient() {
                 <div className={styles.actions}>
                     <button 
                         type="submit"
-                        className="button primary"
                         disabled={saving}
-                        style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '8px',
-                            padding: '10px 16px',
-                            borderRadius: '8px',
-                            fontSize: '0.875rem',
-                            fontWeight: 500,
-                            border: 'none',
-                            cursor: saving ? 'not-allowed' : 'pointer',
-                            transition: 'all 0.15s ease',
-                            whiteSpace: 'nowrap',
-                            background: 'var(--primary)',
-                            color: 'white',
-                            opacity: saving ? 0.5 : 1
-                        }}
+                        className={`${styles.button} ${styles.primary}`}
                     >
                         {saving ? '⏳ Salvando...' : '💾 Salvar Configurações'}
                     </button>
                     <button 
                         type="button"
-                        className="button secondary"
                         onClick={fetchSettings}
                         disabled={saving}
-                        style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '8px',
-                            padding: '10px 16px',
-                            borderRadius: '8px',
-                            fontSize: '0.875rem',
-                            fontWeight: 500,
-                            border: '1px solid var(--border)',
-                            cursor: saving ? 'not-allowed' : 'pointer',
-                            transition: 'all 0.15s ease',
-                            whiteSpace: 'nowrap',
-                            background: 'var(--secondary)',
-                            color: 'var(--foreground)',
-                            opacity: saving ? 0.5 : 1
-                        }}
+                        className={`${styles.button} ${styles.secondary}`}
                     >
                         🔄 Restaurar
                     </button>
@@ -297,5 +259,3 @@ export default function WhiteLabelClient() {
         </div>
     );
 }
-
-
