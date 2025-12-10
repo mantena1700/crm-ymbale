@@ -382,7 +382,7 @@ model Campaign {
   id                String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   name              String    @db.VarChar(255)
   description       String?   @db.Text
-  type              String    @default("email") @db.VarChar(50) // 'email', 'whatsapp', 'sms', 'linkedin'
+  type              String    @default("email") @db.VarChar(50) // 'email', 'sms', 'linkedin'
   status            String    @default("draft") @db.VarChar(20) // 'draft', 'scheduled', 'active', 'paused', 'completed', 'cancelled'
   
   // Segmentação

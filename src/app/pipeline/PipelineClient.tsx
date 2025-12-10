@@ -664,7 +664,6 @@ export default function PipelineClient({ initialRestaurants, initialMetrics }: P
                                 {[
                                     { type: 'call', icon: '📞', label: 'Ligação' },
                                     { type: 'email', icon: '📧', label: 'Email' },
-                                    { type: 'whatsapp', icon: '💬', label: 'WhatsApp' },
                                     { type: 'meeting', icon: '🤝', label: 'Reunião' },
                                 ].map(t => (
                                     <button

@@ -76,7 +76,7 @@ export default function CampaignsClient({
     const [campaignForm, setCampaignForm] = useState({
         name: '',
         description: '',
-        type: 'email' as 'email' | 'whatsapp' | 'sms' | 'linkedin',
+        type: 'email' as 'email' | 'sms' | 'linkedin',
         subject: '',
         content: '',
         scheduledAt: '',
@@ -591,8 +591,7 @@ export default function CampaignsClient({
                                         <div className={styles.campaignFooter}>
                                             <span className={styles.campaignType}>
                                                 {campaign.type === 'email' ? '📧' :
-                                                    campaign.type === 'whatsapp' ? '💬' :
-                                                        campaign.type === 'sms' ? '📱' : '💼'} {campaign.type}
+                                                    campaign.type === 'sms' ? '📱' : '💼'} {campaign.type}
                                             </span>
                                             <span className={styles.campaignDate}>
                                                 {new Date(campaign.createdAt).toLocaleDateString('pt-BR')}
@@ -786,7 +785,6 @@ export default function CampaignsClient({
                                         onChange={e => setCampaignForm(prev => ({ ...prev, type: e.target.value as any }))}
                                     >
                                         <option value="email">📧 Email</option>
-                                        <option value="whatsapp">💬 WhatsApp</option>
                                         <option value="sms">📱 SMS</option>
                                         <option value="linkedin">💼 LinkedIn</option>
                                     </select>

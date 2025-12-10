@@ -13,7 +13,7 @@ interface Lead {
 interface Campaign {
     id: string;
     name: string;
-    type: 'email' | 'whatsapp' | 'ligacao';
+    type: 'email' | 'ligacao';
     message: string;
     status: 'rascunho' | 'enviada';
     leadsCount: number;
@@ -72,7 +72,7 @@ export default function CampaignsClientSimple({ initialCampaigns = [], available
                     {campaigns.map(c => (
                         <div key={c.id} className={styles.card}>
                             <div className={styles.cardTop}>
-                                <h3>{c.type === 'email' ? '📧' : c.type === 'whatsapp' ? '💬' : '📞'} {c.name}</h3>
+                                <h3>{c.type === 'email' ? '📧' : '📞'} {c.name}</h3>
                                 <span className={c.status === 'enviada' ? styles.sent : styles.draft}>
                                     {c.status === 'enviada' ? '✅ Enviada' : '📝 Rascunho'}
                                 </span>
@@ -98,7 +98,6 @@ export default function CampaignsClientSimple({ initialCampaigns = [], available
                                 <input placeholder="Nome da campanha" value={form.name} onChange={e => setForm(p => ({...p, name: e.target.value}))} />
                                 <select value={form.type} onChange={e => setForm(p => ({...p, type: e.target.value}))}>
                                     <option value="email">📧 Email</option>
-                                    <option value="whatsapp">💬 WhatsApp</option>
                                     <option value="ligacao">📞 Ligação</option>
                                 </select>
                                 <button disabled={!form.name} onClick={() => setStep(2)}>Próximo →</button>

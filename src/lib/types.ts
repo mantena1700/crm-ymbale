@@ -52,7 +52,7 @@ export interface Note {
 export interface FollowUp {
     id: string;
     restaurantId: string;
-    type: 'email' | 'call' | 'meeting' | 'whatsapp';
+    type: 'email' | 'call' | 'meeting';
     scheduledDate: string;
     completed: boolean;
     completedDate?: string;

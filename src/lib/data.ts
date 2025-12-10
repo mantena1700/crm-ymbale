@@ -406,8 +406,7 @@ export async function getRecentActivities(limit: number = 10): Promise<Activity[
             const typeLabels: Record<string, string> = {
                 call: 'Ligação',
                 email: 'Email',
-                meeting: 'Reunião',
-                whatsapp: 'WhatsApp'
+                meeting: 'Reunião'
             };
             
             activities.push({

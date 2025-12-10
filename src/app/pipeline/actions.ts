@@ -113,7 +113,7 @@ export async function getUpcomingFollowUps() {
 
 export async function createFollowUp(
     restaurantId: string,
-    type: 'call' | 'email' | 'meeting' | 'whatsapp',
+    type: 'call' | 'email' | 'meeting',
     scheduledDate: string,
     notes?: string
 ) {

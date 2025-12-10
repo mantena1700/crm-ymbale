@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS campaigns (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(255) NOT NULL,
     description TEXT,
-    type VARCHAR(50) NOT NULL DEFAULT 'email', -- 'email', 'whatsapp', 'sms', 'linkedin'
+    type VARCHAR(50) NOT NULL DEFAULT 'email', -- 'email', 'sms', 'linkedin'
     status VARCHAR(20) NOT NULL DEFAULT 'draft', -- 'draft', 'scheduled', 'active', 'paused', 'completed', 'cancelled'
     
     -- Segmentação

@@ -113,7 +113,7 @@ export async function analyzeBatch(restaurants: Restaurant[]) {
     return { success: true };
 }
 
-export async function createFollowUp(restaurantId: string, type: 'email' | 'call' | 'meeting' | 'whatsapp', scheduledDate: string, emailSubject?: string, emailBody?: string) {
+export async function createFollowUp(restaurantId: string, type: 'email' | 'call' | 'meeting', scheduledDate: string, emailSubject?: string, emailBody?: string) {
     const followUp: FollowUp = {
         id: Date.now().toString(),
         restaurantId,
@@ -984,7 +984,7 @@ export async function createVisit(data: {
 
         // Criar follow-up se solicitado
         if (data.createFollowUp) {
-            let followUpType: 'email' | 'call' | 'meeting' | 'whatsapp' = 'call';
+            let followUpType: 'email' | 'call' | 'meeting' = 'call';
             let scheduledDate = new Date();
 
             if (data.nextVisitDate) {

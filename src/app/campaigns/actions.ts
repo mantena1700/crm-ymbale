@@ -7,7 +7,7 @@ import { generateEmailWithAI } from '@/lib/openai-service';
 export interface CampaignData {
     name: string;
     description?: string;
-    type: 'email' | 'whatsapp' | 'sms' | 'linkedin';
+    type: 'email' | 'sms' | 'linkedin';
     status: 'draft' | 'scheduled' | 'active' | 'paused' | 'completed' | 'cancelled';
     subject?: string;
     content?: string;

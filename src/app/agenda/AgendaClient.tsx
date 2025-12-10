@@ -8,7 +8,7 @@ import styles from './page.module.css';
 interface FollowUp {
     id: string;
     restaurantId: string;
-    type: 'call' | 'email' | 'meeting' | 'whatsapp';
+    type: 'call' | 'email' | 'meeting';
     scheduledDate: string;
     notes?: string;
     completed: boolean;
@@ -24,13 +24,13 @@ export default function AgendaClient({ initialFollowUps, restaurants }: AgendaCl
     const [followUps, setFollowUps] = useState(initialFollowUps);
     const [view, setView] = useState<'calendar' | 'list' | 'kanban'>('list');
     const [filter, setFilter] = useState<'all' | 'today' | 'week' | 'overdue'>('all');
-    const [typeFilter, setTypeFilter] = useState<'all' | 'call' | 'email' | 'meeting' | 'whatsapp'>('all');
+    const [typeFilter, setTypeFilter] = useState<'all' | 'call' | 'email' | 'meeting'>('all');
     const [showCompleted, setShowCompleted] = useState(false);
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [showNewModal, setShowNewModal] = useState(false);
     const [newFollowUp, setNewFollowUp] = useState<{
         restaurantId: string;
-        type: 'call' | 'email' | 'meeting' | 'whatsapp';
+        type: 'call' | 'email' | 'meeting';
         scheduledDate: string;
         notes: string;
     }>({
@@ -161,7 +161,6 @@ export default function AgendaClient({ initialFollowUps, restaurants }: AgendaCl
             case 'call': return '📞';
             case 'email': return '📧';
             case 'meeting': return '🤝';
-            case 'whatsapp': return '💬';
             default: return '📅';
         }
     };
@@ -171,7 +170,6 @@ export default function AgendaClient({ initialFollowUps, restaurants }: AgendaCl
             case 'call': return 'Ligação';
             case 'email': return 'Email';
             case 'meeting': return 'Reunião';
-            case 'whatsapp': return 'WhatsApp';
             default: return 'Outro';
         }
     };
@@ -282,7 +280,6 @@ export default function AgendaClient({ initialFollowUps, restaurants }: AgendaCl
                         <option value="call">📞 Ligações</option>
                         <option value="email">📧 Emails</option>
                         <option value="meeting">🤝 Reuniões</option>
-                        <option value="whatsapp">💬 WhatsApp</option>
                     </select>
 
                     <label className={styles.checkboxLabel}>
@@ -477,7 +474,7 @@ export default function AgendaClient({ initialFollowUps, restaurants }: AgendaCl
                         <div className={styles.formGroup}>
                             <label>Tipo</label>
                             <div className={styles.typeButtons}>
-                                {(['call', 'email', 'meeting', 'whatsapp'] as const).map(type => (
+                                {(['call', 'email', 'meeting'] as const).map(type => (
                                     <button
                                         key={type}
                                         className={`${styles.typeButton} ${newFollowUp.type === type ? styles.active : ''}`}
