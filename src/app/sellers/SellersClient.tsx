@@ -332,10 +332,10 @@ export default function SellersClient({ initialSellers, availableZonas }: Seller
                                 <div className={styles.regions}>
                                     <div className={styles.regionsLabel}>Zonas de Atendimento:</div>
                                     <div className={styles.regionTags}>
-                                        {sellerZonas.slice(0, 3).map((zona, i) => {
+                                        {sellerZonas.slice(0, 3).map((zona) => {
                                             const zonaId = getZonaNumericId(zona.id);
                                             return (
-                                                <span key={i} className={styles.regionTag}>
+                                                <span key={zona.id} className={styles.regionTag}>
                                                     <strong style={{ color: 'var(--primary)', marginRight: '4px' }}>#{zonaId}</strong>
                                                     {zona.zonaNome}
                                                 </span>
