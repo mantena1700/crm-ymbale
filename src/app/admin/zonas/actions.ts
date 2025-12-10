@@ -193,26 +193,74 @@ export async function createZona(data: Omit<ZonaCepData, 'id'>) {
             }
         } catch (modelError: any) {
             // Se o modelo não funcionar, usar SQL direto
-            const result = await prisma.$queryRaw<Array<{
-                id: string;
-                zona_nome: string;
-                cep_inicial: string;
-                cep_final: string;
-                regiao?: string;
-                ativo: boolean;
-            }>>`
-                INSERT INTO zonas_cep (id, zona_nome, cep_inicial, cep_final, regiao, ativo, created_at, updated_at)
-                VALUES (gen_random_uuid(), ${data.zonaNome}, ${cleanCep(data.cepInicial)}, ${cleanCep(data.cepFinal)}, ${data.regiao || null}, ${data.ativo}, NOW(), NOW())
-                RETURNING *
-            `;
+            // Garantir que a tabela e coluna regiao existem
+            await ensureTableExists();
+            
+            let result: any;
+            try {
+                // Tentar inserir com regiao
+                result = await prisma.$queryRaw<Array<{
+                    id: string;
+                    zona_nome: string;
+                    cep_inicial: string;
+                    cep_final: string;
+                    ativo: boolean;
+                }>>`
+                    INSERT INTO zonas_cep (id, zona_nome, cep_inicial, cep_final, regiao, ativo, created_at, updated_at)
+                    VALUES (gen_random_uuid(), ${data.zonaNome}, ${cleanCep(data.cepInicial)}, ${cleanCep(data.cepFinal)}, ${data.regiao || null}, ${data.ativo}, NOW(), NOW())
+                    RETURNING id, zona_nome, cep_inicial, cep_final, ativo, created_at, updated_at
+                `;
+            } catch (insertError: any) {
+                // Se a coluna regiao não existir, inserir sem ela
+                if (insertError.code === '42703' || (insertError.message?.includes('column') && insertError.message?.includes('regiao'))) {
+                    result = await prisma.$queryRaw<Array<{
+                        id: string;
+                        zona_nome: string;
+                        cep_inicial: string;
+                        cep_final: string;
+                        ativo: boolean;
+                    }>>`
+                        INSERT INTO zonas_cep (id, zona_nome, cep_inicial, cep_final, ativo, created_at, updated_at)
+                        VALUES (gen_random_uuid(), ${data.zonaNome}, ${cleanCep(data.cepInicial)}, ${cleanCep(data.cepFinal)}, ${data.ativo}, NOW(), NOW())
+                        RETURNING id, zona_nome, cep_inicial, cep_final, ativo, created_at, updated_at
+                    `;
+                    // Tentar adicionar regiao depois
+                    if (result && result.length > 0 && data.regiao) {
+                        try {
+                            await prisma.$executeRaw`
+                                UPDATE zonas_cep SET regiao = ${data.regiao} WHERE id = ${result[0].id}::uuid
+                            `;
+                        } catch (e: any) {
+                            // Ignorar se não conseguir
+                        }
+                    }
+                } else {
+                    throw insertError;
+                }
+            }
+            
             const rawZona = Array.isArray(result) ? result[0] : result;
+            
+            // Buscar regiao separadamente
+            let regiao: string | null = null;
+            try {
+                const regiaoResult = await prisma.$queryRaw<Array<{ regiao: string | null }>>`
+                    SELECT regiao FROM zonas_cep WHERE id = ${rawZona.id}::uuid LIMIT 1
+                `;
+                if (regiaoResult && regiaoResult.length > 0) {
+                    regiao = regiaoResult[0].regiao;
+                }
+            } catch (e: any) {
+                // Se a coluna não existir, regiao será null
+            }
+            
             // Converter snake_case para camelCase
             zona = {
                 id: rawZona.id,
                 zonaNome: rawZona.zona_nome,
                 cepInicial: rawZona.cep_inicial,
                 cepFinal: rawZona.cep_final,
-                regiao: (rawZona as any).regiao,
+                regiao: regiao,
                 ativo: rawZona.ativo
             };
         }
