@@ -16,31 +16,44 @@ export default function SettingsClient() {
             subtitle="Gerencie integrações, importação de dados e configurações do sistema"
             icon="⚙️"
         >
-            <Grid cols={1}>
-                <Card title="🎨 White Label">
-                    <WhiteLabelClient />
-                </Card>
+            {/* Seção de Identidade e Personalização */}
+            <div className={styles.sectionGroup}>
+                <h2 className={styles.sectionTitle}>🎨 Identidade e Personalização</h2>
+                <Grid cols={2}>
+                    <Card title="White Label">
+                        <WhiteLabelClient />
+                    </Card>
+                    <Card title="Página de Login">
+                        <LoginCustomizationClient />
+                    </Card>
+                </Grid>
+            </div>
 
-                <Card title="🔐 Personalização da Página de Login">
-                    <LoginCustomizationClient />
-                </Card>
+            {/* Seção de Integrações */}
+            <div className={styles.sectionGroup}>
+                <h2 className={styles.sectionTitle}>🔌 Integrações e API</h2>
+                <Grid cols={2}>
+                    <Card title="Chaves de API">
+                        <ApiKeysClient />
+                    </Card>
+                    <Card title="Agentes de IA">
+                        <AIAgentsClient />
+                    </Card>
+                </Grid>
+            </div>
 
-                <Card title="🔑 Chaves de API">
-                    <ApiKeysClient />
-                </Card>
-
-                <Card title="🤖 Agentes de IA">
-                    <AIAgentsClient />
-                </Card>
-
-                <Card title="🗑️ Limpeza de Dados">
-                    <ClearDataClient />
-                </Card>
-
-                <Card title="📊 Importação de Dados">
-                    <ImportExcelClient />
-                </Card>
-            </Grid>
+            {/* Seção de Dados */}
+            <div className={styles.sectionGroup}>
+                <h2 className={styles.sectionTitle}>📊 Gerenciamento de Dados</h2>
+                <Grid cols={2}>
+                    <Card title="Importação de Dados">
+                        <ImportExcelClient />
+                    </Card>
+                    <Card title="Limpeza de Dados">
+                        <ClearDataClient />
+                    </Card>
+                </Grid>
+            </div>
         </PageLayout>
     );
 }

@@ -5,9 +5,7 @@ import 'server-only';
 /**
  * Analyze restaurant using OpenAI GPT - REAL analysis based on actual comments
  */
-export async function analyzeRestaurantWithOpenAI(restaurant: Restaurant): Promise<AnalysisResult> {
-    const apiKey = process.env.OPENAI_API_KEY;
-    
+export async function analyzeRestaurantWithOpenAI(restaurant: Restaurant, apiKey: string): Promise<AnalysisResult> {
     console.log('========================================');
     console.log('🔍 STARTING REAL AI ANALYSIS');
     console.log('Restaurant:', restaurant.name);
@@ -142,9 +140,14 @@ Baseado EXCLUSIVAMENTE nos comentários acima, retorne JSON:
 export async function generateEmailWithAI(
     restaurant: Restaurant,
     analysis: AnalysisResult | null,
-    customInstructions?: string
+    customInstructions?: string,
+    apiKey?: string
 ): Promise<{ subject: string; body: string }> {
-    const apiKey = process.env.OPENAI_API_KEY;
+    // Se não recebeu apiKey, buscar do banco
+    if (!apiKey) {
+        const { getOpenAiApiKey } = await import('@/app/settings/api-keys-actions');
+        apiKey = await getOpenAiApiKey() || undefined;
+    }
     
     if (!apiKey || apiKey.length < 50) {
         return {
@@ -215,9 +218,14 @@ Responda JSON: {"subject": "...", "body": "..."}`
  */
 export async function generateStrategyWithAI(
     restaurant: Restaurant,
-    analysis: AnalysisResult | null
+    analysis: AnalysisResult | null,
+    apiKey?: string
 ): Promise<string> {
-    const apiKey = process.env.OPENAI_API_KEY;
+    // Se não recebeu apiKey, buscar do banco
+    if (!apiKey) {
+        const { getOpenAiApiKey } = await import('@/app/settings/api-keys-actions');
+        apiKey = await getOpenAiApiKey() || undefined;
+    }
     
     if (!apiKey || apiKey.length < 50) {
         return 'Estratégia padrão: Contato inicial por email, seguido de ligação.';
@@ -270,9 +278,14 @@ Mencione ações concretas baseadas nos problemas deste restaurante específico.
  */
 export async function generateFollowUpMessageWithAI(
     restaurant: Restaurant,
-    previousContact?: string
+    previousContact?: string,
+    apiKey?: string
 ): Promise<string> {
-    const apiKey = process.env.OPENAI_API_KEY;
+    // Se não recebeu apiKey, buscar do banco
+    if (!apiKey) {
+        const { getOpenAiApiKey } = await import('@/app/settings/api-keys-actions');
+        apiKey = await getOpenAiApiKey() || undefined;
+    }
     
     if (!apiKey || apiKey.length < 50) {
         return `Olá, gostaria de dar seguimento à nossa conversa sobre embalagens para ${restaurant.name}.`;
