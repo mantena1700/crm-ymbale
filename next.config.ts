@@ -25,6 +25,21 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+
+  // Configuração webpack para módulos server-only
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      // Permitir módulos Node.js no servidor
+      config.externals = config.externals || [];
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+      };
+    }
+    return config;
+  },
 };
 
 export default nextConfig;
