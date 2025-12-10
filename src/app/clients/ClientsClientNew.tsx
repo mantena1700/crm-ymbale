@@ -7,35 +7,29 @@ import { Table } from '@/components/Table';
 import { updateRestaurantStatus, allocateRestaurantsToZones } from '@/app/actions';
 import styles from './ClientsNew.module.css';
 
-interface Zona {
+interface Seller {
     id: string;
-    zonaNome: string;
+    name: string;
+    email: string | null;
+    phone: string | null;
 }
 
 interface Props {
     initialRestaurants: Restaurant[];
-    availableZonas: Zona[];
+    availableSellers: Seller[];
 }
 
-export default function ClientsClientNew({ initialRestaurants, availableZonas = [] }: Props) {
+export default function ClientsClientNew({ initialRestaurants, availableSellers = [] }: Props) {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCity, setSelectedCity] = useState('Todos');
     const [selectedStatus, setSelectedStatus] = useState('Todos');
     const [selectedPotential, setSelectedPotential] = useState('Todos');
-    const [selectedZona, setSelectedZona] = useState('Todos');
+    const [selectedSeller, setSelectedSeller] = useState('Todos');
     const [sortOption, setSortOption] = useState('default');
     const [restaurants, setRestaurants] = useState(initialRestaurants);
     const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
     const [activeTab, setActiveTab] = useState<'active' | 'discarded'>('active');
     const [allocating, setAllocating] = useState(false);
-
-    // Debug: verificar quantos restaurantes têm zona
-    useEffect(() => {
-        const withZona = restaurants.filter(r => r.zonaNome).length;
-        const withoutZona = restaurants.filter(r => !r.zonaNome).length;
-        console.log(`Restaurantes com zona: ${withZona}, sem zona: ${withoutZona}`);
-        console.log('Zonas disponíveis:', availableZonas.map(z => z.zonaNome));
-    }, [restaurants, availableZonas]);
 
     // Extract unique values for filters
     const cities = useMemo(() => {
@@ -45,12 +39,12 @@ export default function ClientsClientNew({ initialRestaurants, availableZonas = 
 
     const statuses = ['Todos', 'A Analisar', 'Qualificado', 'Contatado', 'Negociação', 'Fechado'];
     const potentials = ['Todos', 'ALTÍSSIMO', 'ALTO', 'MÉDIO', 'BAIXO'];
-    // Adicionar "Sem Zona" se houver restaurantes sem zona
-    const hasRestaurantsWithoutZona = restaurants.some(r => !r.zonaNome);
-    const zonasOptions = [
-        'Todos', 
-        ...(availableZonas || []).map(z => z.zonaNome),
-        ...(hasRestaurantsWithoutZona ? ['Sem Zona'] : [])
+    // Opções de executivos: Todos + lista de executivos + "Sem Executivo" se houver restaurantes sem executivo
+    const hasRestaurantsWithoutSeller = restaurants.some(r => !r.sellerId);
+    const sellersOptions = [
+        'Todos',
+        ...(availableSellers || []).map(s => s.name),
+        ...(hasRestaurantsWithoutSeller ? ['Sem Executivo'] : [])
     ];
 
     const filteredRestaurants = useMemo(() => {
@@ -61,16 +55,16 @@ export default function ClientsClientNew({ initialRestaurants, availableZonas = 
 
             const matchesSearch = r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 (r.address?.city?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
-                (r.zonaNome?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
+                (r.sellerName?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
             const matchesCity = selectedCity === 'Todos' || (r.address?.city || 'Outros') === selectedCity;
             const matchesStatus = selectedStatus === 'Todos' || (r.status || 'A Analisar') === selectedStatus;
             const matchesPotential = selectedPotential === 'Todos' || r.salesPotential === selectedPotential;
-            // Filtro de zona: comparar o nome da zona exatamente
-            const matchesZona = selectedZona === 'Todos' || 
-                (r.zonaNome && r.zonaNome === selectedZona) ||
-                (!r.zonaNome && selectedZona === 'Sem Zona');
+            // Filtro de executivo: comparar o nome do executivo
+            const matchesSeller = selectedSeller === 'Todos' || 
+                (r.sellerName && r.sellerName === selectedSeller) ||
+                (!r.sellerName && selectedSeller === 'Sem Executivo');
 
-            return matchesSearch && matchesCity && matchesStatus && matchesPotential && matchesZona;
+            return matchesSearch && matchesCity && matchesStatus && matchesPotential && matchesSeller;
         }).sort((a, b) => {
             if (sortOption === 'name') return a.name.localeCompare(b.name);
             if (sortOption === 'rating-high') return b.rating - a.rating;
@@ -79,7 +73,7 @@ export default function ClientsClientNew({ initialRestaurants, availableZonas = 
             if (sortOption === 'reviews-low') return (a.reviewCount || 0) - (b.reviewCount || 0);
             return 0;
         });
-    }, [restaurants, searchTerm, selectedCity, selectedStatus, selectedPotential, selectedZona, sortOption, activeTab]);
+    }, [restaurants, searchTerm, selectedCity, selectedStatus, selectedPotential, selectedSeller, sortOption, activeTab]);
 
     // Calculate stats
     const stats = useMemo(() => {
@@ -117,10 +111,10 @@ export default function ClientsClientNew({ initialRestaurants, availableZonas = 
             render: (value: any) => value?.city || 'N/A'
         },
         {
-            key: 'zonaNome',
-            label: 'Zona',
+            key: 'sellerName',
+            label: 'Executivo',
             width: '150px',
-            render: (value: string) => value ? <Badge variant="info">{value}</Badge> : <span style={{ color: '#999' }}>Sem Zona</span>
+            render: (value: string) => value ? <Badge variant="info">{value}</Badge> : <span style={{ color: '#999' }}>Sem Executivo</span>
         },
         {
             key: 'salesPotential',
@@ -307,66 +301,90 @@ export default function ClientsClientNew({ initialRestaurants, availableZonas = 
                 </div>
 
                 <div className={styles.filters}>
-                    <input
-                        type="text"
-                        placeholder="🔍 Buscar por nome ou cidade..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className={styles.searchInput}
-                    />
+                    <div className={styles.filterGroup}>
+                        <label className={styles.filterLabel}>🔍 Buscar</label>
+                        <input
+                            type="text"
+                            placeholder="Nome, cidade ou executivo..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className={styles.searchInput}
+                            title="Busque por nome do restaurante, cidade ou executivo responsável"
+                        />
+                    </div>
 
-                    <select
-                        value={selectedCity}
-                        onChange={(e) => setSelectedCity(e.target.value)}
-                        className={styles.filterSelect}
-                    >
-                        {cities.map(city => (
-                            <option key={city} value={city}>{city}</option>
-                        ))}
-                    </select>
+                    <div className={styles.filterGroup}>
+                        <label className={styles.filterLabel}>🏙️ Cidade</label>
+                        <select
+                            value={selectedCity}
+                            onChange={(e) => setSelectedCity(e.target.value)}
+                            className={styles.filterSelect}
+                            title="Filtre os clientes pela cidade onde estão localizados"
+                        >
+                            {cities.map(city => (
+                                <option key={city} value={city}>{city}</option>
+                            ))}
+                        </select>
+                    </div>
 
-                    <select
-                        value={selectedStatus}
-                        onChange={(e) => setSelectedStatus(e.target.value)}
-                        className={styles.filterSelect}
-                    >
-                        {statuses.map(status => (
-                            <option key={status} value={status}>{status}</option>
-                        ))}
-                    </select>
+                    <div className={styles.filterGroup}>
+                        <label className={styles.filterLabel}>📊 Status</label>
+                        <select
+                            value={selectedStatus}
+                            onChange={(e) => setSelectedStatus(e.target.value)}
+                            className={styles.filterSelect}
+                            title="Filtre pelo status atual do cliente no funil de vendas"
+                        >
+                            {statuses.map(status => (
+                                <option key={status} value={status}>{status}</option>
+                            ))}
+                        </select>
+                    </div>
 
-                    <select
-                        value={selectedPotential}
-                        onChange={(e) => setSelectedPotential(e.target.value)}
-                        className={styles.filterSelect}
-                    >
-                        {potentials.map(potential => (
-                            <option key={potential} value={potential}>{potential}</option>
-                        ))}
-                    </select>
+                    <div className={styles.filterGroup}>
+                        <label className={styles.filterLabel}>🔥 Potencial</label>
+                        <select
+                            value={selectedPotential}
+                            onChange={(e) => setSelectedPotential(e.target.value)}
+                            className={styles.filterSelect}
+                            title="Filtre pelo potencial de vendas do cliente (ALTÍSSIMO, ALTO, MÉDIO, BAIXO)"
+                        >
+                            {potentials.map(potential => (
+                                <option key={potential} value={potential}>{potential}</option>
+                            ))}
+                        </select>
+                    </div>
 
-                    <select
-                        value={selectedZona}
-                        onChange={(e) => setSelectedZona(e.target.value)}
-                        className={styles.filterSelect}
-                    >
-                        {zonasOptions.map(zona => (
-                            <option key={zona} value={zona}>{zona}</option>
-                        ))}
-                    </select>
+                    <div className={styles.filterGroup}>
+                        <label className={styles.filterLabel}>👔 Executivo</label>
+                        <select
+                            value={selectedSeller}
+                            onChange={(e) => setSelectedSeller(e.target.value)}
+                            className={styles.filterSelect}
+                            title="Filtre os clientes pelo executivo responsável pela conta"
+                        >
+                            {sellersOptions.map(seller => (
+                                <option key={seller} value={seller}>{seller}</option>
+                            ))}
+                        </select>
+                    </div>
 
-                    <select
-                        value={sortOption}
-                        onChange={(e) => setSortOption(e.target.value)}
-                        className={styles.filterSelect}
-                    >
-                        <option value="default">Ordenar por...</option>
-                        <option value="name">Nome (A-Z)</option>
-                        <option value="rating-high">Maior Avaliação</option>
-                        <option value="rating-low">Menor Avaliação</option>
-                        <option value="reviews-high">Mais Avaliações</option>
-                        <option value="reviews-low">Menos Avaliações</option>
-                    </select>
+                    <div className={styles.filterGroup}>
+                        <label className={styles.filterLabel}>🔀 Ordenar</label>
+                        <select
+                            value={sortOption}
+                            onChange={(e) => setSortOption(e.target.value)}
+                            className={styles.filterSelect}
+                            title="Escolha como ordenar a lista de clientes"
+                        >
+                            <option value="default">Padrão</option>
+                            <option value="name">Nome (A-Z)</option>
+                            <option value="rating-high">Maior Avaliação</option>
+                            <option value="rating-low">Menor Avaliação</option>
+                            <option value="reviews-high">Mais Avaliações</option>
+                            <option value="reviews-low">Menos Avaliações</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div className={styles.resultsCount}>

@@ -7,32 +7,24 @@ export const dynamic = 'force-dynamic';
 export default async function ClientsPage() {
     const restaurants = await getRestaurants();
     
-    // Buscar zonas disponíveis para o filtro
-    let zonas: any[] = [];
+    // Buscar executivos (sellers) disponíveis para o filtro
+    let sellers: any[] = [];
     try {
-        if (prisma && typeof (prisma as any).zonaCep !== 'undefined') {
-            zonas = await (prisma as any).zonaCep.findMany({
-                where: { ativo: true },
-                orderBy: { zonaNome: 'asc' }
-            });
-        } else {
-            // Fallback: usar SQL direto
-            const result = await prisma.$queryRaw<Array<{
-                id: string;
-                zona_nome: string;
-            }>>`SELECT id, zona_nome FROM zonas_cep WHERE ativo = true ORDER BY zona_nome ASC`;
-            zonas = result.map(z => ({
-                id: z.id,
-                zonaNome: z.zona_nome
-            }));
-        }
+        const result = await prisma.seller.findMany({
+            where: { active: true },
+            orderBy: { name: 'asc' },
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                phone: true
+            }
+        });
+        sellers = result;
     } catch (error: any) {
-        console.warn('Erro ao buscar zonas:', error.message);
-        zonas = [];
+        console.warn('Erro ao buscar executivos:', error.message);
+        sellers = [];
     }
 
-    return <ClientsClientNew initialRestaurants={restaurants} availableZonas={zonas.map(z => ({
-        id: z.id,
-        zonaNome: z.zonaNome || (z as any).zona_nome
-    }))} />;
+    return <ClientsClientNew initialRestaurants={restaurants} availableSellers={sellers} />;
 }
