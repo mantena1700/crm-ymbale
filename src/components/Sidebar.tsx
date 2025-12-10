@@ -204,6 +204,48 @@ const Sidebar = () => {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [isMobileOpen]);
 
+    // Swipe gestures para mobile
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        const handleTouchStart = (e: TouchEvent) => {
+            touchStartX = e.changedTouches[0].screenX;
+        };
+
+        const handleTouchEnd = (e: TouchEvent) => {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        };
+
+        const handleSwipe = () => {
+            const swipeThreshold = 50;
+            const diff = touchStartX - touchEndX;
+
+            // Swipe da esquerda para direita (abrir menu)
+            if (diff < -swipeThreshold && touchStartX < 50 && !isMobileOpen) {
+                setIsMobileOpen(true);
+            }
+            // Swipe da direita para esquerda (fechar menu)
+            else if (diff > swipeThreshold && isMobileOpen) {
+                setIsMobileOpen(false);
+            }
+        };
+
+        // Aplicar apenas em mobile
+        if (window.innerWidth <= 768) {
+            document.addEventListener('touchstart', handleTouchStart, { passive: true });
+            document.addEventListener('touchend', handleTouchEnd, { passive: true });
+        }
+
+        return () => {
+            document.removeEventListener('touchstart', handleTouchStart);
+            document.removeEventListener('touchend', handleTouchEnd);
+        };
+    }, [isMobileOpen]);
+
     const isActive = (href: string) => {
         if (href === '/') return pathname === '/';
         return pathname.startsWith(href);

@@ -3,10 +3,16 @@
   "short_name": "CRM Ymbale",
   "description": "Sistema de Gestão de Prospecção de Restaurantes",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
   "background_color": "#030712",
   "theme_color": "#6366f1",
   "orientation": "any",
+  "dir": "ltr",
+  "lang": "pt-BR",
+  "categories": ["business", "productivity"],
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/icon-192.png",
@@ -19,6 +25,23 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "Acessar dashboard principal",
+      "url": "/",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Carteira",
+      "short_name": "Carteira",
+      "description": "Acessar carteira de clientes",
+      "url": "/carteira",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     }
   ]
 }

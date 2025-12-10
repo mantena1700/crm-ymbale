@@ -24,6 +24,13 @@
 @media (max-width: 768px) {
     .mobileToggle {
         display: flex;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: rgba(59, 130, 246, 0.2);
+    }
+
+    .mobileToggle:active {
+        transform: scale(0.95);
+        transition: transform 0.1s;
     }
 }
 
@@ -99,6 +106,8 @@
         transform: translateX(-100%);
         width: 280px;
         box-shadow: 4px 0 24px rgba(0,0,0,0.15);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        will-change: transform;
     }
 
     .sidebar.mobileOpen {
@@ -107,6 +116,25 @@
 
     .sidebar.collapsed {
         width: 280px;
+    }
+
+    /* Melhorias de touch */
+    .navLink {
+        min-height: 48px;
+        padding: 12px 16px;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: rgba(59, 130, 246, 0.1);
+    }
+
+    .navLink:active {
+        transform: scale(0.98);
+        transition: transform 0.1s;
+    }
+
+    /* Scroll suave */
+    .nav {
+        -webkit-overflow-scrolling: touch;
+        scroll-behavior: smooth;
     }
 }
 
