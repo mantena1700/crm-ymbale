@@ -45,26 +45,45 @@ export default async function ZonasPage() {
                     ]
                 });
             } else {
-                // Fallback: usar SQL direto
+                // Fallback: usar SQL direto (sem SELECT * para evitar erro se regiao não existir)
                 const result = await prisma.$queryRaw<Array<{
                     id: string;
                     zona_nome: string;
                     cep_inicial: string;
                     cep_final: string;
-                    regiao?: string;
                     ativo: boolean;
                 }>>`
-                    SELECT * FROM zonas_cep 
+                    SELECT id, zona_nome, cep_inicial, cep_final, ativo, created_at, updated_at FROM zonas_cep 
                     ORDER BY ativo DESC, zona_nome ASC
                 `;
-                zonas = result.map(z => ({
-                    id: z.id,
-                    zonaNome: z.zona_nome,
-                    cepInicial: z.cep_inicial,
-                    cepFinal: z.cep_final,
-                    regiao: (z as any).regiao,
-                    ativo: z.ativo
+                
+                // Buscar regiao separadamente para cada zona
+                const zonasComRegiao = await Promise.all(result.map(async (z) => {
+                    let regiao: string | null = null;
+                    try {
+                        const regiaoResult = await prisma.$queryRaw<Array<{ regiao: string | null }>>`
+                            SELECT regiao FROM zonas_cep WHERE id = ${z.id}::uuid LIMIT 1
+                        `;
+                        if (regiaoResult && regiaoResult.length > 0) {
+                            regiao = regiaoResult[0].regiao;
+                        }
+                    } catch (e: any) {
+                        // Se a coluna não existir, regiao será null
+                        if (e.code !== '42703' && !e.message?.includes('does not exist')) {
+                            console.warn(`Erro ao buscar regiao para zona ${z.id}:`, e.message);
+                        }
+                    }
+                    return {
+                        id: z.id,
+                        zonaNome: z.zona_nome,
+                        cepInicial: z.cep_inicial,
+                        cepFinal: z.cep_final,
+                        regiao: regiao,
+                        ativo: z.ativo
+                    };
                 }));
+                
+                zonas = zonasComRegiao;
             }
         } catch (error: any) {
             // Se a tabela não existir, usar array vazio
@@ -72,8 +91,36 @@ export default async function ZonasPage() {
                 console.warn('Tabela zonas_cep não existe ainda. Execute: npx prisma db push');
                 zonas = [];
             } else {
-                console.error('Erro ao buscar zonas:', error);
-                zonas = [];
+                // Se o erro for sobre coluna regiao, tentar buscar sem ela
+                if (error.code === '42703' || (error.message?.includes('column') && error.message?.includes('regiao'))) {
+                    console.warn('⚠️ Coluna regiao não existe. Buscando zonas sem regiao...');
+                    try {
+                        const result = await prisma.$queryRaw<Array<{
+                            id: string;
+                            zona_nome: string;
+                            cep_inicial: string;
+                            cep_final: string;
+                            ativo: boolean;
+                        }>>`
+                            SELECT id, zona_nome, cep_inicial, cep_final, ativo FROM zonas_cep 
+                            ORDER BY ativo DESC, zona_nome ASC
+                        `;
+                        zonas = result.map(z => ({
+                            id: z.id,
+                            zonaNome: z.zona_nome,
+                            cepInicial: z.cep_inicial,
+                            cepFinal: z.cep_final,
+                            regiao: null,
+                            ativo: z.ativo
+                        }));
+                    } catch (e: any) {
+                        console.warn('⚠️ Erro ao buscar zonas:', e.message);
+                        zonas = [];
+                    }
+                } else {
+                    console.warn('⚠️ Erro ao buscar zonas:', error.message);
+                    zonas = [];
+                }
             }
         }
 
