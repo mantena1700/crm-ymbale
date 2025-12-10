@@ -152,15 +152,31 @@
 /* Filters */
 .filters {
     display: grid;
-    grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
-    gap: 1rem;
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr;
+    gap: 1.25rem;
     margin-bottom: 1.5rem;
+    align-items: flex-end;
+}
+
+.filterGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.filterLabel {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--ds-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 0;
 }
 
 .searchInput,
 .filterSelect {
     width: 100%;
-    padding: 0.625rem 0.875rem;
+    padding: 0.75rem 1rem;
     border: 1px solid var(--ds-border);
     border-radius: 0.5rem;
     font-size: 0.875rem;
@@ -173,7 +189,7 @@
 .filterSelect:focus {
     outline: none;
     border-color: var(--ds-primary);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
 .searchInput::placeholder {
@@ -465,6 +481,10 @@
 @media (max-width: 1024px) {
     .filters {
         grid-template-columns: 1fr 1fr;
+    }
+    
+    .filterGroup {
+        min-width: auto;
     }
 
     .gridView {
