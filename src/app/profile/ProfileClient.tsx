@@ -61,7 +61,11 @@ export default function ProfileClient({ initialProfile }: Props) {
             if (result.success) {
                 setProfile(prev => ({ ...prev, ...formData, photoUrl }));
                 setEditing(false);
-                setMessage({ type: 'success', text: 'Perfil atualizado com sucesso!' });
+                setMessage({ type: 'success', text: 'Perfil atualizado com sucesso! Atualizando...' });
+                // Forçar atualização da página após 1 segundo para garantir que a foto apareça em todos os lugares
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
             } else {
                 setMessage({ type: 'error', text: result.error || 'Erro ao salvar' });
             }

@@ -95,8 +95,12 @@ export async function updateProfile(data: Partial<UserProfile>) {
                 updated_at = NOW()
         `;
         
+        // Revalidar todos os caminhos onde o perfil pode aparecer
         revalidatePath('/profile');
-        return { success: true };
+        revalidatePath('/'); // Dashboard
+        revalidatePath('/dashboard');
+        // Forçar atualização do cache do navegador também
+        return { success: true, photoUrl: data.photoUrl };
     } catch (error: any) {
         console.error('Erro ao atualizar perfil:', error);
         
