@@ -1,9 +1,8 @@
 module.exports = {
   apps: [{
     name: 'crm-ymbale',
-    // Usar servidor standalone diretamente (mais eficiente)
-    script: '.next/standalone/server.js',
-    cwd: process.cwd(),
+    script: 'npm',
+    args: 'start',
     instances: 1,
     autorestart: true,
     watch: false,
