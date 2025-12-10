@@ -58,13 +58,11 @@ export default function ImportExcelClient() {
   };
 
   return (
-    <div className={styles.container}>
-      <div className={styles.card}>
-        <h2>📤 Importar Dados</h2>
-        <p className={styles.description}>
-          Faça upload de planilhas Excel (.xlsx, .xls) ou arquivos de texto (.txt, .csv) para importar restaurantes automaticamente.
-          Os leads serão direcionados para os vendedores baseado na região. Você pode selecionar vários arquivos de uma vez!
-        </p>
+    <div>
+      <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.875rem' }}>
+        Faça upload de planilhas Excel (.xlsx, .xls) ou arquivos de texto (.txt, .csv) para importar restaurantes automaticamente.
+        Os leads serão direcionados para os vendedores baseado na região. Você pode selecionar vários arquivos de uma vez!
+      </p>
 
         <form onSubmit={handleSubmit} className={styles.form}>
           <div className={styles.fileInputWrapper}>
@@ -146,7 +144,6 @@ export default function ImportExcelClient() {
             <li>🔄 Você pode importar múltiplas planilhas</li>
           </ul>
         </div>
-      </div>
     </div>
   );
 }

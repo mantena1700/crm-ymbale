@@ -74,17 +74,15 @@ export default function AIAgentsClient() {
 
     if (loading) {
         return (
-            <div className={styles.section}>
-                <h2>🤖 Agentes de IA</h2>
-                <p>Carregando...</p>
+            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                Carregando...
             </div>
         );
     }
 
     return (
-        <div className={styles.section}>
-            <h2>🤖 Agentes de IA</h2>
-            <p className={styles.description}>
+        <div>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.875rem' }}>
                 Configure os prompts e parâmetros dos agentes de inteligência artificial.
             </p>
 

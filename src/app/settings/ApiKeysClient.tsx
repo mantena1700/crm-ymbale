@@ -76,7 +76,7 @@ export default function ApiKeysClient() {
         }
     };
 
-    if (loading) return <div className={styles.section}><h2>🔑 Chaves de API</h2><p>Carregando...</p></div>;
+    if (loading) return <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>Carregando...</div>;
 
     const renderKeyCard = (
         keyType: 'openai' | 'googleMaps' | 'googleAi',
@@ -128,9 +128,10 @@ export default function ApiKeysClient() {
     );
 
     return (
-        <div className={styles.section}>
-            <h2>🔑 Chaves de API</h2>
-            <p className={styles.description}>Configure suas chaves para ativar funcionalidades de IA e mapas.</p>
+        <div>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.875rem' }}>
+                Configure suas chaves para ativar funcionalidades de IA e mapas.
+            </p>
             
             {message && (
                 <div style={{ padding: '0.75rem', borderRadius: '6px', marginBottom: '1rem', background: message.type === 'success' ? '#10b98120' : '#ef444420', color: message.type === 'success' ? '#10b981' : '#ef4444' }}>

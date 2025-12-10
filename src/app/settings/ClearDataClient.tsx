@@ -56,12 +56,10 @@ export default function ClearDataClient() {
     };
 
     return (
-        <div className={styles.container}>
-            <div className={styles.card}>
-                <h2>🗑️ Limpar Última Importação</h2>
-                <p className={styles.description}>
-                    Remove restaurantes importados recentemente. Útil para limpar importações que foram feitas incorretamente.
-                </p>
+        <div>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.875rem' }}>
+                Remove restaurantes importados recentemente. Útil para limpar importações que foram feitas incorretamente.
+            </p>
 
                 <div className={styles.warning}>
                     <strong>⚠️ ATENÇÃO:</strong>
@@ -103,11 +101,10 @@ export default function ClearDataClient() {
                         <pre>{resultLastImport}</pre>
                     </div>
                 )}
-            </div>
 
-            <div className={styles.card}>
-                <h2>🧹 Limpar Dados Mockados</h2>
-                <p className={styles.description}>
+            <div style={{ marginTop: '2rem', paddingTop: '2rem', borderTop: '1px solid var(--card-border)' }}>
+                <h3 style={{ marginBottom: '1rem', fontSize: '1rem', fontWeight: 600 }}>🧹 Limpar Dados Mockados</h3>
+                <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.875rem' }}>
                     Remove todos os dados de teste/mock do banco de dados para começar a importação real.
                     Isso inclui restaurantes com nomes genéricos, dados de exemplo, etc.
                 </p>

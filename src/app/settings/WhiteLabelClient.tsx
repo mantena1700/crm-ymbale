@@ -85,25 +85,19 @@ export default function WhiteLabelClient() {
 
     if (loading) {
         return (
-            <div className={styles.card}>
-                <div className={styles.cardHeader}>
-                    <h2>⚙️ Configurações White Label</h2>
-                </div>
-                <div className={styles.cardBody}>
-                    <p style={{ textAlign: 'center', color: 'var(--text-muted)' }}>Carregando...</p>
-                </div>
+            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                Carregando...
             </div>
         );
     }
 
     return (
-        <div className={styles.card}>
-            <div className={styles.cardHeader}>
-                <h2>🎨 Configurações White Label</h2>
-                <p>Personalize a identidade visual do seu CRM</p>
-            </div>
+        <div>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.875rem' }}>
+                Personalize a identidade visual do seu CRM
+            </p>
             
-            <form onSubmit={handleSubmit} className={styles.cardBody}>
+            <form onSubmit={handleSubmit}>
                 {message && (
                     <div className={`${styles.message} ${styles[message.type]}`}>
                         {message.text}

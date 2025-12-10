@@ -6,39 +6,41 @@ import WhiteLabelClient from './WhiteLabelClient';
 import ApiKeysClient from './ApiKeysClient';
 import AIAgentsClient from './AIAgentsClient';
 import LoginCustomizationClient from './LoginCustomizationClient';
+import { PageLayout, Card, Grid } from '@/components/PageLayout';
 import styles from './page.module.css';
 
 export default function SettingsClient() {
     return (
-        <div className={styles.container}>
-            <header className={styles.header}>
-                <h1>⚙️ Configurações do Sistema</h1>
-                <p>Gerencie integrações, importação de dados e configurações do sistema.</p>
-            </header>
+        <PageLayout
+            title="Configurações do Sistema"
+            subtitle="Gerencie integrações, importação de dados e configurações do sistema"
+            icon="⚙️"
+        >
+            <Grid cols={1}>
+                <Card title="🎨 White Label">
+                    <WhiteLabelClient />
+                </Card>
 
-            <div className={styles.section}>
-                <WhiteLabelClient />
-            </div>
+                <Card title="🔐 Personalização da Página de Login">
+                    <LoginCustomizationClient />
+                </Card>
 
-            <div className={styles.section}>
-                <LoginCustomizationClient />
-            </div>
+                <Card title="🔑 Chaves de API">
+                    <ApiKeysClient />
+                </Card>
 
-            <div className={styles.section}>
-                <ApiKeysClient />
-            </div>
+                <Card title="🤖 Agentes de IA">
+                    <AIAgentsClient />
+                </Card>
 
-            <div className={styles.section}>
-                <AIAgentsClient />
-            </div>
+                <Card title="🗑️ Limpeza de Dados">
+                    <ClearDataClient />
+                </Card>
 
-            <div className={styles.section}>
-                <ClearDataClient />
-            </div>
-
-            <div className={styles.section}>
-                <ImportExcelClient />
-            </div>
-        </div>
+                <Card title="📊 Importação de Dados">
+                    <ImportExcelClient />
+                </Card>
+            </Grid>
+        </PageLayout>
     );
 }
