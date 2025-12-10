@@ -443,15 +443,31 @@ export default function MapaTecnologico({
 
     // Carregar Google Maps usando o loader centralizado
     useEffect(() => {
-        loadGoogleMaps()
-            .then(() => {
+        // Buscar API key do banco de dados
+        const loadMapWithApiKey = async () => {
+            try {
+                // Tentar buscar a chave da API do banco de dados
+                const response = await fetch('/api/google-maps-key');
+                const data = await response.json();
+                const apiKey = data.apiKey;
+                
+                if (!apiKey) {
+                    console.warn('⚠️ Google Maps API Key não configurada no banco de dados. Configure nas Configurações > Chaves de API');
+                    setIsLoadingMap(false);
+                    return;
+                }
+                
+                // Carregar Google Maps com a chave do banco
+                await loadGoogleMaps(apiKey);
                 setMapLoaded(true);
                 setIsLoadingMap(false);
-            })
-            .catch((error) => {
+            } catch (error) {
                 console.error('Erro ao carregar Google Maps:', error);
                 setIsLoadingMap(false);
-            });
+            }
+        };
+        
+        loadMapWithApiKey();
     }, []);
 
     // Inicializar mapa
