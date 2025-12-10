@@ -2,9 +2,16 @@
 
 // @ts-ignore - whatsapp-web.js não tem tipos oficiais
 import { Client, LocalAuth } from 'whatsapp-web.js';
-// @ts-ignore - qrcode types
-import * as qrcode from 'qrcode';
 import { prisma } from './db';
+
+// Importação dinâmica do qrcode para evitar problemas com Next.js
+let qrcode: any;
+async function getQrcode() {
+    if (!qrcode) {
+        qrcode = await import('qrcode');
+    }
+    return qrcode;
+}
 
 let whatsappClient: Client | null = null;
 let isConnecting = false;
@@ -70,10 +77,11 @@ export async function initializeWhatsApp(): Promise<WhatsAppStatus> {
             }
         });
 
-        return new Promise((resolve) => {
+        return new Promise(async (resolve) => {
             whatsappClient!.on('qr', async (qr: string) => {
                 try {
-                    const qrCodeDataUrl = await qrcode.toDataURL(qr);
+                    const qrcodeModule = await getQrcode();
+                    const qrCodeDataUrl = await qrcodeModule.default.toDataURL(qr);
                     resolve({
                         connected: false,
                         status: 'connecting',
