@@ -148,12 +148,6 @@ const Sidebar = () => {
             ]
         },
         {
-            title: 'COMUNICAÇÃO',
-            items: [
-                { href: '/whatsapp', icon: '💬', label: 'WhatsApp', permission: 'whatsapp.view' },
-            ]
-        },
-        {
             title: 'SISTEMA',
             items: [
                 { href: '/settings', icon: '⚙️', label: 'Configurações', adminOnly: true, permission: 'settings.view' },

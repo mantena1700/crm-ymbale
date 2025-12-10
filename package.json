@@ -25,15 +25,12 @@
     "react-dom": "19.2.0",
     "react-leaflet": "^5.0.0",
     "server-only": "^0.0.1",
-    "whatsapp-web.js": "^1.23.0",
-    "qrcode": "^1.5.3",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@prisma/client": "^6.19.0",
     "@supabase/supabase-js": "^2.86.2",
     "@types/node": "^20",
-    "@types/qrcode": "^1.5.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
