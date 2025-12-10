@@ -4,15 +4,15 @@
 import { Client, LocalAuth } from 'whatsapp-web.js';
 import { prisma } from './db';
 
-// Função para gerar QR Code usando importação dinâmica
+// Função para gerar QR Code - importação dinâmica apenas no servidor
 async function generateQRCode(qr: string): Promise<string> {
     try {
-        // Usar require para evitar problemas com Next.js
-        const qrcode = require('qrcode');
-        return await qrcode.toDataURL(qr);
-    } catch (error) {
+        // Importação dinâmica que só funciona no servidor
+        const qrcode = await import('qrcode');
+        return await qrcode.default.toDataURL(qr);
+    } catch (error: any) {
         console.error('Erro ao gerar QR Code:', error);
-        throw new Error('Erro ao gerar QR Code');
+        throw new Error(error?.message || 'Erro ao gerar QR Code');
     }
 }
 
