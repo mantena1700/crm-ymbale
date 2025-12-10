@@ -107,7 +107,7 @@ async function checkOverlap(cepInicial: string, cepFinal: string, excludeId?: st
                     cep_inicial: string;
                     cep_final: string;
                     ativo: boolean;
-                }>>`SELECT * FROM zonas_cep WHERE ativo = true AND id != ${excludeId}`
+                }>>`SELECT * FROM zonas_cep WHERE ativo = true AND id != ${excludeId}::uuid`
                 : await prisma.$queryRaw<Array<{
                     id: string;
                     zona_nome: string;
@@ -263,7 +263,7 @@ export async function updateZona(id: string, data: Omit<ZonaCepData, 'id'>) {
                     regiao = ${data.regiao || null},
                     ativo = ${data.ativo},
                     updated_at = NOW()
-                WHERE id = ${id}
+                WHERE id = ${id}::uuid
                 RETURNING *
             `;
             const rawZona = Array.isArray(result) ? result[0] : result;
@@ -307,7 +307,7 @@ export async function deleteZona(id: string) {
             }
         } catch (modelError: any) {
             // Se o modelo não funcionar, usar SQL direto
-            await prisma.$executeRaw`DELETE FROM zonas_cep WHERE id = ${id}`;
+            await prisma.$executeRaw`DELETE FROM zonas_cep WHERE id = ${id}::uuid`;
         }
 
         revalidatePath('/admin/zonas');
