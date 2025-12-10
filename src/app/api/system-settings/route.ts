@@ -110,26 +110,28 @@ export async function PUT(request: NextRequest) {
         
         // Se não existir, criar com valores padrão
         if (!existingSettings) {
+            const createData: any = {
+                id: 'system',
+                crmName: emptyToNull(crmName) || 'Ymbale',
+                crmLogo: emptyToNull(crmLogo),
+                crmFavicon: emptyToNull(crmFavicon),
+                primaryColor: emptyToNull(primaryColor) || '#6366f1',
+                secondaryColor: emptyToNull(secondaryColor) || '#8b5cf6',
+                accentColor: emptyToNull(accentColor) || '#10b981',
+                companyName: emptyToNull(companyName),
+                companyEmail: emptyToNull(companyEmail),
+                companyPhone: emptyToNull(companyPhone),
+                loginTitle: emptyToNull(loginTitle),
+                loginSubtitle: emptyToNull(loginSubtitle),
+                loginMessage: emptyToNull(loginMessage),
+                loginShowMessage: showMessage,
+                loginBackgroundColor: emptyToNull(loginBackgroundColor),
+                loginLogo: emptyToNull(loginLogo),
+                updatedBy: authResult.user?.id || null,
+            };
+            
             const settings = await prisma.systemSettings.create({
-                data: {
-                    id: 'system',
-                    crmName: emptyToNull(crmName) || 'Ymbale',
-                    crmLogo: emptyToNull(crmLogo),
-                    crmFavicon: emptyToNull(crmFavicon),
-                    primaryColor: emptyToNull(primaryColor) || '#6366f1',
-                    secondaryColor: emptyToNull(secondaryColor) || '#8b5cf6',
-                    accentColor: emptyToNull(accentColor) || '#10b981',
-                    companyName: emptyToNull(companyName),
-                    companyEmail: emptyToNull(companyEmail),
-                    companyPhone: emptyToNull(companyPhone),
-                    loginTitle: emptyToNull(loginTitle),
-                    loginSubtitle: emptyToNull(loginSubtitle),
-                    loginMessage: emptyToNull(loginMessage),
-                    loginShowMessage: showMessage,
-                    loginBackgroundColor: emptyToNull(loginBackgroundColor),
-                    loginLogo: emptyToNull(loginLogo),
-                    updatedBy: authResult.user?.id || null,
-                }
+                data: createData
             });
             
             return NextResponse.json({
