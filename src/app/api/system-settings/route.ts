@@ -67,63 +67,99 @@ export async function PUT(request: NextRequest) {
             loginLogo,
         } = body;
 
+        // Função helper para converter string vazia em null
+        const emptyToNull = (value: any): any => {
+            if (typeof value === 'string' && value.trim() === '') {
+                return null;
+            }
+            return value;
+        };
+
         // Atualizar ou criar configurações
         // Usar loginShowMessage ou loginMessageEnabled (compatibilidade)
         const showMessage = loginShowMessage !== undefined ? loginShowMessage : (loginMessageEnabled !== undefined ? loginMessageEnabled : false);
         
         // Construir objeto de update apenas com campos fornecidos
+        // Buscar configurações existentes primeiro para preservar valores não enviados
+        const existingSettings = await prisma.systemSettings.findUnique({
+            where: { id: 'system' }
+        });
+        
         const updateData: any = {
-            updatedBy: authResult.user.id,
+            updatedBy: authResult.user?.id || null,
         };
         
-        if (crmName !== undefined) updateData.crmName = crmName;
-        if (crmLogo !== undefined) updateData.crmLogo = crmLogo;
-        if (crmFavicon !== undefined) updateData.crmFavicon = crmFavicon;
-        if (primaryColor !== undefined) updateData.primaryColor = primaryColor;
-        if (secondaryColor !== undefined) updateData.secondaryColor = secondaryColor;
-        if (accentColor !== undefined) updateData.accentColor = accentColor;
-        if (companyName !== undefined) updateData.companyName = companyName;
-        if (companyEmail !== undefined) updateData.companyEmail = companyEmail;
-        if (companyPhone !== undefined) updateData.companyPhone = companyPhone;
-        if (loginTitle !== undefined) updateData.loginTitle = loginTitle;
-        if (loginSubtitle !== undefined) updateData.loginSubtitle = loginSubtitle;
-        if (loginMessage !== undefined) updateData.loginMessage = loginMessage;
-        updateData.loginShowMessage = showMessage;
-        if (loginBackgroundColor !== undefined) updateData.loginBackgroundColor = loginBackgroundColor;
-        if (loginLogo !== undefined) updateData.loginLogo = loginLogo;
+        // Atualizar apenas campos que foram fornecidos no body
+        if (crmName !== undefined) updateData.crmName = emptyToNull(crmName);
+        if (crmLogo !== undefined) updateData.crmLogo = emptyToNull(crmLogo);
+        if (crmFavicon !== undefined) updateData.crmFavicon = emptyToNull(crmFavicon);
+        if (primaryColor !== undefined) updateData.primaryColor = emptyToNull(primaryColor);
+        if (secondaryColor !== undefined) updateData.secondaryColor = emptyToNull(secondaryColor);
+        if (accentColor !== undefined) updateData.accentColor = emptyToNull(accentColor);
+        if (companyName !== undefined) updateData.companyName = emptyToNull(companyName);
+        if (companyEmail !== undefined) updateData.companyEmail = emptyToNull(companyEmail);
+        if (companyPhone !== undefined) updateData.companyPhone = emptyToNull(companyPhone);
+        if (loginTitle !== undefined) updateData.loginTitle = emptyToNull(loginTitle);
+        if (loginSubtitle !== undefined) updateData.loginSubtitle = emptyToNull(loginSubtitle);
+        if (loginMessage !== undefined) updateData.loginMessage = emptyToNull(loginMessage);
+        if (loginShowMessage !== undefined || loginMessageEnabled !== undefined) {
+            updateData.loginShowMessage = showMessage;
+        }
+        if (loginBackgroundColor !== undefined) updateData.loginBackgroundColor = emptyToNull(loginBackgroundColor);
+        if (loginLogo !== undefined) updateData.loginLogo = emptyToNull(loginLogo);
         
-        const settings = await prisma.systemSettings.upsert({
+        // Se não existir, criar com valores padrão
+        if (!existingSettings) {
+            const settings = await prisma.systemSettings.create({
+                data: {
+                    id: 'system',
+                    crmName: emptyToNull(crmName) || 'Ymbale',
+                    crmLogo: emptyToNull(crmLogo),
+                    crmFavicon: emptyToNull(crmFavicon),
+                    primaryColor: emptyToNull(primaryColor) || '#6366f1',
+                    secondaryColor: emptyToNull(secondaryColor) || '#8b5cf6',
+                    accentColor: emptyToNull(accentColor) || '#10b981',
+                    companyName: emptyToNull(companyName),
+                    companyEmail: emptyToNull(companyEmail),
+                    companyPhone: emptyToNull(companyPhone),
+                    loginTitle: emptyToNull(loginTitle),
+                    loginSubtitle: emptyToNull(loginSubtitle),
+                    loginMessage: emptyToNull(loginMessage),
+                    loginShowMessage: showMessage,
+                    loginBackgroundColor: emptyToNull(loginBackgroundColor),
+                    loginLogo: emptyToNull(loginLogo),
+                    updatedBy: authResult.user?.id || null,
+                }
+            });
+            
+            return NextResponse.json({
+                success: true,
+                settings
+            });
+        }
+        
+        // Se existir, atualizar apenas os campos fornecidos
+        const settings = await prisma.systemSettings.update({
             where: { id: 'system' },
-            update: updateData,
-            create: {
-                id: 'system',
-                crmName: crmName || 'Ymbale',
-                crmLogo: crmLogo || null,
-                crmFavicon: crmFavicon || null,
-                primaryColor: primaryColor || '#6366f1',
-                secondaryColor: secondaryColor || '#8b5cf6',
-                accentColor: accentColor || '#10b981',
-                companyName: companyName || null,
-                companyEmail: companyEmail || null,
-                companyPhone: companyPhone || null,
-                loginTitle: loginTitle || null,
-                loginSubtitle: loginSubtitle || null,
-                loginMessage: loginMessage || null,
-                loginShowMessage: showMessage,
-                loginBackgroundColor: loginBackgroundColor || null,
-                loginLogo: loginLogo || null,
-                updatedBy: authResult.user.id,
-            }
+            data: updateData
         });
 
         return NextResponse.json({
             success: true,
             settings
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Erro ao atualizar configurações:', error);
+        console.error('Detalhes do erro:', {
+            message: error?.message,
+            code: error?.code,
+            meta: error?.meta
+        });
         return NextResponse.json(
-            { error: 'Erro ao atualizar configurações' },
+            { 
+                error: error?.message || 'Erro ao atualizar configurações',
+                details: process.env.NODE_ENV === 'development' ? error?.message : undefined
+            },
             { status: 500 }
         );
     }
