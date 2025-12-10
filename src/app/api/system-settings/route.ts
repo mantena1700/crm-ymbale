@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/db';
 import { verifyAuth } from '@/lib/auth';
-
-const prisma = new PrismaClient();
 
 // GET - Buscar configurações do sistema
 export async function GET(request: NextRequest) {
@@ -154,6 +152,17 @@ export async function PUT(request: NextRequest) {
         }
         
         // Se existir, atualizar apenas os campos fornecidos
+        // Verificar se há campos para atualizar
+        const fieldsToUpdate = Object.keys(updateData).filter(key => key !== 'updatedBy' || updateData[key] !== null);
+        
+        if (fieldsToUpdate.length === 0) {
+            // Se não há campos para atualizar além de updatedBy, retornar configurações existentes
+            return NextResponse.json({
+                success: true,
+                settings: existingSettings
+            });
+        }
+
         const settings = await prisma.systemSettings.update({
             where: { id: 'system' },
             data: updateData
