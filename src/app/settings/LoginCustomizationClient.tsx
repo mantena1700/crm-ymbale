@@ -148,17 +148,18 @@ export default function LoginCustomizationClient() {
                 </div>
 
                 <div className={styles.field}>
-                    <label htmlFor="loginShowMessage">Exibir Mensagem</label>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <label htmlFor="loginShowMessage" style={{ marginBottom: '0.5rem', display: 'block' }}>Exibir Mensagem</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.5rem' }}>
                         <input
                             id="loginShowMessage"
                             type="checkbox"
                             checked={settings.loginShowMessage}
                             onChange={(e) => handleChange('loginShowMessage', e.target.checked)}
+                            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                         />
-                        <span style={{ fontSize: '0.875rem', color: 'var(--ds-text-muted)' }}>
+                        <label htmlFor="loginShowMessage" style={{ fontSize: '0.875rem', color: 'var(--text-muted)', cursor: 'pointer', margin: 0 }}>
                             Mostrar mensagem personalizada na página de login
-                        </span>
+                        </label>
                     </div>
                 </div>
 

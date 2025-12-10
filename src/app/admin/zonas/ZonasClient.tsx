@@ -9,6 +9,7 @@ interface Zona {
     zonaNome: string;
     cepInicial: string;
     cepFinal: string;
+    regiao?: string;
     ativo: boolean;
 }
 
@@ -33,6 +34,7 @@ export default function ZonasClient({ initialZonas }: ZonasClientProps) {
         zonaNome: '',
         cepInicial: '',
         cepFinal: '',
+        regiao: '',
         ativo: true
     });
     const [loading, setLoading] = useState(false);
@@ -57,6 +59,7 @@ export default function ZonasClient({ initialZonas }: ZonasClientProps) {
                 zonaNome: zona.zonaNome,
                 cepInicial: formatCep(zona.cepInicial),
                 cepFinal: formatCep(zona.cepFinal),
+                regiao: zona.regiao || '',
                 ativo: zona.ativo
             });
         } else {
@@ -65,6 +68,7 @@ export default function ZonasClient({ initialZonas }: ZonasClientProps) {
                 zonaNome: '',
                 cepInicial: '',
                 cepFinal: '',
+                regiao: '',
                 ativo: true
             });
         }
@@ -79,6 +83,7 @@ export default function ZonasClient({ initialZonas }: ZonasClientProps) {
             zonaNome: '',
             cepInicial: '',
             cepFinal: '',
+            regiao: '',
             ativo: true
         });
         setError(null);
@@ -169,15 +174,13 @@ export default function ZonasClient({ initialZonas }: ZonasClientProps) {
                     <p>Configure as zonas geográficas baseadas em ranges de CEP</p>
                 </div>
                 <div className={styles.headerActions}>
-                    {zonas.length === 0 && (
-                        <button 
-                            className={`${styles.seedButton} ${styles.seedButtonPrimary}`}
-                            onClick={handleSeedZonas}
-                            disabled={seeding}
-                        >
-                            {seeding ? '⏳ Populando...' : '🌱 Popular Zonas Padrão'}
-                        </button>
-                    )}
+                    <button 
+                        className={`${styles.seedButton} ${styles.seedButtonPrimary}`}
+                        onClick={handleSeedZonas}
+                        disabled={seeding}
+                    >
+                        {seeding ? '⏳ Populando...' : '🌱 Popular Zonas Pré-Cadastradas'}
+                    </button>
                     <button 
                         className={`${styles.seedButton} ${styles.seedButtonSorocaba}`}
                         onClick={handleSeedZonasSorocaba}
@@ -240,9 +243,11 @@ export default function ZonasClient({ initialZonas }: ZonasClientProps) {
                 <table className={styles.table}>
                     <thead>
                         <tr>
-                            <th>Nome da Zona</th>
+                            <th>ID</th>
+                            <th>Zona</th>
                             <th>CEP Inicial</th>
                             <th>CEP Final</th>
+                            <th>Região</th>
                             <th>Status</th>
                             <th>Ações</th>
                         </tr>
@@ -250,43 +255,62 @@ export default function ZonasClient({ initialZonas }: ZonasClientProps) {
                     <tbody>
                         {filteredZonas.length === 0 ? (
                             <tr>
-                                <td colSpan={5} className={styles.emptyState}>
+                                <td colSpan={7} className={styles.emptyState}>
                                     {searchTerm ? 'Nenhuma zona encontrada' : 'Nenhuma zona cadastrada'}
                                 </td>
                             </tr>
                         ) : (
-                            filteredZonas.map(zona => (
-                                <tr key={zona.id}>
-                                    <td>
-                                        <strong>{zona.zonaNome}</strong>
-                                    </td>
-                                    <td>{formatCep(zona.cepInicial)}</td>
-                                    <td>{formatCep(zona.cepFinal)}</td>
-                                    <td>
-                                        <span className={zona.ativo ? styles.statusActive : styles.statusInactive}>
-                                            {zona.ativo ? '✅ Ativa' : '⏸️ Inativa'}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <div className={styles.actions}>
-                                            <button
-                                                className={styles.btnIcon}
-                                                onClick={() => handleOpenModal(zona)}
-                                                title="Editar"
-                                            >
-                                                ✏️
-                                            </button>
-                                            <button
-                                                className={`${styles.btnIcon} ${styles.delete}`}
-                                                onClick={() => handleDelete(zona.id)}
-                                                title="Excluir"
-                                            >
-                                                🗑️
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))
+                            filteredZonas.map((zona, index) => {
+                                // Gerar ID numérico baseado na posição (1, 2, 3...)
+                                const zonaId = index + 1;
+                                return (
+                                    <tr key={zona.id}>
+                                        <td>
+                                            <strong style={{ color: 'var(--primary)', fontSize: '0.875rem' }}>#{zonaId}</strong>
+                                        </td>
+                                        <td>
+                                            <strong>{zona.zonaNome}</strong>
+                                        </td>
+                                        <td>{formatCep(zona.cepInicial)}</td>
+                                        <td>{formatCep(zona.cepFinal)}</td>
+                                        <td>
+                                            <span style={{ 
+                                                fontSize: '0.8125rem', 
+                                                color: 'var(--text-muted)',
+                                                padding: '0.25rem 0.5rem',
+                                                borderRadius: '4px',
+                                                background: 'var(--card-bg)',
+                                                border: '1px solid var(--card-border)'
+                                            }}>
+                                                {zona.regiao || '-'}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span className={zona.ativo ? styles.statusActive : styles.statusInactive}>
+                                                {zona.ativo ? '✅ Ativa' : '⏸️ Inativa'}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div className={styles.actions}>
+                                                <button
+                                                    className={styles.btnIcon}
+                                                    onClick={() => handleOpenModal(zona)}
+                                                    title="Editar"
+                                                >
+                                                    ✏️
+                                                </button>
+                                                <button
+                                                    className={`${styles.btnIcon} ${styles.delete}`}
+                                                    onClick={() => handleDelete(zona.id)}
+                                                    title="Excluir"
+                                                >
+                                                    🗑️
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                );
+                            })
                         )}
                     </tbody>
                 </table>
@@ -357,6 +381,17 @@ export default function ZonasClient({ initialZonas }: ZonasClientProps) {
                                     />
                                     <small className={styles.helpText}>Formato: 12345-678</small>
                                 </div>
+                            </div>
+
+                            <div className={styles.formGroup}>
+                                <label>Região</label>
+                                <input
+                                    type="text"
+                                    value={formData.regiao}
+                                    onChange={e => setFormData({...formData, regiao: e.target.value})}
+                                    placeholder="Ex: SP Capital, Grande SP, ABC, Interior"
+                                />
+                                <small className={styles.helpText}>Opcional: Classificação da região</small>
                             </div>
 
                             <div className={styles.formGroup}>

@@ -536,6 +536,7 @@ model ZonaCep {
   zonaNome    String    @map("zona_nome") @db.VarChar(100)
   cepInicial  String    @map("cep_inicial") @db.VarChar(9)
   cepFinal    String    @map("cep_final") @db.VarChar(9)
+  regiao      String?   @map("regiao") @db.VarChar(50)
   ativo       Boolean   @default(true)
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)

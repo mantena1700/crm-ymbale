@@ -24,6 +24,7 @@ export default async function ZonasPage() {
                     zona_nome: string;
                     cep_inicial: string;
                     cep_final: string;
+                    regiao?: string;
                     ativo: boolean;
                 }>>`
                     SELECT * FROM zonas_cep 
@@ -34,6 +35,7 @@ export default async function ZonasPage() {
                     zonaNome: z.zona_nome,
                     cepInicial: z.cep_inicial,
                     cepFinal: z.cep_final,
+                    regiao: (z as any).regiao,
                     ativo: z.ativo
                 }));
             }
@@ -58,6 +60,7 @@ export default async function ZonasPage() {
                     zonaNome: (z as any).zonaNome || (z as any).zona_nome,
                     cepInicial: (z as any).cepInicial || (z as any).cep_inicial,
                     cepFinal: (z as any).cepFinal || (z as any).cep_final,
+                    regiao: (z as any).regiao || (z as any).regiao,
                     ativo: (z as any).ativo !== undefined ? (z as any).ativo : true
                 }))} />
             </PageLayout>

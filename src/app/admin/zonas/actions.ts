@@ -8,6 +8,7 @@ export interface ZonaCepData {
     zonaNome: string;
     cepInicial: string;
     cepFinal: string;
+    regiao?: string;
     ativo: boolean;
 }
 
@@ -164,6 +165,7 @@ export async function createZona(data: Omit<ZonaCepData, 'id'>) {
                         zonaNome: data.zonaNome,
                         cepInicial: cleanCep(data.cepInicial),
                         cepFinal: cleanCep(data.cepFinal),
+                        regiao: data.regiao || null,
                         ativo: data.ativo
                     }
                 });
@@ -177,10 +179,11 @@ export async function createZona(data: Omit<ZonaCepData, 'id'>) {
                 zona_nome: string;
                 cep_inicial: string;
                 cep_final: string;
+                regiao?: string;
                 ativo: boolean;
             }>>`
-                INSERT INTO zonas_cep (id, zona_nome, cep_inicial, cep_final, ativo, created_at, updated_at)
-                VALUES (gen_random_uuid(), ${data.zonaNome}, ${cleanCep(data.cepInicial)}, ${cleanCep(data.cepFinal)}, ${data.ativo}, NOW(), NOW())
+                INSERT INTO zonas_cep (id, zona_nome, cep_inicial, cep_final, regiao, ativo, created_at, updated_at)
+                VALUES (gen_random_uuid(), ${data.zonaNome}, ${cleanCep(data.cepInicial)}, ${cleanCep(data.cepFinal)}, ${data.regiao || null}, ${data.ativo}, NOW(), NOW())
                 RETURNING *
             `;
             const rawZona = Array.isArray(result) ? result[0] : result;
@@ -190,6 +193,7 @@ export async function createZona(data: Omit<ZonaCepData, 'id'>) {
                 zonaNome: rawZona.zona_nome,
                 cepInicial: rawZona.cep_inicial,
                 cepFinal: rawZona.cep_final,
+                regiao: (rawZona as any).regiao,
                 ativo: rawZona.ativo
             };
         }
@@ -224,6 +228,7 @@ export async function updateZona(id: string, data: Omit<ZonaCepData, 'id'>) {
                         zonaNome: data.zonaNome,
                         cepInicial: cleanCep(data.cepInicial),
                         cepFinal: cleanCep(data.cepFinal),
+                        regiao: data.regiao || null,
                         ativo: data.ativo
                     }
                 });
@@ -237,12 +242,14 @@ export async function updateZona(id: string, data: Omit<ZonaCepData, 'id'>) {
                 zona_nome: string;
                 cep_inicial: string;
                 cep_final: string;
+                regiao?: string;
                 ativo: boolean;
             }>>`
                 UPDATE zonas_cep 
                 SET zona_nome = ${data.zonaNome},
                     cep_inicial = ${cleanCep(data.cepInicial)},
                     cep_final = ${cleanCep(data.cepFinal)},
+                    regiao = ${data.regiao || null},
                     ativo = ${data.ativo},
                     updated_at = NOW()
                 WHERE id = ${id}
@@ -255,6 +262,7 @@ export async function updateZona(id: string, data: Omit<ZonaCepData, 'id'>) {
                 zonaNome: rawZona.zona_nome,
                 cepInicial: rawZona.cep_inicial,
                 cepFinal: rawZona.cep_final,
+                regiao: (rawZona as any).regiao,
                 ativo: rawZona.ativo
             };
         }
@@ -346,26 +354,25 @@ export async function seedZonasPadrao() {
         await ensureTableExists();
         
         const zonasPadrao = [
-            { zonaNome: 'SP Zona Norte', cepInicial: '02000000', cepFinal: '02999999' },
-            { zonaNome: 'SP Zona Sul', cepInicial: '04000000', cepFinal: '04999999' },
-            { zonaNome: 'SP Zona Leste', cepInicial: '03000000', cepFinal: '03999999' },
-            { zonaNome: 'SP Zona Oeste', cepInicial: '05000000', cepFinal: '05999999' },
-            { zonaNome: 'SP Centro', cepInicial: '01000000', cepFinal: '01599999' },
-            { zonaNome: 'Guarulhos Centro', cepInicial: '07000000', cepFinal: '07299999' },
-            { zonaNome: 'Guarulhos Zona Norte', cepInicial: '07400000', cepFinal: '07499999' },
-            { zonaNome: 'Osasco', cepInicial: '06000000', cepFinal: '06299999' },
-            { zonaNome: 'Santo André', cepInicial: '09000000', cepFinal: '09299999' },
-            { zonaNome: 'São Bernardo do Campo', cepInicial: '09700000', cepFinal: '09899999' },
-            { zonaNome: 'São Caetano do Sul', cepInicial: '09500000', cepFinal: '09599999' },
-            { zonaNome: 'Diadema', cepInicial: '09900000', cepFinal: '09999999' },
-            { zonaNome: 'Mauá', cepInicial: '09300000', cepFinal: '09399999' },
-            { zonaNome: 'Sorocaba Centro', cepInicial: '18000000', cepFinal: '18109999' },
-            { zonaNome: 'Sorocaba Norte', cepInicial: '18110000', cepFinal: '18199999' },
-            { zonaNome: 'Campinas Centro', cepInicial: '13000000', cepFinal: '13099999' },
-            { zonaNome: 'Campinas Zona Norte', cepInicial: '13070000', cepFinal: '13099999' },
-            { zonaNome: 'Jundiaí', cepInicial: '13200000', cepFinal: '13219999' },
-            { zonaNome: 'Barueri/Alphaville', cepInicial: '06400000', cepFinal: '06499999' },
-            { zonaNome: 'Taboão da Serra', cepInicial: '06760000', cepFinal: '06769999' },
+            { zonaNome: 'São Paulo - Centro', cepInicial: '01000000', cepFinal: '01599999', regiao: 'SP Capital' },
+            { zonaNome: 'São Paulo - Zona Norte', cepInicial: '02000000', cepFinal: '02999999', regiao: 'SP Capital' },
+            { zonaNome: 'São Paulo - Zona Leste 1', cepInicial: '03000000', cepFinal: '03599999', regiao: 'SP Capital' },
+            { zonaNome: 'São Paulo - Zona Leste 2', cepInicial: '08000000', cepFinal: '08499999', regiao: 'SP Capital' },
+            { zonaNome: 'São Paulo - Zona Sul', cepInicial: '04000000', cepFinal: '04899999', regiao: 'SP Capital' },
+            { zonaNome: 'São Paulo - Zona Oeste', cepInicial: '05000000', cepFinal: '05999999', regiao: 'SP Capital' },
+            { zonaNome: 'Guarulhos - Geral', cepInicial: '07000000', cepFinal: '07499999', regiao: 'Grande SP' },
+            { zonaNome: 'Osasco', cepInicial: '06000000', cepFinal: '06299999', regiao: 'Grande SP' },
+            { zonaNome: 'Barueri/Alphaville', cepInicial: '06400000', cepFinal: '06499999', regiao: 'Grande SP' },
+            { zonaNome: 'Taboão da Serra', cepInicial: '06760000', cepFinal: '06769999', regiao: 'Grande SP' },
+            { zonaNome: 'Santo André', cepInicial: '09000000', cepFinal: '09299999', regiao: 'ABC' },
+            { zonaNome: 'São Bernardo do Campo', cepInicial: '09700000', cepFinal: '09899999', regiao: 'ABC' },
+            { zonaNome: 'São Caetano do Sul', cepInicial: '09500000', cepFinal: '09599999', regiao: 'ABC' },
+            { zonaNome: 'Diadema', cepInicial: '09900000', cepFinal: '09999999', regiao: 'ABC' },
+            { zonaNome: 'Mauá', cepInicial: '09300000', cepFinal: '09399999', regiao: 'ABC' },
+            { zonaNome: 'Sorocaba - Centro/Sul', cepInicial: '18000000', cepFinal: '18079999', regiao: 'Interior' },
+            { zonaNome: 'Sorocaba - Norte/Leste', cepInicial: '18080000', cepFinal: '18199999', regiao: 'Interior' },
+            { zonaNome: 'Campinas - Geral', cepInicial: '13000000', cepFinal: '13149999', regiao: 'Interior' },
+            { zonaNome: 'Jundiaí', cepInicial: '13200000', cepFinal: '13219999', regiao: 'Interior' },
         ];
 
         let created = 0;
@@ -385,8 +392,8 @@ export async function seedZonasPadrao() {
 
                 // Criar a zona
                 await prisma.$executeRaw`
-                    INSERT INTO zonas_cep (id, zona_nome, cep_inicial, cep_final, ativo, created_at, updated_at)
-                    VALUES (gen_random_uuid(), ${zona.zonaNome}, ${zona.cepInicial}, ${zona.cepFinal}, true, NOW(), NOW())
+                    INSERT INTO zonas_cep (id, zona_nome, cep_inicial, cep_final, regiao, ativo, created_at, updated_at)
+                    VALUES (gen_random_uuid(), ${zona.zonaNome}, ${zona.cepInicial}, ${zona.cepFinal}, ${zona.regiao || null}, true, NOW(), NOW())
                 `;
                 created++;
             } catch (error: any) {
