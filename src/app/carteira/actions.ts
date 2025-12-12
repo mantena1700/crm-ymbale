@@ -1001,8 +1001,14 @@ export async function exportWeeklyScheduleToAgendamentoTemplate(
             
             // Preencher campos
             if (columnMap['Código Cliente'] !== undefined) {
-                const codigoCliente = (followUp.restaurant as any).codigoCliente || '';
+                // Tentar acessar codigoCliente de diferentes formas
+                const codigoCliente = (followUp.restaurant as any).codigoCliente || 
+                                     (followUp.restaurant as any).codigo_cliente || 
+                                     '';
                 newRow.getCell(columnMap['Código Cliente']).value = codigoCliente ? String(codigoCliente) : '';
+                if (index < 5) {
+                    console.log(`   [${index + 1}] Código Cliente: ${codigoCliente || 'N/A'}`);
+                }
             }
             if (columnMap['Cliente'] !== undefined) {
                 newRow.getCell(columnMap['Cliente']).value = followUp.restaurant.name || '';
