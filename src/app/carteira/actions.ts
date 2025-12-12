@@ -1102,6 +1102,15 @@ export async function getFixedClients(sellerId: string) {
     'use server';
     
     try {
+        // Verificar se a tabela existe
+        try {
+            await prisma.$queryRaw`SELECT 1 FROM fixed_clients LIMIT 1`;
+        } catch (error: any) {
+            // Tabela não existe ainda, retornar array vazio
+            console.log('Tabela fixed_clients ainda não existe, retornando vazio');
+            return [];
+        }
+
         const fixedClients = await prisma.fixedClient.findMany({
             where: {
                 sellerId: sellerId,
@@ -1221,6 +1230,13 @@ export async function updateFixedClient(
     'use server';
     
     try {
+        // Verificar se a tabela existe
+        try {
+            await prisma.$queryRaw`SELECT 1 FROM fixed_clients LIMIT 1`;
+        } catch (error: any) {
+            return { success: false, error: 'Tabela de clientes fixos ainda não foi criada. Execute a migration primeiro.' };
+        }
+
         const fixedClient = await prisma.fixedClient.update({
             where: { id },
             data: {
@@ -1269,6 +1285,15 @@ export async function getFixedClientsForWeek(sellerId: string, weekStart: string
     'use server';
     
     try {
+        // Verificar se a tabela existe (se não existir, retornar objeto vazio)
+        try {
+            await prisma.$queryRaw`SELECT 1 FROM fixed_clients LIMIT 1`;
+        } catch (error: any) {
+            // Tabela não existe ainda, retornar objeto vazio
+            console.log('Tabela fixed_clients ainda não existe, retornando vazio');
+            return {};
+        }
+
         const startDate = new Date(weekStart);
         startDate.setHours(0, 0, 0, 0);
         const endDate = new Date(startDate);

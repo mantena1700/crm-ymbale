@@ -82,9 +82,14 @@ export default function WeeklyCalendar({ restaurants, sellerId, weekStart }: Wee
             const schedule = await getWeeklySchedule(sellerId, weekStart.toISOString());
             setScheduledSlots(schedule);
             
-            // Carregar clientes fixos da semana
-            const fixedClients = await getFixedClientsForWeek(sellerId, weekStart.toISOString());
-            setFixedClientsByDay(fixedClients);
+            // Carregar clientes fixos da semana (com tratamento de erro)
+            try {
+                const fixedClients = await getFixedClientsForWeek(sellerId, weekStart.toISOString());
+                setFixedClientsByDay(fixedClients || {});
+            } catch (error) {
+                console.warn('Erro ao carregar clientes fixos (tabela pode não existir ainda):', error);
+                setFixedClientsByDay({});
+            }
         } catch (error) {
             console.error('Erro ao carregar agenda:', error);
         } finally {

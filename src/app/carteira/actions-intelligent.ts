@@ -90,9 +90,22 @@ export async function generateIntelligentWeeklySchedule(
         // Ordenar por score (maior primeiro)
         scoredRestaurants.sort((a, b) => b.score - a.score);
 
-        // Buscar clientes fixos da semana
-        const fixedClientsByDay = await getFixedClientsForWeek(sellerId, weekStart.toISOString());
-        console.log(`📌 Clientes fixos encontrados para a semana:`, Object.keys(fixedClientsByDay).length, 'dias');
+        // Buscar clientes fixos da semana (com tratamento de erro)
+        let fixedClientsByDay: { [date: string]: Array<{
+            id: string;
+            restaurantId: string;
+            restaurantName: string;
+            restaurantAddress: any;
+            radiusKm: number;
+        }> } = {};
+        
+        try {
+            fixedClientsByDay = await getFixedClientsForWeek(sellerId, weekStart.toISOString()) || {};
+            console.log(`📌 Clientes fixos encontrados para a semana:`, Object.keys(fixedClientsByDay).length, 'dias');
+        } catch (error) {
+            console.warn('Erro ao buscar clientes fixos (tabela pode não existir ainda):', error);
+            fixedClientsByDay = {};
+        }
 
         // Gerar dias da semana (segunda a sexta)
         const weekDays: WeeklySchedule[] = [];
