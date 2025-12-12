@@ -1296,6 +1296,15 @@ export async function allocateRestaurantsToZones() {
 
                 console.log(`   Total de zonas ativas encontradas: ${zonas.length}`);
                 
+                // Log das zonas encontradas para debug
+                console.log(`\n📋 ZONAS ENCONTRADAS (${zonas.length}):`);
+                zonas.forEach((z: any) => {
+                    const nome = z.zonaNome || z.zona_nome;
+                    const cepIni = z.cepInicial || z.cep_inicial;
+                    const cepFim = z.cepFinal || z.cep_final;
+                    console.log(`   - ${nome}: ${cepIni} a ${cepFim}`);
+                });
+                
                 // Buscar zona que contém o CEP
                 for (const zona of zonas) {
                     const zonaNome = (zona as any).zonaNome || (zona as any).zona_nome;
