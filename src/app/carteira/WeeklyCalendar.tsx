@@ -50,6 +50,13 @@ export default function WeeklyCalendar({ restaurants, sellerId, weekStart }: Wee
     const [loading, setLoading] = useState(false);
     const [selectedSlot, setSelectedSlot] = useState<{ date: string; time: string } | null>(null);
     const [restaurantsViewMode, setRestaurantsViewMode] = useState<'cards' | 'list'>('list');
+    const [fixedClientsByDay, setFixedClientsByDay] = useState<{ [date: string]: Array<{
+        id: string;
+        restaurantId: string;
+        restaurantName: string;
+        restaurantAddress: any;
+        radiusKm: number;
+    }> }>({});
     
     // Novos estados para filtros e visualização
     const [calendarViewMode, setCalendarViewMode] = useState<CalendarViewMode>('compact');
