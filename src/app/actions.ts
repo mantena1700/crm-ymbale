@@ -1219,6 +1219,10 @@ export async function allocateRestaurantsToZones() {
     'use server';
     
     try {
+        console.log('\n\n🚀 ============================================');
+        console.log('🚀 INICIANDO ALOCAÇÃO DE RESTAURANTES POR CEP');
+        console.log('🚀 ============================================\n');
+        
         const { prisma } = await import('@/lib/db');
         
         // Garantir que a coluna zona_id existe
@@ -1232,6 +1236,8 @@ export async function allocateRestaurantsToZones() {
         // Função para encontrar zona por CEP (local, não importada)
         const findZonaByCep = async (cep: string): Promise<string | null> => {
             try {
+                console.log(`\n🔎 ===== BUSCANDO ZONA PARA CEP: ${cep} =====`);
+                
                 // Limpar e validar CEP
                 const cleanedCep = cleanCep(cep);
                 if (cleanedCep.length !== 8) {
@@ -1245,6 +1251,8 @@ export async function allocateRestaurantsToZones() {
                     console.warn(`⚠️ CEP inválido (não é número válido): ${cep} -> ${cleanedCep}`);
                     return null;
                 }
+                
+                console.log(`   CEP limpo: ${cleanedCep}, número: ${cepNum}`);
 
                 // Garantir que a tabela existe
                 try {
@@ -1286,8 +1294,11 @@ export async function allocateRestaurantsToZones() {
                     return null;
                 }
 
+                console.log(`   Total de zonas ativas encontradas: ${zonas.length}`);
+                
                 // Buscar zona que contém o CEP
                 for (const zona of zonas) {
+                    console.log(`\n   --- Verificando zona: ${(zona as any).zonaNome || (zona as any).zona_nome} ---`);
                     const cepInicial = (zona as any).cepInicial || (zona as any).cep_inicial;
                     const cepFinal = (zona as any).cepFinal || (zona as any).cep_final;
                     
@@ -1496,14 +1507,21 @@ export async function allocateRestaurantsToZones() {
                 }
 
                 // Log detalhado do CEP encontrado para debug
-                console.log(`🔍 Processando restaurante ${restaurant.id}: CEP encontrado = "${cep}" (limpo: ${cleanedCep}, número: ${cepNum})`);
-                console.log(`📋 DEBUG - Address completo:`, JSON.stringify(address));
+                console.log(`\n🔍 ===== PROCESSANDO RESTAURANTE ${restaurant.id} =====`);
+                console.log(`   Nome: ${(restaurant as any).name || 'N/A'}`);
+                console.log(`   CEP encontrado: "${cep}"`);
+                console.log(`   CEP limpo: ${cleanedCep}`);
+                console.log(`   CEP número: ${cepNum}`);
+                console.log(`   Address completo:`, JSON.stringify(address, null, 2));
                 
                 // Encontrar zona pelo CEP
+                console.log(`\n🔎 Chamando findZonaByCep para CEP: ${cep}`);
                 const zonaId = await findZonaByCep(cep);
+                console.log(`   Resultado findZonaByCep: ${zonaId || 'null (nenhuma zona encontrada)'}`);
                 
                 if (zonaId) {
-                    console.log(`✅ Zona encontrada para restaurante ${restaurant.id}: ${zonaId}`);
+                    console.log(`\n✅ ===== ZONA ENCONTRADA PARA RESTAURANTE ${restaurant.id} =====`);
+                    console.log(`   Zona ID: ${zonaId}`);
                     const hadZona = restaurant.zonaId !== null;
                     
                     // Atualizar restaurante com a zona usando SQL direto
@@ -1560,7 +1578,9 @@ export async function allocateRestaurantsToZones() {
                         allocated++;
                     }
                 } else {
-                    console.log(`❌ Nenhuma zona encontrada para restaurante ${restaurant.id} com CEP ${cep} (${cleanedCep})`);
+                    console.log(`\n❌ ===== NENHUMA ZONA ENCONTRADA PARA RESTAURANTE ${restaurant.id} =====`);
+                    console.log(`   CEP: ${cep} (${cleanedCep}, número: ${cepNum})`);
+                    console.log(`   Este restaurante será adicionado à lista de não alocados`);
                     unallocated.push(restaurant.id);
                 }
             } catch (error: any) {
