@@ -1014,8 +1014,8 @@ export async function exportWeeklyScheduleToAgendamentoTemplate(
                 newRow.getCell(columnMap['Cliente']).value = followUp.restaurant.name || '';
             }
             if (columnMap['Segmento'] !== undefined) {
-                // Usar potencial de vendas como segmento
-                newRow.getCell(columnMap['Segmento']).value = followUp.restaurant.salesPotential || '';
+                // Sempre preencher com "Carteira Sul"
+                newRow.getCell(columnMap['Segmento']).value = 'Carteira Sul';
             }
             if (columnMap['Contato'] !== undefined) {
                 newRow.getCell(columnMap['Contato']).value = ''; // Deixar vazio ou buscar do banco
@@ -1024,19 +1024,24 @@ export async function exportWeeklyScheduleToAgendamentoTemplate(
                 newRow.getCell(columnMap['Data Início']).value = scheduledDate;
             }
             if (columnMap['Hora Início'] !== undefined) {
-                newRow.getCell(columnMap['Hora Início']).value = scheduledDate;
+                // Deixar em branco
+                newRow.getCell(columnMap['Hora Início']).value = '';
             }
             if (columnMap['Data Conclusão'] !== undefined) {
-                newRow.getCell(columnMap['Data Conclusão']).value = endDateObj;
+                // Usar a mesma data de início
+                newRow.getCell(columnMap['Data Conclusão']).value = scheduledDate;
             }
             if (columnMap['Hora Conclusão'] !== undefined) {
-                newRow.getCell(columnMap['Hora Conclusão']).value = endDateObj;
+                // Deixar em branco
+                newRow.getCell(columnMap['Hora Conclusão']).value = '';
             }
             if (columnMap['Objetivo'] !== undefined) {
-                newRow.getCell(columnMap['Objetivo']).value = followUp.type || 'Visita técnica';
+                // Sempre "Prospecção de Clientes"
+                newRow.getCell(columnMap['Objetivo']).value = 'Prospecção de Clientes';
             }
             if (columnMap['Equipe'] !== undefined) {
-                newRow.getCell(columnMap['Equipe']).value = followUp.restaurant.seller?.name || '';
+                // Sempre "REGIÃO 4 - Sudeste - José Rampin (Gerente)"
+                newRow.getCell(columnMap['Equipe']).value = 'REGIÃO 4 - Sudeste - José Rampin (Gerente)';
             }
             if (columnMap['Nome Usuário'] !== undefined) {
                 newRow.getCell(columnMap['Nome Usuário']).value = followUp.restaurant.seller?.name || '';
