@@ -1899,8 +1899,29 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
     'use server';
     
     try {
-        const xlsx = await import('xlsx');
+        const ExcelJS = await import('exceljs');
+        const fs = await import('fs');
+        const path = await import('path');
         const { prisma } = await import('@/lib/db');
+        
+        // Caminho do template original
+        // O template está na pasta pai do projeto (C:\Users\Bel\Documents\CRM_Ymbale\)
+        const templatePath = path.join(process.cwd(), '..', 'Copy of Template - Cadastro Cliente(1).xlsx');
+        
+        // Se não encontrar, tentar caminho absoluto alternativo
+        let finalTemplatePath = templatePath;
+        if (!fs.existsSync(finalTemplatePath)) {
+            // Tentar caminho absoluto baseado no padrão Windows
+            const altPath = path.join('C:', 'Users', 'Bel', 'Documents', 'CRM_Ymbale', 'Copy of Template - Cadastro Cliente(1).xlsx');
+            if (fs.existsSync(altPath)) {
+                finalTemplatePath = altPath;
+            }
+        }
+        
+        // Verificar se o template existe
+        if (!fs.existsSync(finalTemplatePath)) {
+            throw new Error(`Template não encontrado em: ${finalTemplatePath}. Verifique se o arquivo "Copy of Template - Cadastro Cliente(1).xlsx" está na pasta raiz do projeto (C:\\Users\\Bel\\Documents\\CRM_Ymbale\\).`);
+        }
         
         // Buscar restaurantes selecionados
         const restaurants = await prisma.restaurant.findMany({
@@ -1919,8 +1940,104 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
             }
         });
 
-        // Preparar dados para Excel no formato exato do template Checkmob (16 colunas)
-        const excelData = restaurants.map((r: any) => {
+        // Carregar o template original
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.readFile(finalTemplatePath);
+        
+        // Obter a primeira planilha (que contém o template)
+        const worksheet = workbook.getWorksheet(1);
+        
+        // Encontrar a linha de cabeçalho (geralmente linha 1)
+        // Procurar pela linha que contém "Nome", "E-mail", etc.
+        let headerRow = 1;
+        let foundHeader = false;
+        
+        // Verificar se a linha 1 tem os cabeçalhos esperados
+        const firstRow = worksheet.getRow(1);
+        const firstRowValues = firstRow.values as any[];
+        if (firstRowValues && firstRowValues.length > 0) {
+            const firstRowText = firstRowValues.join('').toLowerCase();
+            if (firstRowText.includes('nome') && firstRowText.includes('e-mail')) {
+                foundHeader = true;
+                headerRow = 1;
+            }
+        }
+        
+        // Se não encontrou na linha 1, procurar nas próximas linhas
+        if (!foundHeader) {
+            for (let row = 1; row <= 10; row++) {
+                const rowData = worksheet.getRow(row);
+                const rowValues = rowData.values as any[];
+                if (rowValues && rowValues.length > 0) {
+                    const rowText = rowValues.join('').toLowerCase();
+                    if (rowText.includes('nome') && rowText.includes('e-mail')) {
+                        headerRow = row;
+                        foundHeader = true;
+                        break;
+                    }
+                }
+            }
+        }
+        
+        // Se não encontrou o cabeçalho, usar linha 1 como padrão
+        if (!foundHeader) {
+            headerRow = 1;
+        }
+        
+        // Limpar dados de exemplo (manter apenas o cabeçalho)
+        // Deletar todas as linhas após o cabeçalho até o final
+        const lastRow = worksheet.rowCount;
+        if (lastRow > headerRow) {
+            worksheet.spliceRows(headerRow + 1, lastRow - headerRow);
+        }
+        
+        // Mapear colunas do template
+        const headerRowData = worksheet.getRow(headerRow);
+        const headerValues = headerRowData.values as any[];
+        
+        // Criar mapa de colunas (índice da coluna -> nome do campo)
+        const columnMap: { [key: string]: number } = {};
+        headerValues.forEach((value, index) => {
+            if (value && typeof value === 'string') {
+                const normalizedValue = value.trim().toLowerCase();
+                if (normalizedValue.includes('nome') && !normalizedValue.includes('e-mail')) {
+                    columnMap['Nome'] = index;
+                } else if (normalizedValue.includes('e-mail') || normalizedValue.includes('email')) {
+                    columnMap['E-mail'] = index;
+                } else if (normalizedValue.includes('telefone')) {
+                    columnMap['Telefone'] = index;
+                } else if (normalizedValue.includes('celular')) {
+                    columnMap['Celular'] = index;
+                } else if (normalizedValue.includes('endereço') || normalizedValue.includes('endereco')) {
+                    columnMap['Endereço'] = index;
+                } else if (normalizedValue.includes('número') || normalizedValue.includes('numero')) {
+                    columnMap['Número'] = index;
+                } else if (normalizedValue.includes('complemento')) {
+                    columnMap['Complemento'] = index;
+                } else if (normalizedValue.includes('bairro') || normalizedValue.includes('localidade')) {
+                    columnMap['Bairro/Localidade'] = index;
+                } else if (normalizedValue.includes('país') || normalizedValue.includes('pais')) {
+                    columnMap['País'] = index;
+                } else if (normalizedValue.includes('estado') || normalizedValue.includes('província') || normalizedValue.includes('provincia')) {
+                    columnMap['Estado/Província'] = index;
+                } else if (normalizedValue.includes('cidade')) {
+                    columnMap['Cidade'] = index;
+                } else if (normalizedValue.includes('código postal') || normalizedValue.includes('codigo postal') || normalizedValue.includes('cep')) {
+                    columnMap['Código Postal'] = index;
+                } else if (normalizedValue.includes('coordenadas')) {
+                    columnMap['Coordenadas'] = index;
+                } else if (normalizedValue.includes('ativo')) {
+                    columnMap['Ativo'] = index;
+                } else if (normalizedValue.includes('código cliente') || normalizedValue.includes('codigo cliente')) {
+                    columnMap['Código Cliente'] = index;
+                } else if (normalizedValue.includes('clientes')) {
+                    columnMap['Clientes'] = index;
+                }
+            }
+        });
+        
+        // Adicionar dados dos restaurantes
+        restaurants.forEach((r: any) => {
             const address = typeof r.address === 'string' ? JSON.parse(r.address) : r.address;
             
             // Extrair CEP (tentar várias variações)
@@ -1931,55 +2048,85 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
                        address?.CEP ||
                        '';
             
-            return {
-                'Nome': '', // Vazio conforme especificado
-                'E-mail': '', // Vazio
-                'Telefone': '', // Vazio
-                'Celular': '', // Vazio
-                'Endereço': '', // Vazio
-                'Número': '', // Vazio
-                'Complemento': '', // Vazio
-                'Bairro/Localidade': '', // Vazio
-                'País': 'Brasil', // Sempre "Brasil"
-                'Estado/Província': address?.state || address?.estado || '', // Do banco
-                'Cidade': address?.city || address?.cidade || '', // Do banco
-                'Código Postal': cep, // CEP do banco
-                'Coordenadas': '', // Vazio
-                'Ativo': 'Sim', // Sempre "Sim"
-                'Código Cliente': '', // Vazio
-                'Clientes': r.name || '' // Nome do restaurante
-            };
+            // Extrair endereço, número e bairro separadamente
+            const enderecoCompleto = address?.street || address?.address || '';
+            // Tentar separar número do endereço (formato comum: "Rua Exemplo, 123")
+            let endereco = enderecoCompleto;
+            let numero = '';
+            
+            if (enderecoCompleto) {
+                const numeroMatch = enderecoCompleto.match(/,\s*(\d+)/);
+                if (numeroMatch) {
+                    numero = numeroMatch[1];
+                    endereco = enderecoCompleto.replace(/,\s*\d+.*$/, '').trim();
+                } else {
+                    // Tentar outro formato: "Rua Exemplo 123"
+                    const numeroMatch2 = enderecoCompleto.match(/\s+(\d+)$/);
+                    if (numeroMatch2) {
+                        numero = numeroMatch2[1];
+                        endereco = enderecoCompleto.replace(/\s+\d+$/, '').trim();
+                    }
+                }
+            }
+            
+            const bairro = address?.neighborhood || address?.bairro || '';
+            
+            // Criar nova linha após o cabeçalho
+            const newRow = worksheet.addRow([]);
+            
+            // Preencher dados nas colunas corretas
+            if (columnMap['Nome'] !== undefined) {
+                newRow.getCell(columnMap['Nome']).value = '';
+            }
+            if (columnMap['E-mail'] !== undefined) {
+                newRow.getCell(columnMap['E-mail']).value = '';
+            }
+            if (columnMap['Telefone'] !== undefined) {
+                newRow.getCell(columnMap['Telefone']).value = '';
+            }
+            if (columnMap['Celular'] !== undefined) {
+                newRow.getCell(columnMap['Celular']).value = '';
+            }
+            if (columnMap['Endereço'] !== undefined) {
+                newRow.getCell(columnMap['Endereço']).value = endereco;
+            }
+            if (columnMap['Número'] !== undefined) {
+                newRow.getCell(columnMap['Número']).value = numero;
+            }
+            if (columnMap['Complemento'] !== undefined) {
+                newRow.getCell(columnMap['Complemento']).value = '';
+            }
+            if (columnMap['Bairro/Localidade'] !== undefined) {
+                newRow.getCell(columnMap['Bairro/Localidade']).value = bairro;
+            }
+            if (columnMap['País'] !== undefined) {
+                newRow.getCell(columnMap['País']).value = 'Brasil';
+            }
+            if (columnMap['Estado/Província'] !== undefined) {
+                newRow.getCell(columnMap['Estado/Província']).value = address?.state || address?.estado || '';
+            }
+            if (columnMap['Cidade'] !== undefined) {
+                newRow.getCell(columnMap['Cidade']).value = address?.city || address?.cidade || '';
+            }
+            if (columnMap['Código Postal'] !== undefined) {
+                newRow.getCell(columnMap['Código Postal']).value = cep;
+            }
+            if (columnMap['Coordenadas'] !== undefined) {
+                newRow.getCell(columnMap['Coordenadas']).value = '';
+            }
+            if (columnMap['Ativo'] !== undefined) {
+                newRow.getCell(columnMap['Ativo']).value = 'Sim';
+            }
+            if (columnMap['Código Cliente'] !== undefined) {
+                newRow.getCell(columnMap['Código Cliente']).value = '';
+            }
+            if (columnMap['Clientes'] !== undefined) {
+                newRow.getCell(columnMap['Clientes']).value = r.name || '';
+            }
         });
-
-        // Criar workbook
-        const wb = xlsx.utils.book_new();
-        const ws = xlsx.utils.json_to_sheet(excelData);
-        
-        // Ajustar largura das colunas para melhor visualização
-        const colWidths = [
-            { wch: 25 }, // Nome
-            { wch: 30 }, // E-mail
-            { wch: 18 }, // Telefone
-            { wch: 18 }, // Celular
-            { wch: 40 }, // Endereço
-            { wch: 12 }, // Número
-            { wch: 20 }, // Complemento
-            { wch: 25 }, // Bairro/Localidade
-            { wch: 15 }, // País
-            { wch: 20 }, // Estado/Província
-            { wch: 20 }, // Cidade
-            { wch: 15 }, // Código Postal
-            { wch: 20 }, // Coordenadas
-            { wch: 10 }, // Ativo
-            { wch: 15 }, // Código Cliente
-            { wch: 30 }, // Clientes
-        ];
-        ws['!cols'] = colWidths;
-        
-        xlsx.utils.book_append_sheet(wb, ws, 'Cadastro Cliente');
         
         // Converter para buffer
-        const buffer = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
+        const buffer = await workbook.xlsx.writeBuffer();
         
         // Converter para base64
         const base64 = Buffer.from(buffer).toString('base64');
