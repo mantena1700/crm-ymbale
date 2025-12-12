@@ -484,12 +484,17 @@ export async function importExcelFile(formData: FormData) {
         // Função para encontrar zona por CEP (usar modelo se disponível, senão SQL direto)
         const findZonaByCep = async (cep: string): Promise<string | null> => {
             try {
+                // Limpar e validar CEP
                 const cleanedCep = cleanCep(cep);
                 if (cleanedCep.length !== 8) {
                     return null;
                 }
 
+                // Validar se é um número válido
                 const cepNum = parseInt(cleanedCep, 10);
+                if (isNaN(cepNum) || cepNum <= 0) {
+                    return null;
+                }
 
                 let zonas: any[] = [];
                 
@@ -518,12 +523,28 @@ export async function importExcelFile(formData: FormData) {
                     }));
                 }
 
+                if (zonas.length === 0) {
+                    return null;
+                }
+
                 // Buscar zona que contém o CEP
                 for (const zona of zonas) {
                     const cepInicial = (zona as any).cepInicial || (zona as any).cep_inicial;
                     const cepFinal = (zona as any).cepFinal || (zona as any).cep_final;
+                    
+                    if (!cepInicial || !cepFinal) {
+                        continue;
+                    }
+                    
                     const zonaInicio = parseInt(cleanCep(cepInicial), 10);
                     const zonaFim = parseInt(cleanCep(cepFinal), 10);
+                    
+                    // Validar se os CEPs da zona são válidos
+                    if (isNaN(zonaInicio) || isNaN(zonaFim) || zonaInicio <= 0 || zonaFim <= 0) {
+                        continue;
+                    }
+                    
+                    // Verificar se o CEP está dentro do range
                     if (cepNum >= zonaInicio && cepNum <= zonaFim) {
                         return (zona as any).id;
                     }
@@ -705,13 +726,38 @@ export async function importExcelFile(formData: FormData) {
                         }
 
                         const neighborhood = getColumnValue(row, ['Bairro', 'Neighborhood', 'neighborhood', 'Distrito']) || '';
-                        const cep = getColumnValue(row, ['CEP', 'Zip Code', 'zipCode', 'Código Postal']) || '';
+                        let cep = getColumnValue(row, ['CEP', 'Zip Code', 'zipCode', 'Código Postal', 'Cep', 'cep', 'CEP/Código Postal', 'Postal Code', 'postalCode']) || '';
+
+                        // Limpar e normalizar CEP antes de usar
+                        if (cep) {
+                            // Remover caracteres não numéricos, mas manter o formato se já estiver correto
+                            const cleanedCep = cep.replace(/[^0-9]/g, '');
+                            if (cleanedCep.length === 8) {
+                                // Formatar como 12345-678 se não tiver hífen
+                                if (!cep.includes('-')) {
+                                    cep = `${cleanedCep.substring(0, 5)}-${cleanedCep.substring(5)}`;
+                                } else {
+                                    cep = cleanedCep.substring(0, 5) + '-' + cleanedCep.substring(5);
+                                }
+                            } else if (cleanedCep.length > 0) {
+                                // Se tiver mais ou menos dígitos, usar apenas os 8 primeiros ou preencher com zeros
+                                if (cleanedCep.length > 8) {
+                                    cep = cleanedCep.substring(0, 5) + '-' + cleanedCep.substring(5, 8);
+                                } else {
+                                    // Preencher com zeros à esquerda se tiver menos de 8 dígitos
+                                    const padded = cleanedCep.padStart(8, '0');
+                                    cep = padded.substring(0, 5) + '-' + padded.substring(5);
+                                }
+                            } else {
+                                cep = '';
+                            }
+                        }
 
                         // Buscar zona por CEP
                         let zonaId: string | null = null;
                         let sellerId: string | null = null;
 
-                        if (cep) {
+                        if (cep && cep.replace(/[^0-9]/g, '').length === 8) {
                             zonaId = await findZonaByCep(cep);
                             if (zonaId) {
                                 sellerId = await findSellerByZona(zonaId);
@@ -1186,18 +1232,25 @@ export async function allocateRestaurantsToZones() {
         // Função para encontrar zona por CEP (local, não importada)
         const findZonaByCep = async (cep: string): Promise<string | null> => {
             try {
+                // Limpar e validar CEP
                 const cleanedCep = cleanCep(cep);
                 if (cleanedCep.length !== 8) {
+                    console.warn(`⚠️ CEP inválido (tamanho incorreto): ${cep} -> ${cleanedCep} (${cleanedCep.length} dígitos)`);
                     return null;
                 }
 
+                // Validar se é um número válido
                 const cepNum = parseInt(cleanedCep, 10);
+                if (isNaN(cepNum) || cepNum <= 0) {
+                    console.warn(`⚠️ CEP inválido (não é número válido): ${cep} -> ${cleanedCep}`);
+                    return null;
+                }
 
                 // Garantir que a tabela existe
                 try {
                     await prisma.$queryRaw`SELECT 1 FROM zonas_cep LIMIT 1`;
                 } catch (e) {
-                    // Se não existir, retornar null
+                    console.warn('⚠️ Tabela zonas_cep não existe');
                     return null;
                 }
 
@@ -1228,20 +1281,41 @@ export async function allocateRestaurantsToZones() {
                     }));
                 }
 
+                if (zonas.length === 0) {
+                    console.warn('⚠️ Nenhuma zona ativa encontrada');
+                    return null;
+                }
+
                 // Buscar zona que contém o CEP
                 for (const zona of zonas) {
                     const cepInicial = (zona as any).cepInicial || (zona as any).cep_inicial;
                     const cepFinal = (zona as any).cepFinal || (zona as any).cep_final;
+                    
+                    if (!cepInicial || !cepFinal) {
+                        console.warn(`⚠️ Zona ${(zona as any).zonaNome || (zona as any).zona_nome} sem CEP inicial ou final`);
+                        continue;
+                    }
+                    
                     const zonaInicio = parseInt(cleanCep(cepInicial), 10);
                     const zonaFim = parseInt(cleanCep(cepFinal), 10);
+                    
+                    // Validar se os CEPs da zona são válidos
+                    if (isNaN(zonaInicio) || isNaN(zonaFim) || zonaInicio <= 0 || zonaFim <= 0) {
+                        console.warn(`⚠️ Zona ${(zona as any).zonaNome || (zona as any).zona_nome} com CEPs inválidos: ${cepInicial} - ${cepFinal}`);
+                        continue;
+                    }
+                    
+                    // Verificar se o CEP está dentro do range
                     if (cepNum >= zonaInicio && cepNum <= zonaFim) {
+                        console.log(`✅ CEP ${cep} (${cepNum}) encontrado na zona ${(zona as any).zonaNome || (zona as any).zona_nome} (${cepInicial} - ${cepFinal})`);
                         return (zona as any).id;
                     }
                 }
 
+                console.warn(`❌ Nenhuma zona encontrada para CEP ${cep} (${cepNum})`);
                 return null;
             } catch (error) {
-                console.error('Erro ao buscar zona por CEP:', error);
+                console.error('❌ Erro ao buscar zona por CEP:', error);
                 return null;
             }
         };
@@ -1319,7 +1393,7 @@ export async function allocateRestaurantsToZones() {
             try {
                 const address = restaurant.address as any;
                 
-                // Tentar vários formatos de CEP
+                // Tentar vários formatos de CEP - MELHORADO
                 let cep: string | null = null;
                 
                 if (typeof address === 'string') {
@@ -1327,24 +1401,60 @@ export async function allocateRestaurantsToZones() {
                         const parsed = JSON.parse(address);
                         cep = parsed?.zip || parsed?.postalCode || parsed?.cep || parsed?.zipCode || parsed?.postal_code || parsed?.CEP;
                     } catch {
-                        // Se não for JSON, tentar extrair CEP da string
+                        // Se não for JSON, tentar extrair CEP da string usando regex mais robusto
                         const cepMatch = address.match(/\d{5}-?\d{3}/);
                         if (cepMatch) {
                             cep = cepMatch[0];
+                        } else {
+                            // Tentar extrair qualquer sequência de 8 dígitos
+                            const digitsOnly = address.replace(/[^0-9]/g, '');
+                            if (digitsOnly.length >= 8) {
+                                cep = digitsOnly.substring(0, 8);
+                            }
                         }
                     }
                 } else if (address && typeof address === 'object') {
                     // O formato padrão do sistema usa 'zip'
+                    // Tentar todas as variações possíveis
                     cep = address?.zip || 
                           address?.postalCode || 
                           address?.cep || 
                           address?.zipCode || 
                           address?.postal_code ||
-                          address?.CEP;
+                          address?.CEP ||
+                          address?.Zip ||
+                          address?.ZIP ||
+                          address?.Cep ||
+                          address?.PostalCode ||
+                          address?.postal_code ||
+                          // Tentar buscar em sub-objetos
+                          (address?.address && typeof address.address === 'object' ? address.address.zip : null) ||
+                          (address?.location && typeof address.location === 'object' ? address.location.zip : null);
                 }
                 
-                if (!cep) {
-                    console.log(`Restaurante ${restaurant.id} sem CEP. Address:`, JSON.stringify(address));
+                // Se ainda não encontrou, tentar converter o objeto inteiro para string e buscar
+                if (!cep && address && typeof address === 'object') {
+                    const addressStr = JSON.stringify(address);
+                    const cepMatch = addressStr.match(/\d{5}-?\d{3}/);
+                    if (cepMatch) {
+                        cep = cepMatch[0];
+                    } else {
+                        const digitsOnly = addressStr.replace(/[^0-9]/g, '');
+                        if (digitsOnly.length >= 8) {
+                            // Tentar encontrar CEP válido (começando com 0-9)
+                            for (let i = 0; i <= digitsOnly.length - 8; i++) {
+                                const candidate = digitsOnly.substring(i, i + 8);
+                                if (candidate.startsWith('0') || candidate.startsWith('1') || candidate.startsWith('2')) {
+                                    cep = candidate;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                if (!cep || cep.trim() === '') {
+                    console.log(`⚠️ Restaurante ${restaurant.id} sem CEP. Address:`, JSON.stringify(address));
                     unallocated.push(restaurant.id);
                     continue;
                 }
@@ -1352,7 +1462,15 @@ export async function allocateRestaurantsToZones() {
                 // Limpar e validar CEP
                 const cleanedCep = cleanCep(cep);
                 if (cleanedCep.length !== 8) {
-                    console.log(`CEP inválido para restaurante ${restaurant.id}: ${cep} (limpo: ${cleanedCep})`);
+                    console.log(`⚠️ CEP inválido para restaurante ${restaurant.id}: ${cep} (limpo: ${cleanedCep}, tamanho: ${cleanedCep.length})`);
+                    unallocated.push(restaurant.id);
+                    continue;
+                }
+
+                // Validar se é um número válido
+                const cepNum = parseInt(cleanedCep, 10);
+                if (isNaN(cepNum) || cepNum <= 0) {
+                    console.log(`⚠️ CEP não é número válido para restaurante ${restaurant.id}: ${cep} -> ${cleanedCep} -> ${cepNum}`);
                     unallocated.push(restaurant.id);
                     continue;
                 }
