@@ -1894,6 +1894,111 @@ export async function exportRestaurantsToExcel(restaurantIds: string[]) {
     }
 }
 
+// Exportar restaurantes para formato Checkmob (template de cadastro)
+export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
+    'use server';
+    
+    try {
+        const xlsx = await import('xlsx');
+        const { prisma } = await import('@/lib/db');
+        
+        // Buscar restaurantes selecionados
+        const restaurants = await prisma.restaurant.findMany({
+            where: {
+                id: { in: restaurantIds }
+            },
+            include: {
+                seller: {
+                    select: {
+                        name: true
+                    }
+                }
+            },
+            orderBy: {
+                name: 'asc'
+            }
+        });
+
+        // Preparar dados para Excel no formato exato do template Checkmob (16 colunas)
+        const excelData = restaurants.map((r: any) => {
+            const address = typeof r.address === 'string' ? JSON.parse(r.address) : r.address;
+            
+            // Extrair CEP (tentar várias variações)
+            const cep = address?.zip || 
+                       address?.cep || 
+                       address?.postal_code || 
+                       address?.postalCode ||
+                       address?.CEP ||
+                       '';
+            
+            return {
+                'Nome': '', // Vazio conforme especificado
+                'E-mail': '', // Vazio
+                'Telefone': '', // Vazio
+                'Celular': '', // Vazio
+                'Endereço': '', // Vazio
+                'Número': '', // Vazio
+                'Complemento': '', // Vazio
+                'Bairro/Localidade': '', // Vazio
+                'País': 'Brasil', // Sempre "Brasil"
+                'Estado/Província': address?.state || address?.estado || '', // Do banco
+                'Cidade': address?.city || address?.cidade || '', // Do banco
+                'Código Postal': cep, // CEP do banco
+                'Coordenadas': '', // Vazio
+                'Ativo': 'Sim', // Sempre "Sim"
+                'Código Cliente': '', // Vazio
+                'Clientes': r.name || '' // Nome do restaurante
+            };
+        });
+
+        // Criar workbook
+        const wb = xlsx.utils.book_new();
+        const ws = xlsx.utils.json_to_sheet(excelData);
+        
+        // Ajustar largura das colunas para melhor visualização
+        const colWidths = [
+            { wch: 25 }, // Nome
+            { wch: 30 }, // E-mail
+            { wch: 18 }, // Telefone
+            { wch: 18 }, // Celular
+            { wch: 40 }, // Endereço
+            { wch: 12 }, // Número
+            { wch: 20 }, // Complemento
+            { wch: 25 }, // Bairro/Localidade
+            { wch: 15 }, // País
+            { wch: 20 }, // Estado/Província
+            { wch: 20 }, // Cidade
+            { wch: 15 }, // Código Postal
+            { wch: 20 }, // Coordenadas
+            { wch: 10 }, // Ativo
+            { wch: 15 }, // Código Cliente
+            { wch: 30 }, // Clientes
+        ];
+        ws['!cols'] = colWidths;
+        
+        xlsx.utils.book_append_sheet(wb, ws, 'Cadastro Cliente');
+        
+        // Converter para buffer
+        const buffer = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
+        
+        // Converter para base64
+        const base64 = Buffer.from(buffer).toString('base64');
+        
+        return {
+            success: true,
+            data: base64,
+            filename: `Checkmob_Cadastro_Clientes_${new Date().toISOString().split('T')[0]}.xlsx`,
+            count: restaurants.length
+        };
+    } catch (error: any) {
+        console.error('Erro ao exportar restaurantes para Checkmob:', error);
+        return {
+            success: false,
+            error: error.message || 'Erro ao exportar restaurantes para Checkmob'
+        };
+    }
+}
+
 // Função auxiliar para encontrar executivo por zona (reutilizada)
 async function findSellerByZona(zonaId: string): Promise<string | null> {
     const { prisma } = await import('@/lib/db');

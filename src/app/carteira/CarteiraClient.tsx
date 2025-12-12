@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import styles from './page.module.css';
 import { scheduleVisit, updateClientPriority, updateClientStatus, addNote, autoFillWeeklySchedule, exportWeeklyScheduleToExcel, getWeeklySchedule } from './actions';
+import { exportRestaurantsToCheckmob } from '@/app/actions';
 import WeeklyCalendar from './WeeklyCalendar';
 import MapaTecnologico from './MapaTecnologico';
 
@@ -83,7 +84,7 @@ export default function CarteiraClient({ initialData }: Props) {
     const [showScheduleModal, setShowScheduleModal] = useState<string | null>(null);
     const [scheduleData, setScheduleData] = useState({ date: '', time: '', notes: '' });
     const [loading, setLoading] = useState(false);
-    const [activeTab, setActiveTab] = useState<'carteira-padrao' | 'carteira' | 'semana' | 'agenda' | 'mapa'>('carteira-padrao');
+    const [activeTab, setActiveTab] = useState<'carteira-padrao' | 'carteira' | 'semana' | 'agenda' | 'mapa' | 'exportar-checkmob'>('carteira-padrao');
     const [weekViewMode, setWeekViewMode] = useState<'list' | 'calendar'>('calendar');
     const [currentWeekStart, setCurrentWeekStart] = useState(() => {
         const today = new Date();
@@ -100,6 +101,18 @@ export default function CarteiraClient({ initialData }: Props) {
     const [newNote, setNewNote] = useState('');
     const [editingStatus, setEditingStatus] = useState<string | null>(null);
     const [editingPriority, setEditingPriority] = useState<string | null>(null);
+    
+    // Exportar Checkmob - Estados
+    const [checkmobSelectedRestaurants, setCheckmobSelectedRestaurants] = useState<Set<string>>(new Set());
+    const [checkmobExporting, setCheckmobExporting] = useState(false);
+    const [checkmobFilterSeller, setCheckmobFilterSeller] = useState<string>('all');
+    const [checkmobFilterStatus, setCheckmobFilterStatus] = useState<string>('all');
+    const [checkmobFilterPotential, setCheckmobFilterPotential] = useState<string>('all');
+    const [checkmobFilterNeighborhood, setCheckmobFilterNeighborhood] = useState<string>('all');
+    const [checkmobFilterCity, setCheckmobFilterCity] = useState<string>('all');
+    const [checkmobFilterMinReviews, setCheckmobFilterMinReviews] = useState<number>(0);
+    const [checkmobFilterMinRating, setCheckmobFilterMinRating] = useState<number>(0);
+    const [checkmobFilterHotLeads, setCheckmobFilterHotLeads] = useState<boolean>(false);
     
     // Agendamentos da semana para o mapa
     const [weeklyScheduledSlots, setWeeklyScheduledSlots] = useState<ScheduledSlot[]>([]);
@@ -164,6 +177,82 @@ export default function CarteiraClient({ initialData }: Props) {
 
     // Restaurantes no plano da semana
     const weekPlanRestaurants = filteredRestaurants.filter(r => weekPlan.includes(r.id));
+    
+    // Filtros para exportação Checkmob - extrair valores únicos
+    const checkmobNeighborhoods = useMemo(() => {
+        const unique = new Set(
+            restaurants
+                .map(r => r.address?.neighborhood || '')
+                .filter(n => n && n !== 'undefined' && n.trim() !== '')
+        );
+        return ['all', ...Array.from(unique).sort()];
+    }, [restaurants]);
+    
+    const checkmobCities = useMemo(() => {
+        const unique = new Set(
+            restaurants
+                .map(r => r.address?.city || '')
+                .filter(c => c && c !== 'undefined' && c.trim() !== '')
+        );
+        return ['all', ...Array.from(unique).sort()];
+    }, [restaurants]);
+    
+    // Filtrar restaurantes para exportação Checkmob
+    const checkmobFilteredRestaurants = useMemo(() => {
+        return restaurants.filter(r => {
+            // Filtro por executivo
+            if (checkmobFilterSeller !== 'all') {
+                if (checkmobFilterSeller === 'sem-executivo') {
+                    if (r.sellerId) return false;
+                } else {
+                    if (r.sellerId !== checkmobFilterSeller) return false;
+                }
+            }
+            
+            // Filtro por status
+            if (checkmobFilterStatus !== 'all' && r.status !== checkmobFilterStatus) return false;
+            
+            // Filtro por potencial
+            if (checkmobFilterPotential !== 'all' && r.salesPotential !== checkmobFilterPotential) return false;
+            
+            // Filtro por bairro
+            if (checkmobFilterNeighborhood !== 'all') {
+                const neighborhood = r.address?.neighborhood || '';
+                if (neighborhood !== checkmobFilterNeighborhood) return false;
+            }
+            
+            // Filtro por cidade
+            if (checkmobFilterCity !== 'all') {
+                const city = r.address?.city || '';
+                if (city !== checkmobFilterCity) return false;
+            }
+            
+            // Filtro por mínimo de avaliações
+            if (checkmobFilterMinReviews > 0 && (r.reviewCount || 0) < checkmobFilterMinReviews) return false;
+            
+            // Filtro por mínimo de rating
+            if (checkmobFilterMinRating > 0 && (r.rating || 0) < checkmobFilterMinRating) return false;
+            
+            // Filtro por leads quentes (ALTÍSSIMO + Qualificado/Contatado)
+            if (checkmobFilterHotLeads) {
+                const isHighPotential = r.salesPotential === 'ALTÍSSIMO' || r.salesPotential === 'ALTISSIMO';
+                const isQualifiedOrContacted = r.status === 'Qualificado' || r.status === 'Contatado';
+                if (!(isHighPotential && isQualifiedOrContacted)) return false;
+            }
+            
+            return true;
+        });
+    }, [
+        restaurants,
+        checkmobFilterSeller,
+        checkmobFilterStatus,
+        checkmobFilterPotential,
+        checkmobFilterNeighborhood,
+        checkmobFilterCity,
+        checkmobFilterMinReviews,
+        checkmobFilterMinRating,
+        checkmobFilterHotLeads
+    ]);
 
     // Follow-ups do vendedor
     const sellerFollowUps = followUps.filter(f => 
@@ -518,6 +607,12 @@ export default function CarteiraClient({ initialData }: Props) {
                     onClick={() => setActiveTab('mapa')}
                 >
                     🗺️ Mapa da Região
+                </button>
+                <button 
+                    className={`${styles.tab} ${activeTab === 'exportar-checkmob' ? styles.active : ''}`}
+                    onClick={() => setActiveTab('exportar-checkmob')}
+                >
+                    📥 Exportar Checkmob
                 </button>
             </div>
 
@@ -1244,6 +1339,248 @@ export default function CarteiraClient({ initialData }: Props) {
                         loadWeeklySchedule();
                     }}
                 />
+            )}
+
+            {/* Exportar Checkmob Tab */}
+            {activeTab === 'exportar-checkmob' && (
+                <div className={styles.checkmobExportContainer}>
+                    <div className={styles.checkmobHeader}>
+                        <h2>📥 Exportar para Checkmob - Cadastro de Clientes</h2>
+                        <p>Filtre e selecione os clientes que deseja exportar no formato do template Checkmob</p>
+                    </div>
+
+                    {/* Filtros Avançados */}
+                    <div className={styles.checkmobFilters}>
+                        <div className={styles.filterRow}>
+                            <div className={styles.filterGroup}>
+                                <label>👔 Executivo</label>
+                                <select 
+                                    value={checkmobFilterSeller} 
+                                    onChange={e => setCheckmobFilterSeller(e.target.value)}
+                                >
+                                    <option value="all">Todos</option>
+                                    {sellers.map(seller => (
+                                        <option key={seller.id} value={seller.id}>{seller.name}</option>
+                                    ))}
+                                    <option value="sem-executivo">Sem Executivo</option>
+                                </select>
+                            </div>
+
+                            <div className={styles.filterGroup}>
+                                <label>📊 Status</label>
+                                <select 
+                                    value={checkmobFilterStatus} 
+                                    onChange={e => setCheckmobFilterStatus(e.target.value)}
+                                >
+                                    <option value="all">Todos</option>
+                                    <option value="A Analisar">A Analisar</option>
+                                    <option value="Qualificado">Qualificado</option>
+                                    <option value="Contatado">Contatado</option>
+                                    <option value="Negociação">Negociação</option>
+                                    <option value="Fechado">Fechado</option>
+                                </select>
+                            </div>
+
+                            <div className={styles.filterGroup}>
+                                <label>🔥 Potencial</label>
+                                <select 
+                                    value={checkmobFilterPotential} 
+                                    onChange={e => setCheckmobFilterPotential(e.target.value)}
+                                >
+                                    <option value="all">Todos</option>
+                                    <option value="ALTÍSSIMO">ALTÍSSIMO</option>
+                                    <option value="ALTO">ALTO</option>
+                                    <option value="MÉDIO">MÉDIO</option>
+                                    <option value="BAIXO">BAIXO</option>
+                                </select>
+                            </div>
+
+                            <div className={styles.filterGroup}>
+                                <label>📍 Bairro</label>
+                                <select 
+                                    value={checkmobFilterNeighborhood} 
+                                    onChange={e => setCheckmobFilterNeighborhood(e.target.value)}
+                                >
+                                    <option value="all">Todos</option>
+                                    {checkmobNeighborhoods.filter(n => n !== 'all').map(neighborhood => (
+                                        <option key={neighborhood} value={neighborhood}>{neighborhood}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className={styles.filterRow}>
+                            <div className={styles.filterGroup}>
+                                <label>🏙️ Cidade</label>
+                                <select 
+                                    value={checkmobFilterCity} 
+                                    onChange={e => setCheckmobFilterCity(e.target.value)}
+                                >
+                                    <option value="all">Todos</option>
+                                    {checkmobCities.filter(c => c !== 'all').map(city => (
+                                        <option key={city} value={city}>{city}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className={styles.filterGroup}>
+                                <label>⭐ Mín. Avaliações</label>
+                                <input 
+                                    type="number" 
+                                    min="0"
+                                    value={checkmobFilterMinReviews} 
+                                    onChange={e => setCheckmobFilterMinReviews(parseInt(e.target.value) || 0)}
+                                    placeholder="0"
+                                />
+                            </div>
+
+                            <div className={styles.filterGroup}>
+                                <label>⭐ Mín. Rating</label>
+                                <input 
+                                    type="number" 
+                                    min="0"
+                                    max="5"
+                                    step="0.1"
+                                    value={checkmobFilterMinRating} 
+                                    onChange={e => setCheckmobFilterMinRating(parseFloat(e.target.value) || 0)}
+                                    placeholder="0.0"
+                                />
+                            </div>
+
+                            <div className={styles.filterGroup}>
+                                <label>
+                                    <input 
+                                        type="checkbox" 
+                                        checked={checkmobFilterHotLeads} 
+                                        onChange={e => setCheckmobFilterHotLeads(e.target.checked)}
+                                    />
+                                    🔥 Leads Quentes (ALTÍSSIMO + Qualificado/Contatado)
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Contador e Seleção */}
+                    <div className={styles.checkmobSelectionHeader}>
+                        <div className={styles.checkmobCount}>
+                            <strong>{checkmobFilteredRestaurants.length}</strong> cliente(s) encontrado(s)
+                            {checkmobSelectedRestaurants.size > 0 && (
+                                <span style={{ marginLeft: '1rem', color: '#3b82f6', fontWeight: '600' }}>
+                                    • {checkmobSelectedRestaurants.size} selecionado(s)
+                                </span>
+                            )}
+                        </div>
+                        <div className={styles.checkmobSelectAll}>
+                            <label>
+                                <input
+                                    type="checkbox"
+                                    checked={checkmobSelectedRestaurants.size === checkmobFilteredRestaurants.length && checkmobFilteredRestaurants.length > 0}
+                                    onChange={handleCheckmobSelectAll}
+                                />
+                                Selecionar Todos
+                            </label>
+                        </div>
+                    </div>
+
+                    {/* Lista de Restaurantes */}
+                    <div className={styles.checkmobRestaurantsList}>
+                        {checkmobFilteredRestaurants.length === 0 ? (
+                            <div className={styles.checkmobEmpty}>
+                                <span>📭</span>
+                                <p>Nenhum cliente encontrado com os filtros aplicados.</p>
+                            </div>
+                        ) : (
+                            <div className={styles.checkmobTable}>
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th style={{ width: '50px' }}></th>
+                                            <th>Cliente</th>
+                                            <th>Cidade</th>
+                                            <th>Bairro</th>
+                                            <th>Estado</th>
+                                            <th>CEP</th>
+                                            <th>Status</th>
+                                            <th>Potencial</th>
+                                            <th>Rating</th>
+                                            <th>Avaliações</th>
+                                            <th>Executivo</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {checkmobFilteredRestaurants.map(restaurant => (
+                                            <tr key={restaurant.id}>
+                                                <td>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={checkmobSelectedRestaurants.has(restaurant.id)}
+                                                        onChange={() => handleCheckmobSelectRestaurant(restaurant.id)}
+                                                    />
+                                                </td>
+                                                <td><strong>{restaurant.name}</strong></td>
+                                                <td>{restaurant.address?.city || '-'}</td>
+                                                <td>{restaurant.address?.neighborhood || '-'}</td>
+                                                <td>{restaurant.address?.state || '-'}</td>
+                                                <td>{restaurant.address?.zip || restaurant.address?.cep || '-'}</td>
+                                                <td>
+                                                    <span className={styles.statusBadge} style={{
+                                                        background: restaurant.status === 'Fechado' ? '#22c55e' :
+                                                                    restaurant.status === 'Negociação' ? '#f59e0b' :
+                                                                    restaurant.status === 'Contatado' ? '#3b82f6' :
+                                                                    restaurant.status === 'Qualificado' ? '#10b981' : '#6366f1',
+                                                        color: 'white',
+                                                        padding: '0.25rem 0.5rem',
+                                                        borderRadius: '4px',
+                                                        fontSize: '0.875rem'
+                                                    }}>
+                                                        {restaurant.status || 'A Analisar'}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <span className={styles.potentialBadge} style={{
+                                                        background: restaurant.salesPotential === 'ALTÍSSIMO' ? '#ef4444' :
+                                                                    restaurant.salesPotential === 'ALTO' ? '#f59e0b' :
+                                                                    restaurant.salesPotential === 'MÉDIO' ? '#3b82f6' : '#94a3b8',
+                                                        color: 'white',
+                                                        padding: '0.25rem 0.5rem',
+                                                        borderRadius: '4px',
+                                                        fontSize: '0.875rem'
+                                                    }}>
+                                                        {restaurant.salesPotential || '-'}
+                                                    </span>
+                                                </td>
+                                                <td>⭐ {restaurant.rating?.toFixed(1) || '0.0'}</td>
+                                                <td>{restaurant.reviewCount || 0}</td>
+                                                <td>{restaurant.sellerName || 'Sem executivo'}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Botão de Exportação */}
+                    <div className={styles.checkmobExportActions}>
+                        <button
+                            className={styles.checkmobExportButton}
+                            onClick={handleExportToCheckmob}
+                            disabled={checkmobExporting || checkmobFilteredRestaurants.length === 0}
+                        >
+                            {checkmobExporting ? '⏳ Exportando...' : '📥 Baixar Planilha Checkmob Cadastro'}
+                        </button>
+                        {checkmobSelectedRestaurants.size > 0 && (
+                            <span className={styles.checkmobExportHint}>
+                                Exportando {checkmobSelectedRestaurants.size} cliente(s) selecionado(s)
+                            </span>
+                        )}
+                        {checkmobSelectedRestaurants.size === 0 && checkmobFilteredRestaurants.length > 0 && (
+                            <span className={styles.checkmobExportHint}>
+                                Exportando todos os {checkmobFilteredRestaurants.length} cliente(s) filtrado(s)
+                            </span>
+                        )}
+                    </div>
+                </div>
             )}
 
             {/* Schedule Modal */}

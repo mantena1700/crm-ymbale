@@ -2028,3 +2028,237 @@
     }
 }
 
+/* Exportar Checkmob */
+.checkmobExportContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: 1.5rem;
+    background: var(--card-bg);
+    border-radius: var(--radius-lg);
+}
+
+.checkmobHeader {
+    margin-bottom: 1rem;
+}
+
+.checkmobHeader h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+}
+
+.checkmobHeader p {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+}
+
+.checkmobFilters {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1.5rem;
+    background: var(--secondary);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+}
+
+.filterRow {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.filterGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.filterGroup label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.filterGroup select,
+.filterGroup input[type="number"] {
+    padding: 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--card-bg);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+}
+
+.filterGroup input[type="checkbox"] {
+    margin-right: 0.5rem;
+    cursor: pointer;
+}
+
+.checkmobSelectionHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background: var(--secondary);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+}
+
+.checkmobCount {
+    font-size: 0.875rem;
+    color: var(--text-primary);
+}
+
+.checkmobSelectAll label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+}
+
+.checkmobRestaurantsList {
+    max-height: 600px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--card-bg);
+}
+
+.checkmobEmpty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+    text-align: center;
+    color: var(--text-muted);
+}
+
+.checkmobEmpty span {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.checkmobTable {
+    overflow-x: auto;
+}
+
+.checkmobTable table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.checkmobTable thead {
+    background: var(--secondary);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.checkmobTable th {
+    padding: 0.75rem;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    border-bottom: 2px solid var(--border);
+}
+
+.checkmobTable td {
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.875rem;
+    color: var(--text-primary);
+}
+
+.checkmobTable tbody tr:hover {
+    background: var(--secondary);
+}
+
+.checkmobTable tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.checkmobTable input[type="checkbox"] {
+    cursor: pointer;
+    width: 18px;
+    height: 18px;
+}
+
+.statusBadge,
+.potentialBadge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.checkmobExportActions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1.5rem;
+    background: var(--secondary);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+}
+
+.checkmobExportButton {
+    padding: 0.75rem 2rem;
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+.checkmobExportButton:hover:not(:disabled) {
+    background: linear-gradient(135deg, #059669, #047857);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+.checkmobExportButton:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.checkmobExportHint {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+@media (max-width: 768px) {
+    .filterRow {
+        grid-template-columns: 1fr;
+    }
+    
+    .checkmobSelectionHeader {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+    
+    .checkmobTable {
+        font-size: 0.75rem;
+    }
+    
+    .checkmobTable th,
+    .checkmobTable td {
+        padding: 0.5rem;
+    }
+}
+
