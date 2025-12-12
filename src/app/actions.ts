@@ -1938,35 +1938,38 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
         // Caminho do template original
         // Tentar múltiplos caminhos possíveis
         const possiblePaths = [
-            // Pasta pai do projeto
-            path.join(process.cwd(), '..', 'Copy of Template - Cadastro Cliente(1).xlsx'),
-            // Raiz do projeto
-            path.join(process.cwd(), 'Copy of Template - Cadastro Cliente(1).xlsx'),
-            // Caminho absoluto Windows
+            // Caminho absoluto direto (mais confiável)
             'C:\\Users\\Bel\\Documents\\CRM_Ymbale\\Copy of Template - Cadastro Cliente(1).xlsx',
-            // Caminho absoluto alternativo
+            // Pasta pai do projeto (process.cwd() retorna crm-ymbale, então .. volta para CRM_Ymbale)
+            path.resolve(process.cwd(), '..', 'Copy of Template - Cadastro Cliente(1).xlsx'),
+            // Raiz do projeto
+            path.resolve(process.cwd(), 'Copy of Template - Cadastro Cliente(1).xlsx'),
+            // Caminho usando path.join
             path.join('C:', 'Users', 'Bel', 'Documents', 'CRM_Ymbale', 'Copy of Template - Cadastro Cliente(1).xlsx'),
-            // Dentro da pasta crm-ymbale
-            path.join(process.cwd(), 'crm-ymbale', 'Copy of Template - Cadastro Cliente(1).xlsx'),
         ];
         
         let finalTemplatePath = '';
+        let triedPaths: string[] = [];
+        
         for (const templatePath of possiblePaths) {
+            triedPaths.push(templatePath);
             try {
-                if (fs.existsSync(templatePath)) {
-                    finalTemplatePath = templatePath;
-                    console.log(`✅ Template encontrado em: ${templatePath}`);
+                const normalizedPath = path.resolve(templatePath);
+                if (fs.existsSync(normalizedPath)) {
+                    finalTemplatePath = normalizedPath;
+                    console.log(`✅ Template encontrado em: ${normalizedPath}`);
                     break;
                 }
-            } catch (error) {
+            } catch (error: any) {
                 // Continuar tentando outros caminhos
+                console.log(`⚠️ Caminho não encontrado: ${templatePath}`);
                 continue;
             }
         }
         
         // Verificar se o template existe
         if (!finalTemplatePath || !fs.existsSync(finalTemplatePath)) {
-            const errorMsg = `Template não encontrado. Caminhos tentados:\n${possiblePaths.join('\n')}\n\nVerifique se o arquivo "Copy of Template - Cadastro Cliente(1).xlsx" está em uma das localizações acima.`;
+            const errorMsg = `Template não encontrado.\n\nCaminhos tentados:\n${triedPaths.map((p, i) => `${i + 1}. ${p}`).join('\n')}\n\nVerifique se o arquivo "Copy of Template - Cadastro Cliente(1).xlsx" está em:\nC:\\Users\\Bel\\Documents\\CRM_Ymbale\\`;
             console.error('❌ Erro:', errorMsg);
             throw new Error(errorMsg);
         }
