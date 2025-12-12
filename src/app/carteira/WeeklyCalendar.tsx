@@ -103,20 +103,20 @@ export default function WeeklyCalendar({ restaurants, sellerId, weekStart }: Wee
     }, [loadSchedule]);
 
     // Verificar se um slot é cliente fixo
-    const isFixedClientSlot = (date: string, visitIndex: number) => {
+    const isFixedClientSlot = useCallback((date: string, visitIndex: number) => {
         const fixedClients = fixedClientsByDay[date] || [];
         // Clientes fixos ocupam os primeiros slots do dia
         return fixedClients.length > 0 && visitIndex <= fixedClients.length;
-    };
+    }, [fixedClientsByDay]);
 
     // Obter cliente fixo em um slot
-    const getFixedClientInSlot = (date: string, visitIndex: number) => {
+    const getFixedClientInSlot = useCallback((date: string, visitIndex: number) => {
         const fixedClients = fixedClientsByDay[date] || [];
         if (fixedClients.length > 0 && visitIndex <= fixedClients.length) {
             return fixedClients[visitIndex - 1];
         }
         return null;
-    };
+    }, [fixedClientsByDay]);
 
     // Verificar se um slot está ocupado (por data e índice de visita)
     const isSlotOccupied = (date: string, visitIndex: number) => {
