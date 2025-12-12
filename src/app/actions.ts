@@ -1306,13 +1306,16 @@ export async function allocateRestaurantsToZones() {
                     }
                     
                     // Verificar se o CEP está dentro do range
-                    if (cepNum >= zonaInicio && cepNum <= zonaFim) {
+                    const isInRange = cepNum >= zonaInicio && cepNum <= zonaFim;
+                    console.log(`   Verificando zona ${(zona as any).zonaNome || (zona as any).zona_nome}: CEP ${cepNum} está entre ${zonaInicio} (${cepInicial}) e ${zonaFim} (${cepFinal})? ${isInRange ? 'SIM ✅' : 'NÃO ❌'}`);
+                    
+                    if (isInRange) {
                         console.log(`✅ CEP ${cep} (${cepNum}) encontrado na zona ${(zona as any).zonaNome || (zona as any).zona_nome} (${cepInicial} - ${cepFinal})`);
                         return (zona as any).id;
                     }
                 }
 
-                console.warn(`❌ Nenhuma zona encontrada para CEP ${cep} (${cepNum})`);
+                console.warn(`❌ Nenhuma zona encontrada para CEP ${cep} (${cepNum}). Verificadas ${zonas.length} zonas ativas.`);
                 return null;
             } catch (error) {
                 console.error('❌ Erro ao buscar zona por CEP:', error);
@@ -1426,10 +1429,22 @@ export async function allocateRestaurantsToZones() {
                           address?.ZIP ||
                           address?.Cep ||
                           address?.PostalCode ||
-                          address?.postal_code ||
-                          // Tentar buscar em sub-objetos
-                          (address?.address && typeof address.address === 'object' ? address.address.zip : null) ||
-                          (address?.location && typeof address.location === 'object' ? address.location.zip : null);
+                          address?.postal_code;
+                    
+                    // Se ainda não encontrou, tentar buscar em sub-objetos
+                    if (!cep) {
+                        if (address?.address && typeof address.address === 'object') {
+                            cep = address.address.zip || address.address.cep || address.address.zipCode;
+                        }
+                        if (!cep && address?.location && typeof address.location === 'object') {
+                            cep = address.location.zip || address.location.cep || address.location.zipCode;
+                        }
+                    }
+                    
+                    // Log para debug se não encontrou CEP
+                    if (!cep) {
+                        console.log(`⚠️ CEP não encontrado no objeto address para restaurante ${restaurant.id}. Chaves disponíveis:`, Object.keys(address || {}));
+                    }
                 }
                 
                 // Se ainda não encontrou, tentar converter o objeto inteiro para string e buscar
@@ -1475,10 +1490,14 @@ export async function allocateRestaurantsToZones() {
                     continue;
                 }
 
+                // Log do CEP encontrado para debug
+                console.log(`🔍 Processando restaurante ${restaurant.id}: CEP encontrado = "${cep}" (limpo: ${cleanedCep}, número: ${cepNum})`);
+                
                 // Encontrar zona pelo CEP
                 const zonaId = await findZonaByCep(cep);
                 
                 if (zonaId) {
+                    console.log(`✅ Zona encontrada para restaurante ${restaurant.id}: ${zonaId}`);
                     const hadZona = restaurant.zonaId !== null;
                     
                     // Atualizar restaurante com a zona usando SQL direto
@@ -1488,6 +1507,7 @@ export async function allocateRestaurantsToZones() {
                             SET zona_id = ${zonaId}::uuid
                             WHERE id = ${restaurant.id}::uuid
                         `;
+                        console.log(`✅ Zona atualizada no banco para restaurante ${restaurant.id}`);
                     } catch (updateError: any) {
                         // Se falhar, tentar com Prisma
                         try {
@@ -1495,8 +1515,9 @@ export async function allocateRestaurantsToZones() {
                                 where: { id: restaurant.id },
                                 data: { zonaId }
                             });
+                            console.log(`✅ Zona atualizada via Prisma para restaurante ${restaurant.id}`);
                         } catch (prismaError: any) {
-                            console.error(`Erro ao atualizar zona do restaurante ${restaurant.id}:`, prismaError.message);
+                            console.error(`❌ Erro ao atualizar zona do restaurante ${restaurant.id}:`, prismaError.message);
                             throw prismaError;
                         }
                     }
@@ -1533,6 +1554,7 @@ export async function allocateRestaurantsToZones() {
                         allocated++;
                     }
                 } else {
+                    console.log(`❌ Nenhuma zona encontrada para restaurante ${restaurant.id} com CEP ${cep} (${cleanedCep})`);
                     unallocated.push(restaurant.id);
                 }
             } catch (error: any) {
