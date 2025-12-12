@@ -1974,13 +1974,90 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
             throw new Error(errorMsg);
         }
         
-        // Buscar restaurantes selecionados
-        // Usar include ao invés de select para evitar problemas se codigoCliente não existir ainda
+        // Verificar e gerar códigos de cliente se necessário
+        try {
+            // Verificar se há restaurantes sem código (apenas os selecionados)
+            const restaurantsWithoutCode = await prisma.restaurant.count({
+                where: {
+                    id: { in: restaurantIds },
+                    codigoCliente: null
+                }
+            });
+            
+            if (restaurantsWithoutCode > 0) {
+                console.log(`📝 Encontrados ${restaurantsWithoutCode} restaurantes sem código. Gerando códigos...`);
+                
+                // Buscar o maior código existente
+                const maxCodigo = await prisma.restaurant.findFirst({
+                    where: {
+                        codigoCliente: {
+                            not: null
+                        }
+                    },
+                    orderBy: {
+                        codigoCliente: 'desc'
+                    },
+                    select: {
+                        codigoCliente: true
+                    }
+                });
+                
+                let currentCode = maxCodigo?.codigoCliente ? maxCodigo.codigoCliente + 1 : 10000;
+                
+                // Buscar restaurantes sem código (apenas os selecionados)
+                const restaurantsToUpdate = await prisma.restaurant.findMany({
+                    where: {
+                        id: { in: restaurantIds },
+                        codigoCliente: null
+                    },
+                    orderBy: {
+                        createdAt: 'asc'
+                    },
+                    select: {
+                        id: true,
+                        name: true
+                    }
+                });
+                
+                // Atribuir códigos
+                for (const restaurant of restaurantsToUpdate) {
+                    // Verificar se o código já existe
+                    while (await prisma.restaurant.findFirst({
+                        where: { codigoCliente: currentCode }
+                    })) {
+                        currentCode++;
+                    }
+                    
+                    await prisma.restaurant.update({
+                        where: { id: restaurant.id },
+                        data: { codigoCliente: currentCode }
+                    });
+                    
+                    console.log(`   ✅ Código ${currentCode} atribuído a ${restaurant.name}`);
+                    currentCode++;
+                }
+                
+                console.log(`✅ ${restaurantsToUpdate.length} códigos gerados!`);
+            }
+        } catch (error: any) {
+            // Se o campo não existir no banco, apenas logar e continuar
+            if (error.message?.includes('codigo_cliente') || error.message?.includes('does not exist') || error.message?.includes('Unknown column')) {
+                console.warn('⚠️ Campo codigo_cliente não existe no banco ainda. Execute: npx prisma db push');
+            } else {
+                console.warn('⚠️ Erro ao verificar/gerar códigos:', error.message);
+            }
+        }
+        
+        // Buscar restaurantes selecionados - usar select explicitamente para garantir codigoCliente
         const restaurants = await prisma.restaurant.findMany({
             where: {
                 id: { in: restaurantIds }
             },
-            include: {
+            select: {
+                id: true,
+                name: true,
+                codigoCliente: true, // Incluir explicitamente
+                address: true,
                 seller: {
                     select: {
                         name: true
@@ -1991,6 +2068,10 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
                 name: 'asc'
             }
         });
+        
+        console.log(`📊 Total de restaurantes encontrados: ${restaurants.length}`);
+        console.log(`📊 Restaurantes com código: ${restaurants.filter(r => r.codigoCliente).length}`);
+        console.log(`📊 Restaurantes sem código: ${restaurants.filter(r => !r.codigoCliente).length}`);
 
         // Carregar o template original
         const workbook = new ExcelJS.Workbook();
@@ -1998,6 +2079,10 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
         
         // Obter a primeira planilha (que contém o template)
         const worksheet = workbook.getWorksheet(1);
+        
+        if (!worksheet) {
+            throw new Error('Planilha não encontrada no template');
+        }
         
         // Encontrar a linha de cabeçalho (geralmente linha 1)
         // Procurar pela linha que contém "Nome", "E-mail", etc.
@@ -2111,9 +2196,14 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
         
         // Adicionar dados dos restaurantes começando na linha 2 (A2)
         restaurants.forEach((r: any, index: number) => {
-            // Acessar codigoCliente de forma segura (pode não existir ainda no banco)
-            const codigoCliente = (r as any).codigoCliente || null;
+            // Acessar codigoCliente - agora garantido que está no select
+            const codigoCliente = r.codigoCliente;
             const address = typeof r.address === 'string' ? JSON.parse(r.address) : r.address;
+            
+            // Log para debug
+            if (index < 5) { // Log apenas os primeiros 5
+                console.log(`   Restaurante ${index + 1}: ${r.name}, Código: ${codigoCliente || 'SEM CÓDIGO'}`);
+            }
             
             // Extrair CEP (tentar várias variações)
             const cep = address?.zip || 
@@ -2199,9 +2289,16 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
             }
             if (columnMap['Código Cliente'] !== undefined) {
                 // Preencher com o código do cliente do banco de dados
-                // Usar codigoCliente da variável local (pode ser null se campo não existir ainda)
+                // Converter para string explicitamente
                 const codigoValue = codigoCliente !== null && codigoCliente !== undefined ? String(codigoCliente) : '';
                 newRow.getCell(columnMap['Código Cliente']).value = codigoValue;
+                
+                // Log para debug
+                if (index < 5) {
+                    console.log(`      Código Cliente preenchido na coluna ${columnMap['Código Cliente']}: "${codigoValue}"`);
+                }
+            } else {
+                console.warn(`   ⚠️ Coluna "Código Cliente" não encontrada no template!`);
             }
             if (columnMap['Clientes'] !== undefined) {
                 newRow.getCell(columnMap['Clientes']).value = r.name || '';
@@ -2225,6 +2322,138 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
         return {
             success: false,
             error: error.message || 'Erro ao exportar restaurantes para Checkmob'
+        };
+    }
+}
+
+// Função para gerar códigos de cliente para todos os restaurantes que não têm código
+export async function generateMissingCodigoCliente(): Promise<{ success: boolean; generated: number; error?: string }> {
+    'use server';
+    
+    try {
+        const { prisma } = await import('@/lib/db');
+        
+        // Verificar se há restaurantes sem código
+        const restaurantsWithoutCode = await prisma.restaurant.findMany({
+            where: {
+                codigoCliente: null
+            },
+            orderBy: {
+                createdAt: 'asc'
+            },
+            select: {
+                id: true,
+                name: true
+            }
+        });
+        
+        if (restaurantsWithoutCode.length === 0) {
+            return { success: true, generated: 0 };
+        }
+        
+        // Buscar o maior código existente
+        const maxCodigo = await prisma.restaurant.findFirst({
+            where: {
+                codigoCliente: {
+                    not: null
+                }
+            },
+            orderBy: {
+                codigoCliente: 'desc'
+            },
+            select: {
+                codigoCliente: true
+            }
+        });
+        
+        let currentCode = maxCodigo?.codigoCliente ? maxCodigo.codigoCliente + 1 : 10000;
+        let generated = 0;
+        
+        console.log(`📝 Gerando códigos para ${restaurantsWithoutCode.length} restaurantes, começando em ${currentCode}...`);
+        
+        // Atribuir códigos sequencialmente
+        for (const restaurant of restaurantsWithoutCode) {
+            // Verificar se o código já existe
+            while (await prisma.restaurant.findFirst({
+                where: { codigoCliente: currentCode }
+            })) {
+                currentCode++;
+            }
+            
+            await prisma.restaurant.update({
+                where: { id: restaurant.id },
+                data: { codigoCliente: currentCode }
+            });
+            
+            generated++;
+            if (generated % 100 === 0) {
+                console.log(`   ✅ ${generated} códigos gerados...`);
+            }
+            
+            currentCode++;
+        }
+        
+        console.log(`✅ Total de ${generated} códigos gerados!`);
+        
+        return { success: true, generated };
+        
+    } catch (error: any) {
+        console.error('Erro ao gerar códigos:', error);
+        return {
+            success: false,
+            generated: 0,
+            error: error.message || 'Erro ao gerar códigos de cliente'
+        };
+    }
+}
+
+// Função para verificar status dos códigos de cliente
+export async function checkCodigoClienteStatus(): Promise<{ total: number; withCode: number; withoutCode: number; nextCode: number }> {
+    'use server';
+    
+    try {
+        const { prisma } = await import('@/lib/db');
+        
+        const total = await prisma.restaurant.count();
+        const withCode = await prisma.restaurant.count({
+            where: {
+                codigoCliente: {
+                    not: null
+                }
+            }
+        });
+        const withoutCode = total - withCode;
+        
+        const maxCodigo = await prisma.restaurant.findFirst({
+            where: {
+                codigoCliente: {
+                    not: null
+                }
+            },
+            orderBy: {
+                codigoCliente: 'desc'
+            },
+            select: {
+                codigoCliente: true
+            }
+        });
+        
+        const nextCode = maxCodigo?.codigoCliente ? maxCodigo.codigoCliente + 1 : 10000;
+        
+        return {
+            total,
+            withCode,
+            withoutCode,
+            nextCode
+        };
+        
+    } catch (error: any) {
+        console.error('Erro ao verificar status:', error);
+        return {
+            total: 0,
+            withCode: 0,
+            withoutCode: 0,
+            nextCode: 10000
         };
     }
 }
