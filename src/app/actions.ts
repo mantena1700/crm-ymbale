@@ -2261,10 +2261,18 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
                     columnMap['Coordenadas'] = index;
                 } else if (normalizedValue.includes('ativo')) {
                     columnMap['Ativo'] = index;
-                } else if (normalizedValue.includes('código cliente') || normalizedValue.includes('codigo cliente') || normalizedValue.includes('codigo') && normalizedValue.includes('cliente')) {
+                } else if (normalizedValue === 'código' || normalizedValue === 'codigo' || (normalizedValue.includes('codigo') && !normalizedValue.includes('postal'))) {
+                    columnMap['Código'] = index;
+                    console.log(`   ✅ Coluna "Código" encontrada na coluna ${index} (valor: "${value}")`);
+                } else if (normalizedValue === 'nome' || (normalizedValue.includes('nome') && !normalizedValue.includes('e-mail'))) {
+                    columnMap['Nome'] = index;
+                    console.log(`   ✅ Coluna "Nome" encontrada na coluna ${index} (valor: "${value}")`);
+                } else if (normalizedValue.includes('código cliente') || normalizedValue.includes('codigo cliente')) {
+                    // Fallback para template antigo
                     columnMap['Código Cliente'] = index;
-                    console.log(`   ✅ Coluna "Código Cliente" encontrada na coluna ${index} (valor: "${value}")`);
-                } else if (normalizedValue.includes('clientes')) {
+                    console.log(`   ✅ Coluna "Código Cliente" (antiga) encontrada na coluna ${index} (valor: "${value}")`);
+                } else if (normalizedValue.includes('clientes') && !normalizedValue.includes('nome')) {
+                    // Fallback para template antigo
                     columnMap['Clientes'] = index;
                 }
             }
@@ -2338,6 +2346,7 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
             const newRow = worksheet.getRow(targetRowNumber);
             
             // Preencher dados nas colunas corretas
+            // Nome - deixar vazio (não preencher com nome do restaurante, apenas "Nome" do cliente)
             if (columnMap['Nome'] !== undefined) {
                 newRow.getCell(columnMap['Nome']).value = '';
             }
@@ -2380,30 +2389,33 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
             if (columnMap['Ativo'] !== undefined) {
                 newRow.getCell(columnMap['Ativo']).value = 'Sim';
             }
-            if (columnMap['Código Cliente'] !== undefined) {
-                // Preencher com o código do cliente do banco de dados
-                // Converter para string explicitamente
+            // Preencher Código (novo template) ou Código Cliente (template antigo)
+            if (columnMap['Código'] !== undefined) {
                 const codigoValue = codigoCliente !== null && codigoCliente !== undefined ? String(codigoCliente) : '';
-                const codigoCell = newRow.getCell(columnMap['Código Cliente']);
-                
-                console.log(`      Preenchendo coluna ${columnMap['Código Cliente']} com valor: "${codigoValue}"`);
-                
+                const codigoCell = newRow.getCell(columnMap['Código']);
+                console.log(`      Preenchendo coluna "Código" (${columnMap['Código']}) com valor: "${codigoValue}"`);
                 if (codigoCell) {
                     codigoCell.value = codigoValue;
                     console.log(`      ✅ Valor "${codigoValue}" atribuído à célula ${codigoCell.address}`);
-                } else {
-                    console.error(`      ❌ Erro: Célula não encontrada na coluna ${columnMap['Código Cliente']}`);
+                }
+            } else if (columnMap['Código Cliente'] !== undefined) {
+                // Fallback para template antigo
+                const codigoValue = codigoCliente !== null && codigoCliente !== undefined ? String(codigoCliente) : '';
+                const codigoCell = newRow.getCell(columnMap['Código Cliente']);
+                console.log(`      Preenchendo coluna "Código Cliente" (${columnMap['Código Cliente']}) com valor: "${codigoValue}"`);
+                if (codigoCell) {
+                    codigoCell.value = codigoValue;
+                    console.log(`      ✅ Valor "${codigoValue}" atribuído à célula ${codigoCell.address}`);
                 }
             } else {
-                console.warn(`   ⚠️ Coluna "Código Cliente" não encontrada no template!`);
-                console.warn(`      Tentando encontrar manualmente...`);
-                // Tentar encontrar a coluna manualmente
-                for (let col = 1; col <= 50; col++) {
+                console.warn(`   ⚠️ Coluna "Código" ou "Código Cliente" não encontrada no template!`);
+                // Tentar encontrar manualmente
+                for (let col = 1; col <= 10; col++) {
                     const cell = worksheet.getCell(headerRow, col);
                     if (cell && cell.value) {
-                        const cellValue = String(cell.value).toLowerCase();
-                        if (cellValue.includes('código') && cellValue.includes('cliente')) {
-                            console.log(`      ✅ Encontrada coluna "Código Cliente" na coluna ${col} (valor: "${cell.value}")`);
+                        const cellValue = String(cell.value).toLowerCase().trim();
+                        if (cellValue === 'código' || cellValue === 'codigo' || (cellValue.includes('codigo') && !cellValue.includes('postal'))) {
+                            console.log(`      ✅ Encontrada coluna "Código" na coluna ${col} (valor: "${cell.value}")`);
                             const codigoValue = codigoCliente !== null && codigoCliente !== undefined ? String(codigoCliente) : '';
                             const targetCell = newRow.getCell(col);
                             if (targetCell) {
@@ -2415,8 +2427,16 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
                     }
                 }
             }
+            
+            // Preencher Clientes (template antigo) - nome do restaurante vai aqui
+            // No novo template, "Nome" fica vazio e não preenchemos com nome do restaurante
             if (columnMap['Clientes'] !== undefined) {
+                // Template antigo: preencher "Clientes" com nome do restaurante
                 newRow.getCell(columnMap['Clientes']).value = r.name || '';
+                console.log(`      Preenchendo coluna "Clientes" com: "${r.name}"`);
+            } else {
+                // No novo template, não há coluna "Clientes", então não preenchemos nada
+                // O nome do restaurante não vai em nenhuma coluna no novo template
             }
         });
         

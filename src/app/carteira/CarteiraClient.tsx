@@ -107,7 +107,7 @@ export default function CarteiraClient({ initialData }: Props) {
     const [checkmobExporting, setCheckmobExporting] = useState(false);
     const [checkmobFilterSeller, setCheckmobFilterSeller] = useState<string>('all');
     const [checkmobFilterStatus, setCheckmobFilterStatus] = useState<string>('all');
-    const [checkmobFilterPotential, setCheckmobFilterPotential] = useState<string>('all');
+    const [checkmobFilterPotential, setCheckmobFilterPotential] = useState<string[]>([]);
     const [checkmobFilterNeighborhood, setCheckmobFilterNeighborhood] = useState<string>('all');
     const [checkmobFilterCity, setCheckmobFilterCity] = useState<string>('all');
     const [checkmobFilterMinReviews, setCheckmobFilterMinReviews] = useState<number>(0);
@@ -212,8 +212,8 @@ export default function CarteiraClient({ initialData }: Props) {
             // Filtro por status
             if (checkmobFilterStatus !== 'all' && r.status !== checkmobFilterStatus) return false;
             
-            // Filtro por potencial
-            if (checkmobFilterPotential !== 'all' && r.salesPotential !== checkmobFilterPotential) return false;
+            // Filtro por potencial (múltipla seleção)
+            if (checkmobFilterPotential.length > 0 && !checkmobFilterPotential.includes(r.salesPotential || '')) return false;
             
             // Filtro por bairro
             if (checkmobFilterNeighborhood !== 'all') {
@@ -1451,17 +1451,77 @@ export default function CarteiraClient({ initialData }: Props) {
                             </div>
 
                             <div className={styles.filterGroup}>
-                                <label>🔥 Potencial</label>
-                                <select 
-                                    value={checkmobFilterPotential} 
-                                    onChange={e => setCheckmobFilterPotential(e.target.value)}
-                                >
-                                    <option value="all">Todos</option>
-                                    <option value="ALTÍSSIMO">ALTÍSSIMO</option>
-                                    <option value="ALTO">ALTO</option>
-                                    <option value="MÉDIO">MÉDIO</option>
-                                    <option value="BAIXO">BAIXO</option>
-                                </select>
+                                <label>🔥 Potencial (múltipla seleção)</label>
+                                <div className={styles.checkboxGroup}>
+                                    <label className={styles.checkboxLabel}>
+                                        <input 
+                                            type="checkbox"
+                                            checked={checkmobFilterPotential.length === 0}
+                                            onChange={(e) => {
+                                                if (e.target.checked) {
+                                                    setCheckmobFilterPotential([]);
+                                                }
+                                            }}
+                                        />
+                                        <span>Todos</span>
+                                    </label>
+                                    <label className={styles.checkboxLabel}>
+                                        <input 
+                                            type="checkbox"
+                                            checked={checkmobFilterPotential.includes('ALTÍSSIMO')}
+                                            onChange={(e) => {
+                                                if (e.target.checked) {
+                                                    setCheckmobFilterPotential([...checkmobFilterPotential, 'ALTÍSSIMO']);
+                                                } else {
+                                                    setCheckmobFilterPotential(checkmobFilterPotential.filter(p => p !== 'ALTÍSSIMO'));
+                                                }
+                                            }}
+                                        />
+                                        <span>ALTÍSSIMO</span>
+                                    </label>
+                                    <label className={styles.checkboxLabel}>
+                                        <input 
+                                            type="checkbox"
+                                            checked={checkmobFilterPotential.includes('ALTO')}
+                                            onChange={(e) => {
+                                                if (e.target.checked) {
+                                                    setCheckmobFilterPotential([...checkmobFilterPotential, 'ALTO']);
+                                                } else {
+                                                    setCheckmobFilterPotential(checkmobFilterPotential.filter(p => p !== 'ALTO'));
+                                                }
+                                            }}
+                                        />
+                                        <span>ALTO</span>
+                                    </label>
+                                    <label className={styles.checkboxLabel}>
+                                        <input 
+                                            type="checkbox"
+                                            checked={checkmobFilterPotential.includes('MÉDIO')}
+                                            onChange={(e) => {
+                                                if (e.target.checked) {
+                                                    setCheckmobFilterPotential([...checkmobFilterPotential, 'MÉDIO']);
+                                                } else {
+                                                    setCheckmobFilterPotential(checkmobFilterPotential.filter(p => p !== 'MÉDIO'));
+                                                }
+                                            }}
+                                        />
+                                        <span>MÉDIO</span>
+                                    </label>
+                                    <label className={styles.checkboxLabel}>
+                                        <input 
+                                            type="checkbox"
+                                            checked={checkmobFilterPotential.includes('BAIXO')}
+                                            onChange={(e) => {
+                                                if (e.target.checked) {
+                                                    setCheckmobFilterPotential([...checkmobFilterPotential, 'BAIXO']);
+                                                } else {
+                                                    setCheckmobFilterPotential(checkmobFilterPotential.filter(p => p !== 'BAIXO'));
+                                                }
+                                            }}
+                                        />
+                                        <span>BAIXO</span>
+                                    </label>
+                                </div>
                             </div>
 
                             <div className={styles.filterGroup}>
