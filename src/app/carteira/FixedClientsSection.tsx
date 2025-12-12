@@ -16,12 +16,14 @@ interface FixedClientsSectionProps {
 interface FixedClient {
     id: string;
     sellerId: string;
-    restaurantId: string;
+    restaurantId: string | null;
     restaurant: {
         id: string;
         name: string;
         address: any;
-    };
+    } | null;
+    clientName?: string | null;
+    clientAddress?: any;
     recurrenceType: 'monthly_days' | 'weekly_days';
     monthlyDays: number[];
     weeklyDays: number[];
@@ -37,7 +39,16 @@ export default function FixedClientsSection({ sellerId, restaurants }: FixedClie
     const [showForm, setShowForm] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [formData, setFormData] = useState({
+        clientType: 'manual' as 'base' | 'manual', // 'base' = da base, 'manual' = cadastro manual
         restaurantId: '',
+        clientName: '',
+        clientAddress: {
+            street: '',
+            neighborhood: '',
+            city: '',
+            state: '',
+            zip: ''
+        },
         recurrenceType: 'weekly_days' as 'monthly_days' | 'weekly_days',
         monthlyDays: [] as number[],
         weeklyDays: [] as number[],
@@ -64,9 +75,9 @@ export default function FixedClientsSection({ sellerId, restaurants }: FixedClie
         loadFixedClients();
     }, [sellerId]);
 
-    // Restaurantes disponíveis (da carteira do executivo)
+    // Restaurantes disponíveis (da carteira do executivo) - apenas para clientes da base
     const availableRestaurants = useMemo(() => {
-        const fixedRestaurantIds = new Set(fixedClients.map(fc => fc.restaurantId));
+        const fixedRestaurantIds = new Set(fixedClients.filter(fc => fc.restaurantId).map(fc => fc.restaurantId!));
         return restaurants.filter(r => !fixedRestaurantIds.has(r.id) || editingId);
     }, [restaurants, fixedClients, editingId]);
 
@@ -118,7 +129,16 @@ export default function FixedClientsSection({ sellerId, restaurants }: FixedClie
                 setShowForm(false);
                 setEditingId(null);
                 setFormData({
+                    clientType: 'manual',
                     restaurantId: '',
+                    clientName: '',
+                    clientAddress: {
+                        street: '',
+                        neighborhood: '',
+                        city: '',
+                        state: '',
+                        zip: ''
+                    },
                     recurrenceType: 'weekly_days',
                     monthlyDays: [],
                     weeklyDays: [],
@@ -232,16 +252,26 @@ export default function FixedClientsSection({ sellerId, restaurants }: FixedClie
                     
                     <div className={styles.formRow}>
                         <div className={styles.formField}>
-                            <label>Restaurante (Cliente Fixo) *</label>
+                            <label>Tipo de Cliente *</label>
                             <select
-                                value={formData.restaurantId}
-                                onChange={e => setFormData(prev => ({ ...prev, restaurantId: e.target.value }))}
+                                value={formData.clientType}
+                                onChange={e => setFormData(prev => ({ 
+                                    ...prev, 
+                                    clientType: e.target.value as 'base' | 'manual',
+                                    restaurantId: '',
+                                    clientName: '',
+                                    clientAddress: {
+                                        street: '',
+                                        neighborhood: '',
+                                        city: '',
+                                        state: '',
+                                        zip: ''
+                                    }
+                                }))}
                                 disabled={!!editingId}
                             >
-                                <option value="">Selecione um restaurante</option>
-                                {restaurants.map(r => (
-                                    <option key={r.id} value={r.id}>{r.name}</option>
-                                ))}
+                                <option value="manual">Cadastro Manual (Novo Cliente)</option>
+                                <option value="base">Da Base de Restaurantes</option>
                             </select>
                         </div>
 
@@ -258,6 +288,113 @@ export default function FixedClientsSection({ sellerId, restaurants }: FixedClie
                             <small>Clientes dentro deste raio serão agendados no mesmo dia</small>
                         </div>
                     </div>
+
+                    {formData.clientType === 'base' ? (
+                        <div className={styles.formField}>
+                            <label>Restaurante da Base *</label>
+                            <select
+                                value={formData.restaurantId}
+                                onChange={e => setFormData(prev => ({ ...prev, restaurantId: e.target.value }))}
+                                disabled={!!editingId}
+                            >
+                                <option value="">Selecione um restaurante</option>
+                                {restaurants.map(r => (
+                                    <option key={r.id} value={r.id}>{r.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                    ) : (
+                        <>
+                            <div className={styles.formField}>
+                                <label>Nome do Cliente *</label>
+                                <input
+                                    type="text"
+                                    value={formData.clientName}
+                                    onChange={e => setFormData(prev => ({ ...prev, clientName: e.target.value }))}
+                                    placeholder="Nome do cliente/restaurante"
+                                />
+                            </div>
+                            <div className={styles.formRow}>
+                                <div className={styles.formField}>
+                                    <label>Endereço (Rua) *</label>
+                                    <input
+                                        type="text"
+                                        value={formData.clientAddress.street}
+                                        onChange={e => setFormData(prev => ({ 
+                                            ...prev, 
+                                            clientAddress: { ...prev.clientAddress, street: e.target.value }
+                                        }))}
+                                        placeholder="Rua, Avenida, etc."
+                                    />
+                                </div>
+                                <div className={styles.formField}>
+                                    <label>Número</label>
+                                    <input
+                                        type="text"
+                                        value={formData.clientAddress.number || ''}
+                                        onChange={e => setFormData(prev => ({ 
+                                            ...prev, 
+                                            clientAddress: { ...prev.clientAddress, number: e.target.value }
+                                        }))}
+                                        placeholder="Número"
+                                    />
+                                </div>
+                            </div>
+                            <div className={styles.formRow}>
+                                <div className={styles.formField}>
+                                    <label>Bairro *</label>
+                                    <input
+                                        type="text"
+                                        value={formData.clientAddress.neighborhood}
+                                        onChange={e => setFormData(prev => ({ 
+                                            ...prev, 
+                                            clientAddress: { ...prev.clientAddress, neighborhood: e.target.value }
+                                        }))}
+                                        placeholder="Bairro"
+                                    />
+                                </div>
+                                <div className={styles.formField}>
+                                    <label>Cidade *</label>
+                                    <input
+                                        type="text"
+                                        value={formData.clientAddress.city}
+                                        onChange={e => setFormData(prev => ({ 
+                                            ...prev, 
+                                            clientAddress: { ...prev.clientAddress, city: e.target.value }
+                                        }))}
+                                        placeholder="Cidade"
+                                    />
+                                </div>
+                            </div>
+                            <div className={styles.formRow}>
+                                <div className={styles.formField}>
+                                    <label>Estado *</label>
+                                    <input
+                                        type="text"
+                                        value={formData.clientAddress.state}
+                                        onChange={e => setFormData(prev => ({ 
+                                            ...prev, 
+                                            clientAddress: { ...prev.clientAddress, state: e.target.value }
+                                        }))}
+                                        placeholder="Estado (ex: SP)"
+                                        maxLength={2}
+                                    />
+                                </div>
+                                <div className={styles.formField}>
+                                    <label>CEP</label>
+                                    <input
+                                        type="text"
+                                        value={formData.clientAddress.zip}
+                                        onChange={e => setFormData(prev => ({ 
+                                            ...prev, 
+                                            clientAddress: { ...prev.clientAddress, zip: e.target.value }
+                                        }))}
+                                        placeholder="00000-000"
+                                    />
+                                </div>
+                            </div>
+                        </>
+                    )}
 
                     <div className={styles.formRow}>
                         <div className={styles.formField}>

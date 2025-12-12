@@ -573,8 +573,13 @@ model FixedClient {
   sellerId      String   @map("seller_id") @db.Uuid
   seller        Seller   @relation(fields: [sellerId], references: [id], onDelete: Cascade)
   
-  restaurantId  String   @map("restaurant_id") @db.Uuid
-  restaurant    Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  // Cliente pode ser da base (restaurantId) ou cadastrado manualmente
+  restaurantId  String?  @map("restaurant_id") @db.Uuid
+  restaurant    Restaurant? @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  
+  // Dados do cliente fixo (para cadastro manual)
+  clientName    String?  @map("client_name") @db.VarChar(255)
+  clientAddress Json?    @map("client_address") // {street, neighborhood, city, state, zip}
   
   // Configuração de recorrência
   recurrenceType String  @map("recurrence_type") @db.VarChar(20) // 'monthly_days' ou 'weekly_days'
@@ -590,7 +595,6 @@ model FixedClient {
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   
-  @@unique([sellerId, restaurantId])
   @@index([sellerId])
   @@index([restaurantId])
   @@map("fixed_clients")

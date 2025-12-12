@@ -1135,6 +1135,8 @@ export async function getFixedClients(sellerId: string) {
             sellerId: fc.sellerId,
             restaurantId: fc.restaurantId,
             restaurant: fc.restaurant,
+            clientName: fc.clientName,
+            clientAddress: fc.clientAddress,
             recurrenceType: fc.recurrenceType,
             monthlyDays: Array.isArray(fc.monthlyDays) ? fc.monthlyDays : (typeof fc.monthlyDays === 'string' ? JSON.parse(fc.monthlyDays) : []),
             weeklyDays: Array.isArray(fc.weeklyDays) ? fc.weeklyDays : (typeof fc.weeklyDays === 'string' ? JSON.parse(fc.weeklyDays) : []),
@@ -1149,10 +1151,42 @@ export async function getFixedClients(sellerId: string) {
     }
 }
 
+// Função auxiliar: Ajustar dias do mês que caem em finais de semana para o próximo dia útil
+function adjustMonthlyDaysToWeekdays(monthlyDays: number[], year: number, month: number): number[] {
+    const adjustedDays: number[] = [];
+    
+    monthlyDays.forEach(day => {
+        const date = new Date(year, month - 1, day);
+        const dayOfWeek = date.getDay(); // 0 = domingo, 6 = sábado
+        
+        // Se for sábado (6) ou domingo (0), mover para segunda-feira
+        if (dayOfWeek === 0 || dayOfWeek === 6) {
+            // Calcular quantos dias adicionar para chegar na segunda-feira
+            const daysToAdd = dayOfWeek === 0 ? 1 : 2; // Domingo -> +1 dia, Sábado -> +2 dias
+            const adjustedDate = new Date(date);
+            adjustedDate.setDate(date.getDate() + daysToAdd);
+            adjustedDays.push(adjustedDate.getDate());
+        } else {
+            adjustedDays.push(day);
+        }
+    });
+    
+    // Remover duplicatas e ordenar
+    return [...new Set(adjustedDays)].sort((a, b) => a - b);
+}
+
 // Criar cliente fixo
 export async function createFixedClient(data: {
     sellerId: string;
-    restaurantId: string;
+    restaurantId?: string;
+    clientName?: string;
+    clientAddress?: {
+        street?: string;
+        neighborhood?: string;
+        city?: string;
+        state?: string;
+        zip?: string;
+    };
     recurrenceType: 'monthly_days' | 'weekly_days';
     monthlyDays?: number[];
     weeklyDays?: number[];
@@ -1169,8 +1203,13 @@ export async function createFixedClient(data: {
         }
 
         // Validar dados
-        if (!data.sellerId || !data.restaurantId) {
-            return { success: false, error: 'Executivo e restaurante são obrigatórios' };
+        if (!data.sellerId) {
+            return { success: false, error: 'Executivo é obrigatório' };
+        }
+        
+        // Deve ter restaurantId OU clientName
+        if (!data.restaurantId && !data.clientName) {
+            return { success: false, error: 'Selecione um restaurante da base OU cadastre um cliente manualmente' };
         }
         
         if (data.recurrenceType === 'monthly_days' && (!data.monthlyDays || data.monthlyDays.length === 0)) {
@@ -1181,26 +1220,21 @@ export async function createFixedClient(data: {
             return { success: false, error: 'Dias da semana são obrigatórios para recorrência semanal' };
         }
         
-        // Verificar se já existe
-        const existing = await prisma.fixedClient.findUnique({
-            where: {
-                sellerId_restaurantId: {
-                    sellerId: data.sellerId,
-                    restaurantId: data.restaurantId
-                }
-            }
-        });
-        
-        if (existing) {
-            return { success: false, error: 'Este cliente já está cadastrado como fixo' };
+        // Ajustar dias do mês que caem em finais de semana
+        let adjustedMonthlyDays = data.monthlyDays || [];
+        if (data.recurrenceType === 'monthly_days' && adjustedMonthlyDays.length > 0) {
+            const now = new Date();
+            adjustedMonthlyDays = adjustMonthlyDaysToWeekdays(adjustedMonthlyDays, now.getFullYear(), now.getMonth() + 1);
         }
         
         const fixedClient = await prisma.fixedClient.create({
             data: {
                 sellerId: data.sellerId,
-                restaurantId: data.restaurantId,
+                restaurantId: data.restaurantId || null,
+                clientName: data.clientName || null,
+                clientAddress: data.clientAddress || null,
                 recurrenceType: data.recurrenceType,
-                monthlyDays: data.monthlyDays ? data.monthlyDays : [],
+                monthlyDays: adjustedMonthlyDays,
                 weeklyDays: data.weeklyDays ? data.weeklyDays : [],
                 radiusKm: data.radiusKm || 10.0,
                 active: true
@@ -1326,7 +1360,7 @@ export async function getFixedClientsForWeek(sellerId: string, weekStart: string
         // Calcular quais dias da semana têm clientes fixos
         const fixedClientsByDay: { [date: string]: Array<{
             id: string;
-            restaurantId: string;
+            restaurantId: string | null;
             restaurantName: string;
             restaurantAddress: any;
             radiusKm: number;
@@ -1351,17 +1385,23 @@ export async function getFixedClientsForWeek(sellerId: string, weekStart: string
                     }
                 } else if (fc.recurrenceType === 'monthly_days') {
                     const monthlyDays = Array.isArray(fc.monthlyDays) ? fc.monthlyDays : (typeof fc.monthlyDays === 'string' ? JSON.parse(fc.monthlyDays) : []);
-                    if (monthlyDays.includes(dayOfMonth)) {
+                    // Ajustar dias do mês para o próximo dia útil se necessário
+                    const adjustedDays = adjustMonthlyDaysToWeekdays(monthlyDays, date.getFullYear(), date.getMonth() + 1);
+                    if (adjustedDays.includes(dayOfMonth)) {
                         shouldInclude = true;
                     }
                 }
                 
                 if (shouldInclude) {
+                    // Usar dados do restaurante se existir, senão usar dados manuais
+                    const clientName = fc.restaurant?.name || fc.clientName || 'Cliente Fixo';
+                    const clientAddress = fc.restaurant?.address || fc.clientAddress || {};
+                    
                     fixedClientsByDay[dateString].push({
                         id: fc.id,
                         restaurantId: fc.restaurantId,
-                        restaurantName: fc.restaurant.name,
-                        restaurantAddress: fc.restaurant.address,
+                        restaurantName: clientName,
+                        restaurantAddress: clientAddress,
                         radiusKm: Number(fc.radiusKm)
                     });
                 }
