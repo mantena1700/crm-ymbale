@@ -319,10 +319,10 @@ export default function FixedClientsSection({ sellerId, restaurants }: FixedClie
                                     <label>Endereço (Rua) *</label>
                                     <input
                                         type="text"
-                                        value={formData.clientAddress.street}
+                                        value={formData.clientAddress?.street || ''}
                                         onChange={e => setFormData(prev => ({ 
                                             ...prev, 
-                                            clientAddress: { ...prev.clientAddress, street: e.target.value }
+                                            clientAddress: { ...(prev.clientAddress || {}), street: e.target.value }
                                         }))}
                                         placeholder="Rua, Avenida, etc."
                                     />
@@ -331,10 +331,10 @@ export default function FixedClientsSection({ sellerId, restaurants }: FixedClie
                                     <label>Número</label>
                                     <input
                                         type="text"
-                                        value={formData.clientAddress.number || ''}
+                                        value={formData.clientAddress?.number || ''}
                                         onChange={e => setFormData(prev => ({ 
                                             ...prev, 
-                                            clientAddress: { ...prev.clientAddress, number: e.target.value }
+                                            clientAddress: { ...(prev.clientAddress || {}), number: e.target.value }
                                         }))}
                                         placeholder="Número"
                                     />
@@ -345,10 +345,10 @@ export default function FixedClientsSection({ sellerId, restaurants }: FixedClie
                                     <label>Bairro *</label>
                                     <input
                                         type="text"
-                                        value={formData.clientAddress.neighborhood}
+                                        value={formData.clientAddress?.neighborhood || ''}
                                         onChange={e => setFormData(prev => ({ 
                                             ...prev, 
-                                            clientAddress: { ...prev.clientAddress, neighborhood: e.target.value }
+                                            clientAddress: { ...(prev.clientAddress || {}), neighborhood: e.target.value }
                                         }))}
                                         placeholder="Bairro"
                                     />
@@ -357,10 +357,10 @@ export default function FixedClientsSection({ sellerId, restaurants }: FixedClie
                                     <label>Cidade *</label>
                                     <input
                                         type="text"
-                                        value={formData.clientAddress.city}
+                                        value={formData.clientAddress?.city || ''}
                                         onChange={e => setFormData(prev => ({ 
                                             ...prev, 
-                                            clientAddress: { ...prev.clientAddress, city: e.target.value }
+                                            clientAddress: { ...(prev.clientAddress || {}), city: e.target.value }
                                         }))}
                                         placeholder="Cidade"
                                     />
@@ -371,10 +371,10 @@ export default function FixedClientsSection({ sellerId, restaurants }: FixedClie
                                     <label>Estado *</label>
                                     <input
                                         type="text"
-                                        value={formData.clientAddress.state}
+                                        value={formData.clientAddress?.state || ''}
                                         onChange={e => setFormData(prev => ({ 
                                             ...prev, 
-                                            clientAddress: { ...prev.clientAddress, state: e.target.value }
+                                            clientAddress: { ...(prev.clientAddress || {}), state: e.target.value }
                                         }))}
                                         placeholder="Estado (ex: SP)"
                                         maxLength={2}
@@ -384,10 +384,10 @@ export default function FixedClientsSection({ sellerId, restaurants }: FixedClie
                                     <label>CEP</label>
                                     <input
                                         type="text"
-                                        value={formData.clientAddress.zip}
+                                        value={formData.clientAddress?.zip || ''}
                                         onChange={e => setFormData(prev => ({ 
                                             ...prev, 
-                                            clientAddress: { ...prev.clientAddress, zip: e.target.value }
+                                            clientAddress: { ...(prev.clientAddress || {}), zip: e.target.value }
                                         }))}
                                         placeholder="00000-000"
                                     />
