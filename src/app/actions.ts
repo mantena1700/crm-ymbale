@@ -1905,13 +1905,18 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
         const { prisma } = await import('@/lib/db');
         
         // Caminho do template original
-        // O template está na pasta pai do projeto (C:\Users\Bel\Documents\CRM_Ymbale\)
-        const templatePath = path.join(process.cwd(), '..', 'Copy of Template - Cadastro Cliente(1).xlsx');
+        // Tentar primeiro na pasta pai (onde o usuário colocou)
+        const templatePathParent = path.join(process.cwd(), '..', 'Copy of Template - Cadastro Cliente(1).xlsx');
+        // Tentar também na raiz do projeto (se foi copiado)
+        const templatePathRoot = path.join(process.cwd(), 'Copy of Template - Cadastro Cliente(1).xlsx');
         
-        // Se não encontrar, tentar caminho absoluto alternativo
-        let finalTemplatePath = templatePath;
-        if (!fs.existsSync(finalTemplatePath)) {
-            // Tentar caminho absoluto baseado no padrão Windows
+        let finalTemplatePath = '';
+        if (fs.existsSync(templatePathParent)) {
+            finalTemplatePath = templatePathParent;
+        } else if (fs.existsSync(templatePathRoot)) {
+            finalTemplatePath = templatePathRoot;
+        } else {
+            // Tentar caminho absoluto como último recurso
             const altPath = path.join('C:', 'Users', 'Bel', 'Documents', 'CRM_Ymbale', 'Copy of Template - Cadastro Cliente(1).xlsx');
             if (fs.existsSync(altPath)) {
                 finalTemplatePath = altPath;
