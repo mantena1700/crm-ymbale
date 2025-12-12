@@ -2208,6 +2208,9 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
         const headerRowData = worksheet.getRow(headerRow);
         const headerValues = headerRowData.values as any[];
         
+        console.log(`\n📋 Mapeando colunas do template (linha ${headerRow})...`);
+        console.log(`   Valores do cabeçalho:`, headerValues.map((v, i) => `[${i}]: "${v}"`).join(', '));
+        
         // Criar mapa de colunas (índice da coluna -> nome do campo)
         const columnMap: { [key: string]: number } = {};
         headerValues.forEach((value, index) => {
@@ -2241,24 +2244,42 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
                     columnMap['Coordenadas'] = index;
                 } else if (normalizedValue.includes('ativo')) {
                     columnMap['Ativo'] = index;
-                } else if (normalizedValue.includes('código cliente') || normalizedValue.includes('codigo cliente')) {
+                } else if (normalizedValue.includes('código cliente') || normalizedValue.includes('codigo cliente') || normalizedValue.includes('codigo') && normalizedValue.includes('cliente')) {
                     columnMap['Código Cliente'] = index;
+                    console.log(`   ✅ Coluna "Código Cliente" encontrada na coluna ${index} (valor: "${value}")`);
                 } else if (normalizedValue.includes('clientes')) {
                     columnMap['Clientes'] = index;
                 }
             }
         });
         
+        console.log(`\n📊 Colunas mapeadas:`, Object.keys(columnMap).map(k => `${k}: coluna ${columnMap[k]}`).join(', '));
+        
+        if (!columnMap['Código Cliente']) {
+            console.warn(`\n⚠️ ATENÇÃO: Coluna "Código Cliente" NÃO foi encontrada no template!`);
+            console.warn(`   Procurando por variações...`);
+            // Tentar encontrar por outras variações
+            headerValues.forEach((value, index) => {
+                if (value && typeof value === 'string') {
+                    const v = value.trim().toLowerCase();
+                    if (v.includes('cod') || v.includes('cód')) {
+                        console.log(`   Possível coluna relacionada na coluna ${index}: "${value}"`);
+                    }
+                }
+            });
+        }
+        
         // Adicionar dados dos restaurantes começando na linha 2 (A2)
+        console.log(`\n📝 Preenchendo dados de ${restaurants.length} restaurantes...`);
         restaurants.forEach((r: any, index: number) => {
             // Acessar codigoCliente - agora garantido que está no select
             const codigoCliente = r.codigoCliente;
             const address = typeof r.address === 'string' ? JSON.parse(r.address) : r.address;
             
-            // Log para debug
-            if (index < 5) { // Log apenas os primeiros 5
-                console.log(`   Restaurante ${index + 1}: ${r.name}, Código: ${codigoCliente || 'SEM CÓDIGO'}`);
-            }
+            // Log detalhado para debug
+            console.log(`\n   [${index + 1}/${restaurants.length}] Restaurante: ${r.name}`);
+            console.log(`      Código Cliente (raw): ${codigoCliente} (tipo: ${typeof codigoCliente})`);
+            console.log(`      Código Cliente (string): ${codigoCliente !== null && codigoCliente !== undefined ? String(codigoCliente) : 'VAZIO'}`);
             
             // Extrair CEP (tentar várias variações)
             const cep = address?.zip || 
@@ -2346,14 +2367,36 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
                 // Preencher com o código do cliente do banco de dados
                 // Converter para string explicitamente
                 const codigoValue = codigoCliente !== null && codigoCliente !== undefined ? String(codigoCliente) : '';
-                newRow.getCell(columnMap['Código Cliente']).value = codigoValue;
+                const codigoCell = newRow.getCell(columnMap['Código Cliente']);
                 
-                // Log para debug
-                if (index < 5) {
-                    console.log(`      Código Cliente preenchido na coluna ${columnMap['Código Cliente']}: "${codigoValue}"`);
+                console.log(`      Preenchendo coluna ${columnMap['Código Cliente']} com valor: "${codigoValue}"`);
+                
+                if (codigoCell) {
+                    codigoCell.value = codigoValue;
+                    console.log(`      ✅ Valor "${codigoValue}" atribuído à célula ${codigoCell.address}`);
+                } else {
+                    console.error(`      ❌ Erro: Célula não encontrada na coluna ${columnMap['Código Cliente']}`);
                 }
             } else {
                 console.warn(`   ⚠️ Coluna "Código Cliente" não encontrada no template!`);
+                console.warn(`      Tentando encontrar manualmente...`);
+                // Tentar encontrar a coluna manualmente
+                for (let col = 1; col <= 50; col++) {
+                    const cell = worksheet.getCell(headerRow, col);
+                    if (cell && cell.value) {
+                        const cellValue = String(cell.value).toLowerCase();
+                        if (cellValue.includes('código') && cellValue.includes('cliente')) {
+                            console.log(`      ✅ Encontrada coluna "Código Cliente" na coluna ${col} (valor: "${cell.value}")`);
+                            const codigoValue = codigoCliente !== null && codigoCliente !== undefined ? String(codigoCliente) : '';
+                            const targetCell = newRow.getCell(col);
+                            if (targetCell) {
+                                targetCell.value = codigoValue;
+                                console.log(`      ✅ Valor "${codigoValue}" atribuído à célula ${targetCell.address}`);
+                            }
+                            break;
+                        }
+                    }
+                }
             }
             if (columnMap['Clientes'] !== undefined) {
                 newRow.getCell(columnMap['Clientes']).value = r.name || '';
