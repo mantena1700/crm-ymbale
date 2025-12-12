@@ -1974,104 +1974,158 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
             throw new Error(errorMsg);
         }
         
-        // Verificar e gerar códigos de cliente se necessário
+        // Verificar se o campo codigo_cliente existe no banco
+        let codigoClienteFieldExists = false;
         try {
-            // Verificar se há restaurantes sem código (apenas os selecionados)
-            const restaurantsWithoutCode = await prisma.restaurant.count({
-                where: {
-                    id: { in: restaurantIds },
-                    codigoCliente: null
-                }
-            });
-            
-            if (restaurantsWithoutCode > 0) {
-                console.log(`📝 Encontrados ${restaurantsWithoutCode} restaurantes sem código. Gerando códigos...`);
-                
-                // Buscar o maior código existente
-                const maxCodigo = await prisma.restaurant.findFirst({
-                    where: {
-                        codigoCliente: {
-                            not: null
-                        }
-                    },
-                    orderBy: {
-                        codigoCliente: 'desc'
-                    },
-                    select: {
-                        codigoCliente: true
-                    }
-                });
-                
-                let currentCode = maxCodigo?.codigoCliente ? maxCodigo.codigoCliente + 1 : 10000;
-                
-                // Buscar restaurantes sem código (apenas os selecionados)
-                const restaurantsToUpdate = await prisma.restaurant.findMany({
-                    where: {
-                        id: { in: restaurantIds },
-                        codigoCliente: null
-                    },
-                    orderBy: {
-                        createdAt: 'asc'
-                    },
-                    select: {
-                        id: true,
-                        name: true
-                    }
-                });
-                
-                // Atribuir códigos
-                for (const restaurant of restaurantsToUpdate) {
-                    // Verificar se o código já existe
-                    while (await prisma.restaurant.findFirst({
-                        where: { codigoCliente: currentCode }
-                    })) {
-                        currentCode++;
-                    }
-                    
-                    await prisma.restaurant.update({
-                        where: { id: restaurant.id },
-                        data: { codigoCliente: currentCode }
-                    });
-                    
-                    console.log(`   ✅ Código ${currentCode} atribuído a ${restaurant.name}`);
-                    currentCode++;
-                }
-                
-                console.log(`✅ ${restaurantsToUpdate.length} códigos gerados!`);
-            }
+            // Tentar uma query simples para verificar se o campo existe
+            await prisma.$queryRaw`SELECT codigo_cliente FROM restaurants LIMIT 1`;
+            codigoClienteFieldExists = true;
+            console.log('✅ Campo codigo_cliente existe no banco');
         } catch (error: any) {
-            // Se o campo não existir no banco, apenas logar e continuar
-            if (error.message?.includes('codigo_cliente') || error.message?.includes('does not exist') || error.message?.includes('Unknown column')) {
-                console.warn('⚠️ Campo codigo_cliente não existe no banco ainda. Execute: npx prisma db push');
+            if (error.message?.includes('codigo_cliente') || 
+                error.message?.includes('does not exist') || 
+                error.message?.includes('Unknown column') ||
+                error.message?.includes('column "codigo_cliente" does not exist')) {
+                console.warn('⚠️ Campo codigo_cliente não existe no banco ainda. Pulando geração de códigos.');
+                codigoClienteFieldExists = false;
             } else {
-                console.warn('⚠️ Erro ao verificar/gerar códigos:', error.message);
+                // Outro erro, tentar continuar
+                console.warn('⚠️ Erro ao verificar campo codigo_cliente:', error.message);
+                codigoClienteFieldExists = false;
             }
         }
         
-        // Buscar restaurantes selecionados - usar select explicitamente para garantir codigoCliente
-        const restaurants = await prisma.restaurant.findMany({
-            where: {
-                id: { in: restaurantIds }
-            },
-            select: {
-                id: true,
-                name: true,
-                codigoCliente: true, // Incluir explicitamente
-                address: true,
-                seller: {
-                    select: {
-                        name: true
+        // Verificar e gerar códigos de cliente se necessário (apenas se o campo existir)
+        if (codigoClienteFieldExists) {
+            try {
+                // Verificar se há restaurantes sem código usando SQL direto
+                const restaurantsWithoutCodeResult = await prisma.$queryRaw<Array<{ count: bigint }>>`
+                    SELECT COUNT(*)::int as count
+                    FROM restaurants
+                    WHERE id = ANY(${restaurantIds}::uuid[])
+                    AND codigo_cliente IS NULL
+                `;
+                
+                const restaurantsWithoutCode = Number(restaurantsWithoutCodeResult[0]?.count || 0);
+                
+                if (restaurantsWithoutCode > 0) {
+                    console.log(`📝 Encontrados ${restaurantsWithoutCode} restaurantes sem código. Gerando códigos...`);
+                    
+                    // Buscar o maior código existente usando SQL
+                    const maxCodigoResult = await prisma.$queryRaw<Array<{ codigo_cliente: number | null }>>`
+                        SELECT codigo_cliente
+                        FROM restaurants
+                        WHERE codigo_cliente IS NOT NULL
+                        ORDER BY codigo_cliente DESC
+                        LIMIT 1
+                    `;
+                    
+                    let currentCode = maxCodigoResult[0]?.codigo_cliente ? maxCodigoResult[0].codigo_cliente + 1 : 10000;
+                    
+                    // Buscar restaurantes sem código usando SQL
+                    const restaurantsToUpdate = await prisma.$queryRaw<Array<{ id: string; name: string }>>`
+                        SELECT id, name
+                        FROM restaurants
+                        WHERE id = ANY(${restaurantIds}::uuid[])
+                        AND codigo_cliente IS NULL
+                        ORDER BY created_at ASC
+                    `;
+                    
+                    // Atribuir códigos usando SQL
+                    for (const restaurant of restaurantsToUpdate) {
+                        // Verificar se o código já existe
+                        const existingCode = await prisma.$queryRaw<Array<{ id: string }>>`
+                            SELECT id FROM restaurants WHERE codigo_cliente = ${currentCode} LIMIT 1
+                        `;
+                        
+                        while (existingCode.length > 0) {
+                            currentCode++;
+                            const checkAgain = await prisma.$queryRaw<Array<{ id: string }>>`
+                                SELECT id FROM restaurants WHERE codigo_cliente = ${currentCode} LIMIT 1
+                            `;
+                            if (checkAgain.length === 0) break;
+                        }
+                        
+                        await prisma.$executeRaw`
+                            UPDATE restaurants
+                            SET codigo_cliente = ${currentCode}
+                            WHERE id = ${restaurant.id}::uuid
+                        `;
+                        
+                        console.log(`   ✅ Código ${currentCode} atribuído a ${restaurant.name}`);
+                        currentCode++;
                     }
+                    
+                    console.log(`✅ ${restaurantsToUpdate.length} códigos gerados!`);
                 }
-            },
-            orderBy: {
-                name: 'asc'
+            } catch (error: any) {
+                console.warn('⚠️ Erro ao gerar códigos:', error.message);
             }
-        });
+        }
+        
+        // Buscar restaurantes selecionados - usar SQL direto se o campo existir, senão usar include
+        let restaurants: any[];
+        
+        if (codigoClienteFieldExists) {
+            // Usar SQL direto para garantir que codigoCliente seja retornado
+            const restaurantsResult = await prisma.$queryRaw<Array<{
+                id: string;
+                name: string;
+                codigo_cliente: number | null;
+                address: any;
+                seller_id: string | null;
+                seller_name: string | null;
+            }>>`
+                SELECT 
+                    r.id,
+                    r.name,
+                    r.codigo_cliente,
+                    r.address,
+                    r.seller_id,
+                    s.name as seller_name
+                FROM restaurants r
+                LEFT JOIN sellers s ON r.seller_id = s.id
+                WHERE r.id = ANY(${restaurantIds}::uuid[])
+                ORDER BY r.name ASC
+            `;
+            
+            restaurants = restaurantsResult.map(r => ({
+                id: r.id,
+                name: r.name,
+                codigoCliente: r.codigo_cliente,
+                address: typeof r.address === 'string' ? JSON.parse(r.address) : r.address,
+                seller: r.seller_name ? { name: r.seller_name } : null
+            }));
+        } else {
+            // Campo não existe, usar include sem codigoCliente
+            restaurants = await prisma.restaurant.findMany({
+                where: {
+                    id: { in: restaurantIds }
+                },
+                include: {
+                    seller: {
+                        select: {
+                            name: true
+                        }
+                    }
+                },
+                orderBy: {
+                    name: 'asc'
+                }
+            });
+            
+            // Adicionar codigoCliente como null para todos
+            restaurants = restaurants.map((r: any) => ({
+                ...r,
+                codigoCliente: null
+            }));
+        }
         
         console.log(`📊 Total de restaurantes encontrados: ${restaurants.length}`);
-        console.log(`📊 Restaurantes com código: ${restaurants.filter(r => r.codigoCliente).length}`);
-        console.log(`📊 Restaurantes sem código: ${restaurants.filter(r => !r.codigoCliente).length}`);
+        if (codigoClienteFieldExists) {
+            console.log(`📊 Restaurantes com código: ${restaurants.filter((r: any) => r.codigoCliente).length}`);
+            console.log(`📊 Restaurantes sem código: ${restaurants.filter((r: any) => !r.codigoCliente).length}`);
+        }
 
         // Carregar o template original
         const workbook = new ExcelJS.Workbook();
@@ -2137,9 +2191,10 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
         // Garantir que não há linhas vazias entre o cabeçalho e onde vamos adicionar os dados
         // Verificar se há linhas vazias após o cabeçalho e removê-las
         let nextRowToCheck = headerRow + 1;
-        while (nextRowToCheck <= worksheet.rowCount) {
+        while (worksheet && nextRowToCheck <= worksheet.rowCount) {
             const row = worksheet.getRow(nextRowToCheck);
-            const hasData = row.values && row.values.some((val: any) => val !== null && val !== undefined && val !== '');
+            const rowValues = row.values as any[];
+            const hasData = rowValues && rowValues.some((val: any) => val !== null && val !== undefined && val !== '');
             if (!hasData) {
                 // Se a linha está vazia, removê-la
                 worksheet.spliceRows(nextRowToCheck, 1);
