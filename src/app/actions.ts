@@ -2231,15 +2231,19 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
         // Criar mapa de colunas (índice da coluna -> nome do campo)
         const columnMap: { [key: string]: number } = {};
         
-        // PRIMEIRO: Mapear especificamente a coluna B (índice 2) como "Nome"
-        // A coluna B deve ter exatamente "Nome" ou começar com "Nome"
+        // PRIMEIRO: Mapear especificamente a coluna B (índice 2 no ExcelJS) como "Nome"
+        // No ExcelJS, as colunas começam em 1: A=1, B=2, C=3, etc.
+        // Mas no array headerValues, o índice 0 = A, índice 1 = B, índice 2 = C
+        // Então coluna B = headerValues[1] mas célula.getCell(2)
         if (headerValues.length > 1) {
-            const colunaBValue = headerValues[1]; // Índice 1 = Coluna B (A=0, B=1)
+            const colunaBValue = headerValues[1]; // Índice 1 no array = Coluna B
             if (colunaBValue && typeof colunaBValue === 'string') {
                 const colunaBNormalized = colunaBValue.trim().toLowerCase();
                 if (colunaBNormalized === 'nome' || colunaBNormalized.startsWith('nome')) {
-                    columnMap['Nome'] = 1; // Coluna B = índice 1
-                    console.log(`   ✅ Coluna B (índice 1) identificada como "Nome" (valor: "${colunaBValue}")`);
+                    columnMap['Nome'] = 2; // Coluna B = índice 2 no ExcelJS (getCell usa índice baseado em 1)
+                    console.log(`   ✅ Coluna B identificada como "Nome" (valor: "${colunaBValue}") - será preenchida no índice 2`);
+                } else {
+                    console.warn(`   ⚠️ Coluna B não contém "Nome"! Valor encontrado: "${colunaBValue}"`);
                 }
             }
         }
@@ -2360,16 +2364,21 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
             // Obter a linha na posição correta (criará se não existir)
             const newRow = worksheet.getRow(targetRowNumber);
             
-            // IMPORTANTE: Nome do restaurante (nome do cliente) vai APENAS na coluna B (índice 1)
-            // Sempre preencher diretamente na coluna B, independente do mapeamento
-            const colunaBIndex = 1; // Coluna B = índice 1 (A=0, B=1)
+            // IMPORTANTE: Nome do restaurante (nome do cliente) vai APENAS na coluna B
+            // No ExcelJS, as colunas começam em 1: A=1, B=2, C=3, etc.
+            // Coluna B = índice 2 (não 1!)
+            const colunaBIndex = 2; // Coluna B = índice 2 no ExcelJS
             const nomeCell = newRow.getCell(colunaBIndex);
             nomeCell.value = r.name || '';
             console.log(`      ✅ Nome do restaurante preenchido na COLUNA B (índice ${colunaBIndex}, célula ${nomeCell.address}): "${r.name}"`);
             
-            // Verificar se o mapeamento está correto
-            if (columnMap['Nome'] !== undefined && columnMap['Nome'] !== colunaBIndex) {
-                console.warn(`      ⚠️ ATENÇÃO: Mapeamento de "Nome" aponta para índice ${columnMap['Nome']}, mas estamos preenchendo na coluna B (índice ${colunaBIndex})`);
+            // Verificar se a coluna B realmente tem "Nome" no cabeçalho
+            const headerCellB = worksheet.getCell(headerRow, colunaBIndex);
+            if (headerCellB && headerCellB.value) {
+                const headerValue = String(headerCellB.value).trim();
+                console.log(`      ✅ Confirmado: Coluna B tem cabeçalho "${headerValue}"`);
+            } else {
+                console.warn(`      ⚠️ ATENÇÃO: Coluna B não tem cabeçalho ou está vazia!`);
             }
             if (columnMap['E-mail'] !== undefined) {
                 newRow.getCell(columnMap['E-mail']).value = '';
