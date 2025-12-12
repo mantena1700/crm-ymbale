@@ -199,11 +199,22 @@ export default function CarteiraClient({ initialData }: Props) {
     }, [restaurants]);
     
     const checkmobStates = useMemo(() => {
-        const unique = new Set(
-            restaurants
-                .map(r => r.address?.state || '')
-                .filter(s => s && s !== 'undefined' && s.trim() !== '')
-        );
+        const unique = new Set<string>();
+        restaurants.forEach(r => {
+            // Parsear address se for string JSON
+            let addressObj = r.address;
+            if (typeof r.address === 'string') {
+                try {
+                    addressObj = JSON.parse(r.address);
+                } catch (e) {
+                    addressObj = r.address;
+                }
+            }
+            const state = (addressObj?.state || addressObj?.estado || '').trim();
+            if (state && state !== 'undefined' && state !== '') {
+                unique.add(state);
+            }
+        });
         return ['all', ...Array.from(unique).sort()];
     }, [restaurants]);
     
@@ -237,10 +248,24 @@ export default function CarteiraClient({ initialData }: Props) {
                 if (city !== checkmobFilterCity) return false;
             }
             
-            // Filtro por estado
+            // Filtro por estado (normalizar para comparação)
             if (checkmobFilterState !== 'all') {
-                const state = r.address?.state || '';
-                if (state !== checkmobFilterState) return false;
+                // Parsear address se for string JSON
+                let addressObj = r.address;
+                if (typeof r.address === 'string') {
+                    try {
+                        addressObj = JSON.parse(r.address);
+                    } catch (e) {
+                        addressObj = r.address;
+                    }
+                }
+                
+                const state = (addressObj?.state || addressObj?.estado || '').trim().toUpperCase();
+                const filterState = checkmobFilterState.trim().toUpperCase();
+                
+                if (state !== filterState) {
+                    return false;
+                }
             }
             
             // Filtro por mínimo de avaliações
