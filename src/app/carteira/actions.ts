@@ -1093,3 +1093,315 @@ export async function exportWeeklyScheduleToAgendamentoTemplate(
     }
 }
 
+// ========================================
+// CLIENTES FIXOS (Fixed Clients)
+// ========================================
+
+// Buscar clientes fixos do executivo
+export async function getFixedClients(sellerId: string) {
+    'use server';
+    
+    try {
+        const fixedClients = await prisma.fixedClient.findMany({
+            where: {
+                sellerId: sellerId,
+                active: true
+            },
+            include: {
+                restaurant: {
+                    select: {
+                        id: true,
+                        name: true,
+                        address: true
+                    }
+                }
+            },
+            orderBy: {
+                createdAt: 'desc'
+            }
+        });
+        
+        return fixedClients.map(fc => ({
+            id: fc.id,
+            sellerId: fc.sellerId,
+            restaurantId: fc.restaurantId,
+            restaurant: fc.restaurant,
+            recurrenceType: fc.recurrenceType,
+            monthlyDays: Array.isArray(fc.monthlyDays) ? fc.monthlyDays : (typeof fc.monthlyDays === 'string' ? JSON.parse(fc.monthlyDays) : []),
+            weeklyDays: Array.isArray(fc.weeklyDays) ? fc.weeklyDays : (typeof fc.weeklyDays === 'string' ? JSON.parse(fc.weeklyDays) : []),
+            radiusKm: Number(fc.radiusKm),
+            active: fc.active,
+            createdAt: fc.createdAt,
+            updatedAt: fc.updatedAt
+        }));
+    } catch (error: any) {
+        console.error('Erro ao buscar clientes fixos:', error);
+        return [];
+    }
+}
+
+// Criar cliente fixo
+export async function createFixedClient(data: {
+    sellerId: string;
+    restaurantId: string;
+    recurrenceType: 'monthly_days' | 'weekly_days';
+    monthlyDays?: number[];
+    weeklyDays?: number[];
+    radiusKm?: number;
+}) {
+    'use server';
+    
+    try {
+        // Validar dados
+        if (!data.sellerId || !data.restaurantId) {
+            return { success: false, error: 'Executivo e restaurante são obrigatórios' };
+        }
+        
+        if (data.recurrenceType === 'monthly_days' && (!data.monthlyDays || data.monthlyDays.length === 0)) {
+            return { success: false, error: 'Dias do mês são obrigatórios para recorrência mensal' };
+        }
+        
+        if (data.recurrenceType === 'weekly_days' && (!data.weeklyDays || data.weeklyDays.length === 0)) {
+            return { success: false, error: 'Dias da semana são obrigatórios para recorrência semanal' };
+        }
+        
+        // Verificar se já existe
+        const existing = await prisma.fixedClient.findUnique({
+            where: {
+                sellerId_restaurantId: {
+                    sellerId: data.sellerId,
+                    restaurantId: data.restaurantId
+                }
+            }
+        });
+        
+        if (existing) {
+            return { success: false, error: 'Este cliente já está cadastrado como fixo' };
+        }
+        
+        const fixedClient = await prisma.fixedClient.create({
+            data: {
+                sellerId: data.sellerId,
+                restaurantId: data.restaurantId,
+                recurrenceType: data.recurrenceType,
+                monthlyDays: data.monthlyDays ? data.monthlyDays : [],
+                weeklyDays: data.weeklyDays ? data.weeklyDays : [],
+                radiusKm: data.radiusKm || 10.0,
+                active: true
+            },
+            include: {
+                restaurant: {
+                    select: {
+                        id: true,
+                        name: true,
+                        address: true
+                    }
+                }
+            }
+        });
+        
+        return { success: true, data: fixedClient };
+    } catch (error: any) {
+        console.error('Erro ao criar cliente fixo:', error);
+        return { success: false, error: error.message || 'Erro ao criar cliente fixo' };
+    }
+}
+
+// Atualizar cliente fixo
+export async function updateFixedClient(
+    id: string,
+    data: {
+        recurrenceType?: 'monthly_days' | 'weekly_days';
+        monthlyDays?: number[];
+        weeklyDays?: number[];
+        radiusKm?: number;
+        active?: boolean;
+    }
+) {
+    'use server';
+    
+    try {
+        const fixedClient = await prisma.fixedClient.update({
+            where: { id },
+            data: {
+                ...(data.recurrenceType && { recurrenceType: data.recurrenceType }),
+                ...(data.monthlyDays !== undefined && { monthlyDays: data.monthlyDays }),
+                ...(data.weeklyDays !== undefined && { weeklyDays: data.weeklyDays }),
+                ...(data.radiusKm !== undefined && { radiusKm: data.radiusKm }),
+                ...(data.active !== undefined && { active: data.active })
+            },
+            include: {
+                restaurant: {
+                    select: {
+                        id: true,
+                        name: true,
+                        address: true
+                    }
+                }
+            }
+        });
+        
+        return { success: true, data: fixedClient };
+    } catch (error: any) {
+        console.error('Erro ao atualizar cliente fixo:', error);
+        return { success: false, error: error.message || 'Erro ao atualizar cliente fixo' };
+    }
+}
+
+// Deletar cliente fixo
+export async function deleteFixedClient(id: string) {
+    'use server';
+    
+    try {
+        await prisma.fixedClient.delete({
+            where: { id }
+        });
+        
+        return { success: true };
+    } catch (error: any) {
+        console.error('Erro ao deletar cliente fixo:', error);
+        return { success: false, error: error.message || 'Erro ao deletar cliente fixo' };
+    }
+}
+
+// Obter clientes fixos agendados para a semana
+export async function getFixedClientsForWeek(sellerId: string, weekStart: string) {
+    'use server';
+    
+    try {
+        const startDate = new Date(weekStart);
+        startDate.setHours(0, 0, 0, 0);
+        const endDate = new Date(startDate);
+        endDate.setDate(startDate.getDate() + 7);
+        
+        // Buscar todos os clientes fixos do executivo
+        const fixedClients = await prisma.fixedClient.findMany({
+            where: {
+                sellerId: sellerId,
+                active: true
+            },
+            include: {
+                restaurant: {
+                    select: {
+                        id: true,
+                        name: true,
+                        address: true
+                    }
+                }
+            }
+        });
+        
+        // Calcular quais dias da semana têm clientes fixos
+        const fixedClientsByDay: { [date: string]: Array<{
+            id: string;
+            restaurantId: string;
+            restaurantName: string;
+            restaurantAddress: any;
+            radiusKm: number;
+        }> } = {};
+        
+        for (let i = 0; i < 7; i++) {
+            const date = new Date(startDate);
+            date.setDate(startDate.getDate() + i);
+            const dateString = date.toISOString().split('T')[0];
+            const dayOfWeek = date.getDay(); // 0 = domingo, 1 = segunda, etc.
+            const dayOfMonth = date.getDate();
+            
+            fixedClientsByDay[dateString] = [];
+            
+            fixedClients.forEach(fc => {
+                let shouldInclude = false;
+                
+                if (fc.recurrenceType === 'weekly_days') {
+                    const weeklyDays = Array.isArray(fc.weeklyDays) ? fc.weeklyDays : (typeof fc.weeklyDays === 'string' ? JSON.parse(fc.weeklyDays) : []);
+                    if (weeklyDays.includes(dayOfWeek)) {
+                        shouldInclude = true;
+                    }
+                } else if (fc.recurrenceType === 'monthly_days') {
+                    const monthlyDays = Array.isArray(fc.monthlyDays) ? fc.monthlyDays : (typeof fc.monthlyDays === 'string' ? JSON.parse(fc.monthlyDays) : []);
+                    if (monthlyDays.includes(dayOfMonth)) {
+                        shouldInclude = true;
+                    }
+                }
+                
+                if (shouldInclude) {
+                    fixedClientsByDay[dateString].push({
+                        id: fc.id,
+                        restaurantId: fc.restaurantId,
+                        restaurantName: fc.restaurant.name,
+                        restaurantAddress: fc.restaurant.address,
+                        radiusKm: Number(fc.radiusKm)
+                    });
+                }
+            });
+        }
+        
+        return fixedClientsByDay;
+    } catch (error: any) {
+        console.error('Erro ao buscar clientes fixos da semana:', error);
+        return {};
+    }
+}
+
+// Função auxiliar: Calcular distância entre duas coordenadas (Haversine)
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371; // Raio da Terra em km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
+
+// Buscar clientes de prospecção próximos a um endereço
+// Função auxiliar (não é server action, pode ser chamada de outros server actions)
+export async function findNearbyProspectClients(
+    fixedClientAddress: any,
+    radiusKm: number,
+    prospectClients: any[],
+    sellerId: string
+): Promise<any[]> {
+    try {
+        // Tentar obter coordenadas do endereço do cliente fixo
+        // Por enquanto, vamos usar uma abordagem simplificada baseada em cidade/bairro
+        // Em produção, seria ideal usar geocoding (Google Maps API)
+        
+        const fixedCity = fixedClientAddress?.city || fixedClientAddress?.cidade || '';
+        const fixedNeighborhood = fixedClientAddress?.neighborhood || fixedClientAddress?.bairro || '';
+        
+        if (!fixedCity) {
+            console.warn('Cliente fixo sem cidade definida, não é possível buscar clientes próximos');
+            return [];
+        }
+        
+        // Filtrar clientes da mesma cidade
+        const sameCityClients = prospectClients.filter(client => {
+            const clientAddress = typeof client.address === 'string' ? JSON.parse(client.address) : client.address;
+            const clientCity = clientAddress?.city || clientAddress?.cidade || '';
+            return clientCity.toLowerCase() === fixedCity.toLowerCase();
+        });
+        
+        // Se tiver bairro definido, priorizar mesmo bairro
+        if (fixedNeighborhood) {
+            const sameNeighborhood = sameCityClients.filter(client => {
+                const clientAddress = typeof client.address === 'string' ? JSON.parse(client.address) : client.address;
+                const clientNeighborhood = clientAddress?.neighborhood || clientAddress?.bairro || '';
+                return clientNeighborhood.toLowerCase() === fixedNeighborhood.toLowerCase();
+            });
+            
+            if (sameNeighborhood.length > 0) {
+                return sameNeighborhood.slice(0, 7); // Máximo 7 clientes próximos (8 slots - 1 cliente fixo)
+            }
+        }
+        
+        // Retornar clientes da mesma cidade (limitado)
+        return sameCityClients.slice(0, 7);
+    } catch (error: any) {
+        console.error('Erro ao buscar clientes próximos:', error);
+        return [];
+    }
+}
+

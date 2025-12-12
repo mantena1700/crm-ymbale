@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { saveWeeklySchedule, getWeeklySchedule } from './actions';
+import { saveWeeklySchedule, getWeeklySchedule, getFixedClientsForWeek } from './actions';
 import styles from './WeeklyCalendar.module.css';
 
 interface Restaurant {
@@ -81,6 +81,10 @@ export default function WeeklyCalendar({ restaurants, sellerId, weekStart }: Wee
         try {
             const schedule = await getWeeklySchedule(sellerId, weekStart.toISOString());
             setScheduledSlots(schedule);
+            
+            // Carregar clientes fixos da semana
+            const fixedClients = await getFixedClientsForWeek(sellerId, weekStart.toISOString());
+            setFixedClientsByDay(fixedClients);
         } catch (error) {
             console.error('Erro ao carregar agenda:', error);
         } finally {
@@ -93,8 +97,27 @@ export default function WeeklyCalendar({ restaurants, sellerId, weekStart }: Wee
         loadSchedule();
     }, [loadSchedule]);
 
+    // Verificar se um slot é cliente fixo
+    const isFixedClientSlot = (date: string, visitIndex: number) => {
+        const fixedClients = fixedClientsByDay[date] || [];
+        // Clientes fixos ocupam os primeiros slots do dia
+        return fixedClients.length > 0 && visitIndex <= fixedClients.length;
+    };
+
+    // Obter cliente fixo em um slot
+    const getFixedClientInSlot = (date: string, visitIndex: number) => {
+        const fixedClients = fixedClientsByDay[date] || [];
+        if (fixedClients.length > 0 && visitIndex <= fixedClients.length) {
+            return fixedClients[visitIndex - 1];
+        }
+        return null;
+    };
+
     // Verificar se um slot está ocupado (por data e índice de visita)
     const isSlotOccupied = (date: string, visitIndex: number) => {
+        // Verificar se é cliente fixo primeiro
+        if (isFixedClientSlot(date, visitIndex)) return true;
+        
         return scheduledSlots.some(slot => {
             if (slot.date !== date) return false;
             // Compatibilidade: verificar por visitIndex ou por time convertido
@@ -104,6 +127,16 @@ export default function WeeklyCalendar({ restaurants, sellerId, weekStart }: Wee
 
     // Obter restaurante em um slot (por data e índice de visita)
     const getSlotRestaurant = (date: string, visitIndex: number) => {
+        // Verificar se é cliente fixo primeiro
+        const fixedClient = getFixedClientInSlot(date, visitIndex);
+        if (fixedClient) {
+            return {
+                id: fixedClient.restaurantId,
+                restaurantName: fixedClient.restaurantName,
+                isFixedClient: true
+            };
+        }
+        
         return scheduledSlots.find(slot => {
             if (slot.date !== date) return false;
             // Compatibilidade: verificar por visitIndex ou por time convertido
@@ -177,6 +210,12 @@ export default function WeeklyCalendar({ restaurants, sellerId, weekStart }: Wee
 
     // Remover agendamento (agora usa visitIndex)
     const handleRemoveSlot = async (date: string, visitIndex: number) => {
+        // Não permitir remover clientes fixos
+        if (isFixedClientSlot(date, visitIndex)) {
+            alert('Este slot é reservado para um cliente fixo e não pode ser removido!');
+            return;
+        }
+
         if (!confirm('Deseja remover este agendamento?')) return;
 
         const newSlots = scheduledSlots.filter(slot => {
@@ -426,21 +465,24 @@ export default function WeeklyCalendar({ restaurants, sellerId, weekStart }: Wee
                                 if (!shouldShowSlot(day.date, visitIndex)) return null;
                                 const slot = getSlotRestaurant(day.date, visitIndex);
                                 const isOccupied = !!slot;
+                                const isFixed = isFixedClientSlot(day.date, visitIndex);
                                 
                                 return (
                                     <div
                                         key={`${day.date}-${visitIndex}`}
-                                        className={`${styles.calendarSlot} ${isOccupied ? styles.occupied : styles.empty}`}
-                                        onDragOver={handleDragOver}
-                                        onDrop={(e) => handleDrop(e, day.date, visitIndex)}
+                                        className={`${styles.calendarSlot} ${isOccupied ? styles.occupied : styles.empty} ${isFixed ? styles.fixedClient : ''}`}
+                                        onDragOver={isFixed ? undefined : handleDragOver}
+                                        onDrop={isFixed ? undefined : (e) => handleDrop(e, day.date, visitIndex)}
                                         onClick={() => {
-                                            if (isOccupied) {
+                                            if (isOccupied && !isFixed) {
                                                 setSelectedSlot({ date: day.date, time: String(visitIndex) });
                                             }
                                         }}
+                                        title={isFixed ? 'Cliente Fixo (não pode ser removido)' : undefined}
                                     >
                                         {isOccupied && slot ? (
-                                            <div className={styles.slotContent}>
+                                            <div className={`${styles.slotContent} ${isFixed ? styles.fixedClientContent : ''}`}>
+                                                {isFixed && <span className={styles.fixedClientBadge}>📌</span>}
                                                 {calendarViewMode === 'minimal' ? (
                                                     // Modo minimalista: apenas indicador colorido
                                                     (() => {
@@ -456,7 +498,7 @@ export default function WeeklyCalendar({ restaurants, sellerId, weekStart }: Wee
                                                                     className={styles.removeBtnMini}
                                                                     onClick={(e) => {
                                                                         e.stopPropagation();
-                                                                        handleRemoveSlot(day.date, time);
+                                                                        handleRemoveSlot(day.date, visitIndex);
                                                                     }}
                                                                 >✕</button>
                                                             </div>
@@ -478,7 +520,7 @@ export default function WeeklyCalendar({ restaurants, sellerId, weekStart }: Wee
                                                                         className={styles.removeBtnCompact}
                                                                         onClick={(e) => {
                                                                             e.stopPropagation();
-                                                                            handleRemoveSlot(day.date, time);
+                                                                            handleRemoveSlot(day.date, visitIndex);
                                                                         }}
                                                                     >✕</button>
                                                                 </div>

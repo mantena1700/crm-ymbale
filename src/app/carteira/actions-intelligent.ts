@@ -1,6 +1,7 @@
 'use server';
 
 import { prisma } from '@/lib/db';
+import { getFixedClientsForWeek, findNearbyProspectClients } from './actions';
 
 interface Restaurant {
     id: string;
@@ -89,43 +90,75 @@ export async function generateIntelligentWeeklySchedule(
         // Ordenar por score (maior primeiro)
         scoredRestaurants.sort((a, b) => b.score - a.score);
 
+        // Buscar clientes fixos da semana
+        const fixedClientsByDay = await getFixedClientsForWeek(sellerId, weekStart.toISOString());
+        console.log(`📌 Clientes fixos encontrados para a semana:`, Object.keys(fixedClientsByDay).length, 'dias');
+
         // Gerar dias da semana (segunda a sexta)
         const weekDays: WeeklySchedule[] = [];
         const daysOfWeek = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta'];
+        
+        // Separar restaurantes já usados (clientes fixos e agendamentos existentes)
+        const usedRestaurantIds = new Set<string>();
+        existingSchedule.forEach(existing => {
+            if (existing.restaurantId) {
+                usedRestaurantIds.add(existing.restaurantId);
+            }
+        });
+        
+        // Adicionar IDs dos clientes fixos
+        Object.values(fixedClientsByDay).forEach(fixedClients => {
+            fixedClients.forEach(fc => {
+                usedRestaurantIds.add(fc.restaurantId);
+            });
+        });
         
         for (let i = 0; i < 5; i++) {
             const date = new Date(weekStart);
             date.setDate(weekStart.getDate() + i);
             const dateString = date.toISOString().split('T')[0];
             
-            // Criar slots de 8h às 18h (8 slots por dia) - usando os mesmos horários do WeeklyCalendar
+            // Criar slots (8 slots por dia, sem horários específicos)
             const slots = [];
-            const timeSlots = [
-                '08:00', '09:15', '10:30', '11:45',
-                '13:00', '14:15', '15:30', '16:45'
-            ];
+            const visitSlots = [1, 2, 3, 4, 5, 6, 7, 8];
             
-            for (const time of timeSlots) {
-                // Verificar se já existe um agendamento neste horário
-                const existingAtThisTime = existingSchedule.find(existing => {
+            // Verificar se há clientes fixos neste dia
+            const fixedClientsToday = fixedClientsByDay[dateString] || [];
+            let fixedClientIndex = 0;
+            
+            for (const visitIndex of visitSlots) {
+                // Verificar se já existe um agendamento neste slot
+                const existingAtThisSlot = existingSchedule.find(existing => {
                     const existingDate = new Date(existing.scheduledDate);
                     const existingDateString = existingDate.toISOString().split('T')[0];
-                    const existingTime = `${String(existingDate.getHours()).padStart(2, '0')}:${String(existingDate.getMinutes()).padStart(2, '0')}`;
-                    return existingDateString === dateString && existingTime === time;
+                    return existingDateString === dateString;
                 });
 
-                if (existingAtThisTime) {
+                if (existingAtThisSlot) {
                     // Slot já preenchido com agendamento existente
                     slots.push({
-                        time,
-                        restaurantId: existingAtThisTime.restaurantId,
-                        restaurantName: existingAtThisTime.restaurant?.name || 'Restaurante',
-                        existingId: existingAtThisTime.id, // Marcar como existente para não duplicar
+                        time: String(visitIndex),
+                        restaurantId: existingAtThisSlot.restaurantId,
+                        restaurantName: existingAtThisSlot.restaurant?.name || 'Restaurante',
+                        existingId: existingAtThisSlot.id,
                     });
+                    if (existingAtThisSlot.restaurantId) {
+                        usedRestaurantIds.add(existingAtThisSlot.restaurantId);
+                    }
+                } else if (fixedClientIndex < fixedClientsToday.length) {
+                    // Preencher com cliente fixo
+                    const fixedClient = fixedClientsToday[fixedClientIndex];
+                    slots.push({
+                        time: String(visitIndex),
+                        restaurantId: fixedClient.restaurantId,
+                        restaurantName: fixedClient.restaurantName,
+                        isFixedClient: true, // Marcar como cliente fixo
+                    });
+                    fixedClientIndex++;
                 } else {
                     // Slot vazio
                     slots.push({
-                        time,
+                        time: String(visitIndex),
                         restaurantId: null,
                         restaurantName: null,
                     });
@@ -139,30 +172,76 @@ export async function generateIntelligentWeeklySchedule(
             });
         }
 
-        // Distribuir restaurantes nos slots (priorizando os melhores)
-        let restaurantIndex = 0;
-        const totalSlots = weekDays.reduce((sum, day) => sum + day.slots.length, 0);
-        const restaurantsToSchedule = Math.min(scoredRestaurants.length, totalSlots);
-
-        console.log(`📆 Total de slots disponíveis: ${totalSlots}`);
-        console.log(`📝 Restaurantes a agendar: ${restaurantsToSchedule}`);
-
-        for (let i = 0; i < restaurantsToSchedule && restaurantIndex < scoredRestaurants.length; i++) {
-            const restaurant = scoredRestaurants[restaurantIndex].restaurant;
+        // Distribuir restaurantes nos slots
+        // Primeiro: preencher dias com clientes fixos usando clientes próximos
+        for (const day of weekDays) {
+            const fixedClientsToday = fixedClientsByDay[day.date] || [];
             
-            // Encontrar próximo slot vazio
+            if (fixedClientsToday.length > 0) {
+                // Para cada cliente fixo, buscar clientes próximos
+                for (const fixedClient of fixedClientsToday) {
+                    // Filtrar restaurantes disponíveis (não usados e não são o cliente fixo)
+                    const availableRestaurants = scoredRestaurants
+                        .filter(sr => 
+                            !usedRestaurantIds.has(sr.restaurant.id) &&
+                            sr.restaurant.id !== fixedClient.restaurantId
+                        )
+                        .map(sr => sr.restaurant);
+                    
+                    // Buscar clientes próximos
+                    const nearbyClients = await findNearbyProspectClients(
+                        fixedClient.restaurantAddress,
+                        fixedClient.radiusKm,
+                        availableRestaurants,
+                        sellerId
+                    );
+                    
+                    console.log(`📍 Cliente fixo: ${fixedClient.restaurantName} - ${nearbyClients.length} clientes próximos encontrados`);
+                    
+                    // Preencher slots vazios do dia com clientes próximos
+                    let nearbyIndex = 0;
+                    for (const slot of day.slots) {
+                        if (!slot.restaurantId && nearbyIndex < nearbyClients.length) {
+                            const nearbyClient = nearbyClients[nearbyIndex];
+                            slot.restaurantId = nearbyClient.id;
+                            slot.restaurantName = nearbyClient.name;
+                            usedRestaurantIds.add(nearbyClient.id);
+                            nearbyIndex++;
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Segundo: preencher dias restantes com lógica atual (prioridade por score)
+        let restaurantIndex = 0;
+        const availableRestaurants = scoredRestaurants.filter(sr => !usedRestaurantIds.has(sr.restaurant.id));
+        
+        console.log(`📆 Total de slots disponíveis: ${weekDays.reduce((sum, day) => sum + day.slots.filter(s => !s.restaurantId).length, 0)}`);
+        console.log(`📝 Restaurantes disponíveis para agendar: ${availableRestaurants.length}`);
+
+        for (const scoredRestaurant of availableRestaurants) {
+            const restaurant = scoredRestaurant.restaurant;
+            
+            // Encontrar próximo slot vazio em qualquer dia
+            let found = false;
             for (const day of weekDays) {
                 const emptySlot = day.slots.find(slot => !slot.restaurantId);
                 if (emptySlot) {
                     emptySlot.restaurantId = restaurant.id;
                     emptySlot.restaurantName = restaurant.name;
+                    usedRestaurantIds.add(restaurant.id);
                     restaurantIndex++;
+                    found = true;
                     break;
                 }
             }
+            
+            if (!found) break; // Não há mais slots disponíveis
         }
 
-        console.log(`✅ Agenda gerada com ${restaurantIndex} restaurantes agendados`);
+        const totalScheduled = weekDays.reduce((sum, day) => sum + day.slots.filter(s => s.restaurantId).length, 0);
+        console.log(`✅ Agenda gerada com ${totalScheduled} restaurantes agendados`);
         return weekDays;
     } catch (error) {
         console.error('❌ Erro ao gerar agenda inteligente:', error);

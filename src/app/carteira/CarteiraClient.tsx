@@ -6,6 +6,7 @@ import { scheduleVisit, updateClientPriority, updateClientStatus, addNote, autoF
 import { exportRestaurantsToCheckmob } from '@/app/actions';
 import WeeklyCalendar from './WeeklyCalendar';
 import MapaTecnologico from './MapaTecnologico';
+import FixedClientsSection from './FixedClientsSection';
 
 interface ScheduledSlot {
     id: string;
@@ -84,7 +85,7 @@ export default function CarteiraClient({ initialData }: Props) {
     const [showScheduleModal, setShowScheduleModal] = useState<string | null>(null);
     const [scheduleData, setScheduleData] = useState({ date: '', time: '', notes: '' });
     const [loading, setLoading] = useState(false);
-    const [activeTab, setActiveTab] = useState<'carteira-padrao' | 'carteira' | 'semana' | 'agenda' | 'mapa' | 'exportar-checkmob' | 'exportar-agendamento'>('carteira-padrao');
+    const [activeTab, setActiveTab] = useState<'carteira-padrao' | 'carteira' | 'semana' | 'agenda' | 'mapa' | 'exportar-checkmob' | 'exportar-agendamento' | 'clientes-fixos'>('carteira-padrao');
     const [weekViewMode, setWeekViewMode] = useState<'list' | 'calendar'>('calendar');
     const [currentWeekStart, setCurrentWeekStart] = useState(() => {
         const today = new Date();
@@ -787,6 +788,12 @@ export default function CarteiraClient({ initialData }: Props) {
                     onClick={() => setActiveTab('exportar-checkmob')}
                 >
                     📥 Exportar Checkmob
+                </button>
+                <button 
+                    className={`${styles.tab} ${activeTab === 'clientes-fixos' ? styles.active : ''}`}
+                    onClick={() => setActiveTab('clientes-fixos')}
+                >
+                    📌 Clientes Fixos
                 </button>
             </div>
 
@@ -1836,6 +1843,14 @@ export default function CarteiraClient({ initialData }: Props) {
                         )}
                     </div>
                 </div>
+            )}
+
+            {/* Clientes Fixos Tab */}
+            {activeTab === 'clientes-fixos' && (
+                <FixedClientsSection 
+                    sellerId={selectedSellerId}
+                    restaurants={carteiraRestaurants}
+                />
             )}
 
             {/* Schedule Modal */}

@@ -173,6 +173,7 @@ model Seller {
   restaurants Restaurant[]
   visits      Visit[]
   zonas       SellerZona[]
+  fixedClients FixedClient[]
 
   @@map("sellers")
 }
@@ -207,6 +208,7 @@ model Restaurant {
   activityLog ActivityLog[]
   campaignRecipients CampaignRecipient[]
   workflowExecutions WorkflowExecution[]
+  fixedClients FixedClient[]
 
   @@index([createdAt(sort: Desc)], map: "idx_restaurants_created_at")
   @@index([rating(sort: Desc)], map: "idx_restaurants_rating")
@@ -564,4 +566,32 @@ model SellerZona {
   @@index([sellerId], map: "idx_seller_zonas_seller_id")
   @@index([zonaId], map: "idx_seller_zonas_zona_id")
   @@map("seller_zonas")
+}
+
+model FixedClient {
+  id            String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  sellerId      String   @map("seller_id") @db.Uuid
+  seller        Seller   @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  
+  restaurantId  String   @map("restaurant_id") @db.Uuid
+  restaurant    Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  
+  // Configuração de recorrência
+  recurrenceType String  @map("recurrence_type") @db.VarChar(20) // 'monthly_days' ou 'weekly_days'
+  monthlyDays    Json    @default("[]") @map("monthly_days") // [2, 14] - dias do mês (JSON array)
+  weeklyDays     Json    @default("[]") @map("weekly_days") // [1, 4] - 0=domingo, 1=segunda, etc. (JSON array)
+  
+  // Configuração de proximidade
+  radiusKm       Decimal  @default(10.0) @map("radius_km") @db.Decimal(5, 2) // Raio em km
+  
+  // Status
+  active         Boolean  @default(true)
+  
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  
+  @@unique([sellerId, restaurantId])
+  @@index([sellerId])
+  @@index([restaurantId])
+  @@map("fixed_clients")
 }
