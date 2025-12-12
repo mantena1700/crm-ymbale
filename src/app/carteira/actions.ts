@@ -908,7 +908,9 @@ export async function exportWeeklyScheduleToAgendamentoTemplate(
                                 name: true
                             }
                         }
-                    }
+                    },
+                    // Incluir codigoCliente se o campo existir
+                    select: undefined // Usar select undefined para incluir todos os campos
                 }
             },
             orderBy: {
