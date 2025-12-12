@@ -382,9 +382,78 @@ export default function CarteiraClient({ initialData }: Props) {
         }
     };
 
-    // Exportar para Checkmob (placeholder)
-    const handleExportToCheckmob = () => {
-        alert('🚧 Funcionalidade em desenvolvimento!\n\nEm breve você poderá exportar sua agenda diretamente para o Checkmob.');
+    // Funções para exportação Checkmob
+    const handleCheckmobSelectRestaurant = (restaurantId: string) => {
+        setCheckmobSelectedRestaurants(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(restaurantId)) {
+                newSet.delete(restaurantId);
+            } else {
+                newSet.add(restaurantId);
+            }
+            return newSet;
+        });
+    };
+
+    const handleCheckmobSelectAll = () => {
+        if (checkmobSelectedRestaurants.size === checkmobFilteredRestaurants.length) {
+            setCheckmobSelectedRestaurants(new Set());
+        } else {
+            setCheckmobSelectedRestaurants(new Set(checkmobFilteredRestaurants.map(r => r.id)));
+        }
+    };
+
+    const handleExportToCheckmob = async () => {
+        const idsToExport = checkmobSelectedRestaurants.size > 0 
+            ? Array.from(checkmobSelectedRestaurants) 
+            : checkmobFilteredRestaurants.map(r => r.id);
+
+        if (idsToExport.length === 0) {
+            alert('⚠️ Nenhum cliente selecionado para exportar.');
+            return;
+        }
+
+        if (!confirm(`Deseja exportar ${idsToExport.length} cliente(s) para o formato Checkmob?\n\nO arquivo será baixado no formato do template de cadastro.`)) {
+            return;
+        }
+
+        setCheckmobExporting(true);
+        try {
+            const result = await exportRestaurantsToCheckmob(idsToExport);
+            
+            if (result.success && result.data) {
+                // Converter base64 para Blob
+                const byteCharacters = atob(result.data);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                const blob = new Blob([byteArray], { 
+                    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+                });
+
+                // Criar link temporário para download
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = result.filename || `Checkmob_Cadastro_Clientes_${new Date().toISOString().split('T')[0]}.xlsx`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+
+                alert(`✅ Planilha Checkmob exportada com sucesso!\n\n${result.count} cliente(s) exportado(s).`);
+                setCheckmobSelectedRestaurants(new Set());
+            } else {
+                alert(`❌ Erro ao exportar planilha.\n\n${result.error || 'Erro desconhecido'}`);
+            }
+        } catch (error: any) {
+            console.error('Erro ao exportar:', error);
+            alert(`❌ Erro ao exportar: ${error.message || 'Erro desconhecido'}`);
+        } finally {
+            setCheckmobExporting(false);
+        }
     };
 
     // Exportar agenda semanal para Excel
