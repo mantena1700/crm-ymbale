@@ -802,7 +802,16 @@
 
 .checkmobBtn {
     background: linear-gradient(135deg, #8b5cf6, #7c3aed);
-    opacity: 0.7;
+    box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+}
+
+.checkmobBtn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
+}
+
+.checkmobBtn:disabled {
+    opacity: 0.6;
     cursor: not-allowed;
 }
 
