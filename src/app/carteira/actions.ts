@@ -1102,12 +1102,23 @@ export async function getFixedClients(sellerId: string) {
     'use server';
     
     try {
-        // Verificar se a tabela existe
+        // Verificar se a tabela existe usando query do catálogo PostgreSQL
         try {
-            await prisma.$queryRaw`SELECT 1 FROM fixed_clients LIMIT 1`;
+            const tableExists = await prisma.$queryRaw<Array<{ exists: boolean }>>`
+                SELECT EXISTS (
+                    SELECT FROM information_schema.tables 
+                    WHERE table_schema = 'public' 
+                    AND table_name = 'fixed_clients'
+                ) as exists
+            `;
+            
+            if (!tableExists[0]?.exists) {
+                console.log('Tabela fixed_clients ainda não existe, retornando vazio');
+                return [];
+            }
         } catch (error: any) {
-            // Tabela não existe ainda, retornar array vazio
-            console.log('Tabela fixed_clients ainda não existe, retornando vazio');
+            // Se der erro na verificação, assumir que não existe
+            console.log('Erro ao verificar tabela fixed_clients, retornando vazio:', error.message);
             return [];
         }
 
@@ -1195,11 +1206,23 @@ export async function createFixedClient(data: {
     'use server';
     
     try {
-        // Verificar se a tabela existe
+        // Verificar se a tabela existe usando query do catálogo PostgreSQL
         try {
-            await prisma.$queryRaw`SELECT 1 FROM fixed_clients LIMIT 1`;
+            const tableExists = await prisma.$queryRaw<Array<{ exists: boolean }>>`
+                SELECT EXISTS (
+                    SELECT FROM information_schema.tables 
+                    WHERE table_schema = 'public' 
+                    AND table_name = 'fixed_clients'
+                ) as exists
+            `;
+            
+            if (!tableExists[0]?.exists) {
+                console.error('Tabela fixed_clients não encontrada no banco de dados');
+                return { success: false, error: 'Tabela de clientes fixos ainda não foi criada. Execute o SQL: docker exec -i crm-postgres psql -U crm_user -d crm_ymbale < scripts/create-fixed-clients-table.sql' };
+            }
         } catch (error: any) {
-            return { success: false, error: 'Tabela de clientes fixos ainda não foi criada. Execute a migration primeiro.' };
+            console.error('Erro ao verificar tabela fixed_clients:', error);
+            return { success: false, error: `Erro ao verificar tabela: ${error.message}. Execute o SQL primeiro.` };
         }
 
         // Validar dados
@@ -1246,18 +1269,31 @@ export async function createFixedClient(data: {
             adjustedMonthlyDays = adjustMonthlyDaysToWeekdays(adjustedMonthlyDays, now.getFullYear(), now.getMonth() + 1);
         }
         
+        // Construir objeto de dados dinamicamente (não enviar null explicitamente)
+        const createData: any = {
+            sellerId: data.sellerId,
+            recurrenceType: data.recurrenceType,
+            monthlyDays: adjustedMonthlyDays,
+            weeklyDays: data.weeklyDays ? data.weeklyDays : [],
+            radiusKm: data.radiusKm || 10.0,
+            active: true
+        };
+        
+        // Adicionar restaurantId apenas se fornecido
+        if (hasRestaurantId && data.restaurantId) {
+            createData.restaurantId = data.restaurantId;
+        }
+        
+        // Adicionar clientName e clientAddress apenas se for cliente manual
+        if (hasClientName && !hasRestaurantId) {
+            createData.clientName = data.clientName.trim();
+            if (data.clientAddress) {
+                createData.clientAddress = data.clientAddress;
+            }
+        }
+        
         const fixedClient = await prisma.fixedClient.create({
-            data: {
-                sellerId: data.sellerId,
-                restaurantId: data.restaurantId || null,
-                clientName: data.clientName || null,
-                clientAddress: data.clientAddress || null,
-                recurrenceType: data.recurrenceType,
-                monthlyDays: adjustedMonthlyDays,
-                weeklyDays: data.weeklyDays ? data.weeklyDays : [],
-                radiusKm: data.radiusKm || 10.0,
-                active: true
-            },
+            data: createData,
             include: {
                 restaurant: {
                     select: {
@@ -1290,11 +1326,23 @@ export async function updateFixedClient(
     'use server';
     
     try {
-        // Verificar se a tabela existe
+        // Verificar se a tabela existe usando query do catálogo PostgreSQL
         try {
-            await prisma.$queryRaw`SELECT 1 FROM fixed_clients LIMIT 1`;
+            const tableExists = await prisma.$queryRaw<Array<{ exists: boolean }>>`
+                SELECT EXISTS (
+                    SELECT FROM information_schema.tables 
+                    WHERE table_schema = 'public' 
+                    AND table_name = 'fixed_clients'
+                ) as exists
+            `;
+            
+            if (!tableExists[0]?.exists) {
+                console.error('Tabela fixed_clients não encontrada no banco de dados');
+                return { success: false, error: 'Tabela de clientes fixos ainda não foi criada. Execute o SQL: docker exec -i crm-postgres psql -U crm_user -d crm_ymbale < scripts/create-fixed-clients-table.sql' };
+            }
         } catch (error: any) {
-            return { success: false, error: 'Tabela de clientes fixos ainda não foi criada. Execute a migration primeiro.' };
+            console.error('Erro ao verificar tabela fixed_clients:', error);
+            return { success: false, error: `Erro ao verificar tabela: ${error.message}. Execute o SQL primeiro.` };
         }
 
         // Ajustar dias do mês que caem em finais de semana
@@ -1352,12 +1400,23 @@ export async function getFixedClientsForWeek(sellerId: string, weekStart: string
     'use server';
     
     try {
-        // Verificar se a tabela existe (se não existir, retornar objeto vazio)
+        // Verificar se a tabela existe usando query do catálogo PostgreSQL
         try {
-            await prisma.$queryRaw`SELECT 1 FROM fixed_clients LIMIT 1`;
+            const tableExists = await prisma.$queryRaw<Array<{ exists: boolean }>>`
+                SELECT EXISTS (
+                    SELECT FROM information_schema.tables 
+                    WHERE table_schema = 'public' 
+                    AND table_name = 'fixed_clients'
+                ) as exists
+            `;
+            
+            if (!tableExists[0]?.exists) {
+                console.log('Tabela fixed_clients ainda não existe, retornando vazio');
+                return {};
+            }
         } catch (error: any) {
-            // Tabela não existe ainda, retornar objeto vazio
-            console.log('Tabela fixed_clients ainda não existe, retornando vazio');
+            // Se der erro na verificação, assumir que não existe
+            console.log('Erro ao verificar tabela fixed_clients, retornando vazio:', error.message);
             return {};
         }
 
