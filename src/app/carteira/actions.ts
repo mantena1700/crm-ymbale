@@ -1206,7 +1206,7 @@ export async function createFixedClient(data: {
     'use server';
     
     try {
-        // Verificar se a tabela existe usando query do catálogo PostgreSQL
+        // Verificar e criar tabela se não existir
         try {
             const tableExists = await prisma.$queryRaw<Array<{ exists: boolean }>>`
                 SELECT EXISTS (
@@ -1217,12 +1217,64 @@ export async function createFixedClient(data: {
             `;
             
             if (!tableExists[0]?.exists) {
-                console.error('Tabela fixed_clients não encontrada no banco de dados');
-                return { success: false, error: 'Tabela de clientes fixos ainda não foi criada. Execute o SQL: docker exec -i crm-postgres psql -U crm_user -d crm_ymbale < scripts/create-fixed-clients-table.sql' };
+                console.log('📄 Tabela fixed_clients não encontrada. Criando automaticamente...');
+                
+                // Criar tabela
+                await prisma.$executeRaw`
+                    CREATE TABLE IF NOT EXISTS fixed_clients (
+                        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                        seller_id UUID NOT NULL REFERENCES sellers(id) ON DELETE CASCADE,
+                        restaurant_id UUID REFERENCES restaurants(id) ON DELETE SET NULL,
+                        client_name VARCHAR(255),
+                        client_address JSONB,
+                        recurrence_type VARCHAR(20) NOT NULL,
+                        monthly_days JSONB DEFAULT '[]'::jsonb,
+                        weekly_days JSONB DEFAULT '[]'::jsonb,
+                        radius_km DECIMAL(5,2) DEFAULT 10.0,
+                        active BOOLEAN DEFAULT true,
+                        created_at TIMESTAMPTZ(6) DEFAULT NOW(),
+                        updated_at TIMESTAMPTZ(6) DEFAULT NOW()
+                    )
+                `;
+                
+                // Criar índices
+                await prisma.$executeRaw`
+                    CREATE INDEX IF NOT EXISTS idx_fixed_clients_seller_id ON fixed_clients(seller_id)
+                `;
+                await prisma.$executeRaw`
+                    CREATE INDEX IF NOT EXISTS idx_fixed_clients_restaurant_id ON fixed_clients(restaurant_id)
+                `;
+                await prisma.$executeRaw`
+                    CREATE INDEX IF NOT EXISTS idx_fixed_clients_active ON fixed_clients(active) WHERE active = true
+                `;
+                
+                // Criar função e trigger para updated_at
+                await prisma.$executeRaw`
+                    CREATE OR REPLACE FUNCTION update_fixed_clients_updated_at()
+                    RETURNS TRIGGER AS $$
+                    BEGIN
+                        NEW.updated_at = NOW();
+                        RETURN NEW;
+                    END;
+                    $$ LANGUAGE plpgsql
+                `;
+                
+                await prisma.$executeRaw`
+                    DROP TRIGGER IF EXISTS update_fixed_clients_updated_at ON fixed_clients
+                `;
+                
+                await prisma.$executeRaw`
+                    CREATE TRIGGER update_fixed_clients_updated_at
+                        BEFORE UPDATE ON fixed_clients
+                        FOR EACH ROW
+                        EXECUTE FUNCTION update_fixed_clients_updated_at()
+                `;
+                
+                console.log('✅ Tabela fixed_clients criada com sucesso!');
             }
         } catch (error: any) {
-            console.error('Erro ao verificar tabela fixed_clients:', error);
-            return { success: false, error: `Erro ao verificar tabela: ${error.message}. Execute o SQL primeiro.` };
+            console.error('Erro ao verificar/criar tabela fixed_clients:', error);
+            // Tentar continuar mesmo se houver erro na verificação
         }
 
         // Validar dados
