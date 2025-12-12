@@ -1975,15 +1975,12 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
         }
         
         // Buscar restaurantes selecionados
+        // Usar include ao invés de select para evitar problemas se codigoCliente não existir ainda
         const restaurants = await prisma.restaurant.findMany({
             where: {
                 id: { in: restaurantIds }
             },
-            select: {
-                id: true,
-                name: true,
-                codigoCliente: true,
-                address: true,
+            include: {
                 seller: {
                     select: {
                         name: true
@@ -2200,7 +2197,8 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
             }
             if (columnMap['Código Cliente'] !== undefined) {
                 // Preencher com o código do cliente do banco de dados
-                newRow.getCell(columnMap['Código Cliente']).value = r.codigoCliente || '';
+                // Usar codigoCliente da variável local (pode ser null se campo não existir)
+                newRow.getCell(columnMap['Código Cliente']).value = codigoCliente || '';
             }
             if (columnMap['Clientes'] !== undefined) {
                 newRow.getCell(columnMap['Clientes']).value = r.name || '';
