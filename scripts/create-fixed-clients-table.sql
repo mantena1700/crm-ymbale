@@ -13,12 +13,12 @@ CREATE TABLE IF NOT EXISTS fixed_clients (
     client_address JSONB,
     
     -- Configuração de recorrência
-    recurrence_type VARCHAR(20) NOT NULL, -- 'monthly_days' ou 'weekly_days'
-    monthly_days JSONB DEFAULT '[]'::jsonb, -- [2, 14] - dias do mês
-    weekly_days JSONB DEFAULT '[]'::jsonb, -- [1, 4] - 0=domingo, 1=segunda, etc.
+    recurrence_type VARCHAR(20) NOT NULL,
+    monthly_days JSONB DEFAULT '[]'::jsonb,
+    weekly_days JSONB DEFAULT '[]'::jsonb,
     
     -- Configuração de proximidade
-    radius_km DECIMAL(5,2) DEFAULT 10.0, -- Raio em km
+    radius_km DECIMAL(5,2) DEFAULT 10.0,
     
     -- Status
     active BOOLEAN DEFAULT true,
@@ -46,13 +46,3 @@ CREATE TRIGGER update_fixed_clients_updated_at
     BEFORE UPDATE ON fixed_clients
     FOR EACH ROW
     EXECUTE FUNCTION update_fixed_clients_updated_at();
-
--- Comentários para documentação
-COMMENT ON TABLE fixed_clients IS 'Clientes fixos que são visitados regularmente. O preenchimento inteligente agendará clientes próximos no mesmo dia.';
-COMMENT ON COLUMN fixed_clients.recurrence_type IS 'Tipo de recorrência: monthly_days (dias do mês) ou weekly_days (dias da semana)';
-COMMENT ON COLUMN fixed_clients.monthly_days IS 'Array JSON com os dias do mês (ex: [2, 14, 28]). Dias que caem em finais de semana são ajustados para o próximo dia útil.';
-COMMENT ON COLUMN fixed_clients.weekly_days IS 'Array JSON com os dias da semana (0=domingo, 1=segunda, etc.)';
-COMMENT ON COLUMN fixed_clients.radius_km IS 'Raio em km para buscar clientes próximos para agendar no mesmo dia';
-COMMENT ON COLUMN fixed_clients.client_name IS 'Nome do cliente (quando cadastrado manualmente, não da base)';
-COMMENT ON COLUMN fixed_clients.client_address IS 'Endereço do cliente em JSON (quando cadastrado manualmente)';
-
