@@ -549,6 +549,10 @@ export default function CarteiraClient({ initialData }: Props) {
     // Exportar agenda semanal para template de agendamento
     const [agendamentoExporting, setAgendamentoExporting] = useState(false);
     const handleExportAgendamento = async () => {
+        console.log('🚀 Iniciando exportação de agendamento...');
+        console.log('   selectedSellerId:', selectedSellerId);
+        console.log('   currentWeekStart:', currentWeekStart);
+        
         if (!selectedSellerId) {
             alert('Selecione um executivo primeiro.');
             return;
@@ -556,12 +560,16 @@ export default function CarteiraClient({ initialData }: Props) {
 
         setAgendamentoExporting(true);
         try {
+            console.log('📞 Chamando exportWeeklyScheduleToAgendamentoTemplate...');
             const result = await exportWeeklyScheduleToAgendamentoTemplate(
                 selectedSellerId,
                 currentWeekStart.toISOString()
             );
 
+            console.log('📥 Resultado recebido:', result);
+
             if (result.success && result.data) {
+                console.log('✅ Exportação bem-sucedida! Convertendo base64 para Blob...');
                 // Converter base64 para Blob
                 const byteCharacters = atob(result.data);
                 const byteNumbers = new Array(byteCharacters.length);
@@ -573,25 +581,31 @@ export default function CarteiraClient({ initialData }: Props) {
                     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
                 });
 
+                console.log('📦 Blob criado, tamanho:', blob.size, 'bytes');
+
                 // Criar link temporário para download
                 const url = window.URL.createObjectURL(blob);
                 const link = document.createElement('a');
                 link.href = url;
                 link.download = result.filename || `Agendamento_Semanal_${new Date().toISOString().split('T')[0]}.xlsx`;
                 document.body.appendChild(link);
+                console.log('🔗 Link criado, iniciando download...');
                 link.click();
                 document.body.removeChild(link);
                 window.URL.revokeObjectURL(url);
 
                 alert(`✅ Planilha de Agendamento exportada com sucesso!\n\n${result.count || 0} agendamento(s) exportado(s).`);
             } else {
+                console.error('❌ Erro na exportação:', result.error);
                 alert(`❌ Erro ao exportar planilha.\n\n${result.error || 'Erro desconhecido'}`);
             }
         } catch (error: any) {
-            console.error('Erro ao exportar:', error);
-            alert(`❌ Erro ao exportar planilha.\n\n${error.message || 'Erro desconhecido'}`);
+            console.error('❌ Erro ao exportar:', error);
+            console.error('   Stack:', error.stack);
+            alert(`❌ Erro ao exportar planilha.\n\n${error.message || 'Erro desconhecido'}\n\nVerifique o console para mais detalhes.`);
         } finally {
             setAgendamentoExporting(false);
+            console.log('🏁 Exportação finalizada');
         }
     };
 

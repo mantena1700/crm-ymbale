@@ -883,6 +883,11 @@ export async function exportWeeklyScheduleToAgendamentoTemplate(
         endDate.setDate(startDate.getDate() + 7);
         endDate.setHours(23, 59, 59, 999);
         
+        console.log(`\n📅 Buscando agendamentos da semana:`);
+        console.log(`   Seller ID: ${sellerId}`);
+        console.log(`   Data início: ${startDate.toISOString()}`);
+        console.log(`   Data fim: ${endDate.toISOString()}`);
+        
         // Buscar follow-ups da semana
         const followUps = await prisma.followUp.findMany({
             where: {
