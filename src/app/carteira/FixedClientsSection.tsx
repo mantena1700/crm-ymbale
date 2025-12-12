@@ -88,9 +88,33 @@ export default function FixedClientsSection({ sellerId, restaurants }: FixedClie
             return;
         }
 
-        if (!formData.restaurantId) {
-            alert('Selecione um restaurante.');
+        // Validar dados baseado no tipo
+        if (formData.clientType === 'base' && !formData.restaurantId) {
+            alert('Selecione um restaurante da base.');
             return;
+        }
+
+        if (formData.clientType === 'manual') {
+            if (!formData.clientName) {
+                alert('Informe o nome do cliente.');
+                return;
+            }
+            if (!formData.clientAddress?.street) {
+                alert('Informe o endereço (rua) do cliente.');
+                return;
+            }
+            if (!formData.clientAddress?.neighborhood) {
+                alert('Informe o bairro do cliente.');
+                return;
+            }
+            if (!formData.clientAddress?.city) {
+                alert('Informe a cidade do cliente.');
+                return;
+            }
+            if (!formData.clientAddress?.state) {
+                alert('Informe o estado do cliente.');
+                return;
+            }
         }
 
         if (formData.recurrenceType === 'monthly_days' && formData.monthlyDays.length === 0) {
@@ -103,22 +127,38 @@ export default function FixedClientsSection({ sellerId, restaurants }: FixedClie
             return;
         }
 
+        // Ajustar dias do mês que caem em finais de semana
+        let adjustedMonthlyDays = formData.monthlyDays;
+        if (formData.recurrenceType === 'monthly_days' && adjustedMonthlyDays.length > 0) {
+            adjustedMonthlyDays = adjustMonthlyDaysToWeekdays(adjustedMonthlyDays);
+            // Mostrar aviso se algum dia foi ajustado
+            if (adjustedMonthlyDays.length !== formData.monthlyDays.length || 
+                !adjustedMonthlyDays.every((d, i) => d === formData.monthlyDays[i])) {
+                const adjustedInfo = adjustedMonthlyDays.filter(d => !formData.monthlyDays.includes(d));
+                if (adjustedInfo.length > 0) {
+                    alert(`⚠️ Alguns dias foram ajustados para o próximo dia útil: ${adjustedInfo.join(', ')}`);
+                }
+            }
+        }
+
         setLoading(true);
         try {
             let result;
             if (editingId) {
                 result = await updateFixedClient(editingId, {
                     recurrenceType: formData.recurrenceType,
-                    monthlyDays: formData.monthlyDays,
+                    monthlyDays: adjustedMonthlyDays,
                     weeklyDays: formData.weeklyDays,
                     radiusKm: formData.radiusKm
                 });
             } else {
                 result = await createFixedClient({
                     sellerId,
-                    restaurantId: formData.restaurantId,
+                    restaurantId: formData.clientType === 'base' ? formData.restaurantId : undefined,
+                    clientName: formData.clientType === 'manual' ? formData.clientName : undefined,
+                    clientAddress: formData.clientType === 'manual' ? formData.clientAddress : undefined,
                     recurrenceType: formData.recurrenceType,
-                    monthlyDays: formData.monthlyDays,
+                    monthlyDays: adjustedMonthlyDays,
                     weeklyDays: formData.weeklyDays,
                     radiusKm: formData.radiusKm
                 });
