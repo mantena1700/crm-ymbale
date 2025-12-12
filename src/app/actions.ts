@@ -1296,18 +1296,20 @@ export async function allocateRestaurantsToZones() {
                         continue;
                     }
                     
-                    const zonaInicio = parseInt(cleanCep(cepInicial), 10);
-                    const zonaFim = parseInt(cleanCep(cepFinal), 10);
+                    const cepInicialCleaned = cleanCep(String(cepInicial));
+                    const cepFinalCleaned = cleanCep(String(cepFinal));
+                    const zonaInicio = parseInt(cepInicialCleaned, 10);
+                    const zonaFim = parseInt(cepFinalCleaned, 10);
                     
                     // Validar se os CEPs da zona são válidos
                     if (isNaN(zonaInicio) || isNaN(zonaFim) || zonaInicio <= 0 || zonaFim <= 0) {
-                        console.warn(`⚠️ Zona ${(zona as any).zonaNome || (zona as any).zona_nome} com CEPs inválidos: ${cepInicial} - ${cepFinal}`);
+                        console.warn(`⚠️ Zona ${(zona as any).zonaNome || (zona as any).zona_nome} com CEPs inválidos: ${cepInicial} (${cepInicialCleaned} -> ${zonaInicio}) - ${cepFinal} (${cepFinalCleaned} -> ${zonaFim})`);
                         continue;
                     }
                     
                     // Verificar se o CEP está dentro do range
                     const isInRange = cepNum >= zonaInicio && cepNum <= zonaFim;
-                    console.log(`   Verificando zona ${(zona as any).zonaNome || (zona as any).zona_nome}: CEP ${cepNum} está entre ${zonaInicio} (${cepInicial}) e ${zonaFim} (${cepFinal})? ${isInRange ? 'SIM ✅' : 'NÃO ❌'}`);
+                    console.log(`   Verificando zona ${(zona as any).zonaNome || (zona as any).zona_nome}: CEP ${cepNum} está entre ${zonaInicio} (${cepInicial} -> ${cepInicialCleaned}) e ${zonaFim} (${cepFinal} -> ${cepFinalCleaned})? ${isInRange ? 'SIM ✅' : 'NÃO ❌'}`);
                     
                     if (isInRange) {
                         console.log(`✅ CEP ${cep} (${cepNum}) encontrado na zona ${(zona as any).zonaNome || (zona as any).zona_nome} (${cepInicial} - ${cepFinal})`);
@@ -1444,6 +1446,7 @@ export async function allocateRestaurantsToZones() {
                     // Log para debug se não encontrou CEP
                     if (!cep) {
                         console.log(`⚠️ CEP não encontrado no objeto address para restaurante ${restaurant.id}. Chaves disponíveis:`, Object.keys(address || {}));
+                        console.log(`   Address completo:`, JSON.stringify(address, null, 2));
                     }
                 }
                 
@@ -1474,8 +1477,10 @@ export async function allocateRestaurantsToZones() {
                     continue;
                 }
 
-                // Limpar e validar CEP
-                const cleanedCep = cleanCep(cep);
+                // Limpar e validar CEP - GARANTIR que seja string
+                const cepStr = String(cep).trim();
+                const cleanedCep = cleanCep(cepStr);
+                
                 if (cleanedCep.length !== 8) {
                     console.log(`⚠️ CEP inválido para restaurante ${restaurant.id}: ${cep} (limpo: ${cleanedCep}, tamanho: ${cleanedCep.length})`);
                     unallocated.push(restaurant.id);
@@ -1490,8 +1495,9 @@ export async function allocateRestaurantsToZones() {
                     continue;
                 }
 
-                // Log do CEP encontrado para debug
+                // Log detalhado do CEP encontrado para debug
                 console.log(`🔍 Processando restaurante ${restaurant.id}: CEP encontrado = "${cep}" (limpo: ${cleanedCep}, número: ${cepNum})`);
+                console.log(`📋 DEBUG - Address completo:`, JSON.stringify(address));
                 
                 // Encontrar zona pelo CEP
                 const zonaId = await findZonaByCep(cep);
