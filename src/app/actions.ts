@@ -1994,8 +1994,27 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
         // Os dados começarão na linha 2 (A2)
         const lastRow = worksheet.rowCount;
         if (lastRow > headerRow) {
-            // Deletar todas as linhas após o cabeçalho
-            worksheet.spliceRows(headerRow + 1, lastRow - headerRow);
+            // Deletar todas as linhas após o cabeçalho (começando da linha headerRow + 1)
+            // Usar spliceRows para remover todas as linhas de dados
+            const rowsToDelete = lastRow - headerRow;
+            if (rowsToDelete > 0) {
+                worksheet.spliceRows(headerRow + 1, rowsToDelete);
+            }
+        }
+        
+        // Garantir que não há linhas vazias entre o cabeçalho e onde vamos adicionar os dados
+        // Verificar se há linhas vazias após o cabeçalho e removê-las
+        let nextRowToCheck = headerRow + 1;
+        while (nextRowToCheck <= worksheet.rowCount) {
+            const row = worksheet.getRow(nextRowToCheck);
+            const hasData = row.values && row.values.some((val: any) => val !== null && val !== undefined && val !== '');
+            if (!hasData) {
+                // Se a linha está vazia, removê-la
+                worksheet.spliceRows(nextRowToCheck, 1);
+            } else {
+                // Se encontrou dados, parar (mas não deveria ter dados aqui)
+                break;
+            }
         }
         
         // Mapear colunas do template
@@ -2043,8 +2062,8 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
             }
         });
         
-        // Adicionar dados dos restaurantes
-        restaurants.forEach((r: any) => {
+        // Adicionar dados dos restaurantes começando na linha 2 (A2)
+        restaurants.forEach((r: any, index: number) => {
             const address = typeof r.address === 'string' ? JSON.parse(r.address) : r.address;
             
             // Extrair CEP (tentar várias variações)
