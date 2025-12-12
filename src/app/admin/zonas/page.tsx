@@ -124,19 +124,74 @@ export default async function ZonasPage() {
             }
         }
 
+        // Buscar clientes sem zona
+        let clientesSemZona: any[] = [];
+        try {
+            const restaurantesSemZona = await prisma.restaurant.findMany({
+                where: {
+                    zonaId: null
+                },
+                select: {
+                    id: true,
+                    name: true,
+                    address: true,
+                    status: true,
+                    salesPotential: true,
+                    createdAt: true,
+                    seller: {
+                        select: {
+                            id: true,
+                            name: true
+                        }
+                    }
+                },
+                orderBy: {
+                    createdAt: 'desc'
+                }
+            });
+
+            clientesSemZona = restaurantesSemZona.map(r => {
+                const rawAddress = (r.address as any) || {};
+                return {
+                    id: r.id,
+                    name: r.name || 'Restaurante sem nome',
+                    address: {
+                        street: rawAddress.street || rawAddress.rua || '',
+                        neighborhood: rawAddress.neighborhood || rawAddress.bairro || '',
+                        city: rawAddress.city || rawAddress.cidade || '',
+                        state: rawAddress.state || rawAddress.estado || '',
+                        zip: rawAddress.zip || rawAddress.cep || rawAddress.zipCode || ''
+                    },
+                    status: r.status || 'A Analisar',
+                    salesPotential: r.salesPotential || 'N/A',
+                    seller: r.seller ? {
+                        id: r.seller.id,
+                        name: r.seller.name
+                    } : null,
+                    createdAt: r.createdAt
+                };
+            });
+        } catch (error: any) {
+            console.warn('⚠️ Erro ao buscar clientes sem zona:', error.message);
+            clientesSemZona = [];
+        }
+
         return (
             <PageLayout
                 title="🗺️ Gerenciar Zonas"
                 subtitle="Configure as zonas geográficas baseadas em ranges de CEP"
             >
-                <ZonasClient initialZonas={zonas.map(z => ({
-                    id: (z as any).id,
-                    zonaNome: (z as any).zonaNome || (z as any).zona_nome,
-                    cepInicial: (z as any).cepInicial || (z as any).cep_inicial,
-                    cepFinal: (z as any).cepFinal || (z as any).cep_final,
-                    regiao: (z as any).regiao || (z as any).regiao,
-                    ativo: (z as any).ativo !== undefined ? (z as any).ativo : true
-                }))} />
+                <ZonasClient 
+                    initialZonas={zonas.map(z => ({
+                        id: (z as any).id,
+                        zonaNome: (z as any).zonaNome || (z as any).zona_nome,
+                        cepInicial: (z as any).cepInicial || (z as any).cep_inicial,
+                        cepFinal: (z as any).cepFinal || (z as any).cep_final,
+                        regiao: (z as any).regiao || (z as any).regiao,
+                        ativo: (z as any).ativo !== undefined ? (z as any).ativo : true
+                    }))}
+                    clientesSemZona={clientesSemZona}
+                />
             </PageLayout>
         );
     } catch (error: any) {

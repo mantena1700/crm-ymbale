@@ -13,8 +13,28 @@ interface Zona {
     ativo: boolean;
 }
 
+interface ClienteSemZona {
+    id: string;
+    name: string;
+    address: {
+        street: string;
+        neighborhood: string;
+        city: string;
+        state: string;
+        zip: string;
+    };
+    status: string;
+    salesPotential: string;
+    seller: {
+        id: string;
+        name: string;
+    } | null;
+    createdAt: Date;
+}
+
 interface ZonasClientProps {
     initialZonas: Zona[];
+    clientesSemZona: ClienteSemZona[];
 }
 
 // Formatar CEP para exibição (12345678 -> 12345-678)
@@ -26,7 +46,7 @@ function formatCep(cep: string): string {
     return cep;
 }
 
-export default function ZonasClient({ initialZonas }: ZonasClientProps) {
+export default function ZonasClient({ initialZonas, clientesSemZona }: ZonasClientProps) {
     const [zonas, setZonas] = useState<Zona[]>(initialZonas);
     const [showModal, setShowModal] = useState(false);
     const [editingZona, setEditingZona] = useState<Zona | null>(null);
@@ -179,7 +199,107 @@ export default function ZonasClient({ initialZonas }: ZonasClientProps) {
                         <div className={styles.statValue}>{inactiveZonas.length}</div>
                     </div>
                 </div>
+
+                <div className={styles.statCard} style={{ borderColor: '#fbbf24', borderWidth: '2px' }}>
+                    <div className={styles.statIcon} style={{ background: '#fef3c7' }}>
+                        <span>⚠️</span>
+                    </div>
+                    <div className={styles.statContent}>
+                        <div className={styles.statLabel}>Clientes Sem Zona</div>
+                        <div className={styles.statValue} style={{ color: '#f59e0b' }}>{clientesSemZona.length}</div>
+                    </div>
+                </div>
             </div>
+
+            {/* Clientes Sem Zona */}
+            {clientesSemZona.length > 0 && (
+                <div className={styles.clientesSemZonaSection}>
+                    <div className={styles.sectionHeader}>
+                        <div>
+                            <h2>⚠️ Clientes Sem Zona Configurada</h2>
+                            <p>Total de {clientesSemZona.length} cliente(s) que precisam ser alocados em uma zona</p>
+                        </div>
+                    </div>
+                    <div className={styles.clientesTableContainer}>
+                        <table className={styles.clientesTable}>
+                            <thead>
+                                <tr>
+                                    <th>Nome do Cliente</th>
+                                    <th>Endereço</th>
+                                    <th>Bairro</th>
+                                    <th>Cidade/Estado</th>
+                                    <th>CEP</th>
+                                    <th>Status</th>
+                                    <th>Potencial</th>
+                                    <th>Executivo</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {clientesSemZona.map((cliente) => (
+                                    <tr key={cliente.id}>
+                                        <td>
+                                            <strong>{cliente.name}</strong>
+                                        </td>
+                                        <td>
+                                            <span style={{ fontSize: '0.8125rem', color: 'var(--ds-text-muted)' }}>
+                                                {cliente.address.street || '-'}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span style={{ fontSize: '0.8125rem' }}>
+                                                {cliente.address.neighborhood || '-'}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span style={{ fontSize: '0.8125rem' }}>
+                                                {cliente.address.city || '-'}
+                                                {cliente.address.state && `/${cliente.address.state}`}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span style={{ fontSize: '0.8125rem' }}>
+                                                {cliente.address.zip ? formatCep(cliente.address.zip) : '-'}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span className={styles.statusBadge}>
+                                                {cliente.status}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span className={styles.potentialBadge}>
+                                                {cliente.salesPotential}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {cliente.seller ? (
+                                                <span style={{ fontSize: '0.8125rem' }}>
+                                                    {cliente.seller.name}
+                                                </span>
+                                            ) : (
+                                                <span style={{ fontSize: '0.8125rem', color: 'var(--ds-text-muted)', fontStyle: 'italic' }}>
+                                                    Sem executivo
+                                                </span>
+                                            )}
+                                        </td>
+                                        <td>
+                                            <a 
+                                                href={`/restaurant/${cliente.id}`}
+                                                className={styles.viewButton}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                            >
+                                                Ver Cliente →
+                                            </a>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
 
             {/* Search */}
             <div className={styles.searchContainer}>
