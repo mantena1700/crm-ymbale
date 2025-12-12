@@ -1719,8 +1719,12 @@ export async function syncRestaurantsWithSellers() {
             };
         }
 
+        console.log(`\n📊 Total de restaurantes a verificar: ${restaurantsToUpdate.length}`);
+        console.log(`📊 Total de zonas mapeadas: ${zonaToSellerMap.size}`);
+        
         let updated = 0;
         let skipped = 0;
+        let noZona = 0;
 
         // Atualizar cada restaurante
         for (const restaurant of restaurantsToUpdate) {
@@ -1737,14 +1741,27 @@ export async function syncRestaurantsWithSellers() {
                             WHERE id = ${restaurant.id}::uuid
                         `;
                         updated++;
+                        if (updated <= 10) { // Log apenas os primeiros 10 para não poluir
+                            console.log(`   ✅ Restaurante ${restaurant.id} atualizado: zona ${restaurant.zona_id} -> executivo ${expectedSellerId}`);
+                        }
                     } catch (e: any) {
-                        console.warn(`Erro ao atualizar restaurante ${restaurant.id}:`, e.message);
+                        console.warn(`   ❌ Erro ao atualizar restaurante ${restaurant.id}:`, e.message);
                     }
                 } else {
                     skipped++;
                 }
+            } else {
+                noZona++;
+                if (noZona <= 5) { // Log apenas os primeiros 5
+                    console.log(`   ⚠️ Restaurante ${restaurant.id} com zona ${restaurant.zona_id} sem executivo mapeado`);
+                }
             }
         }
+        
+        console.log(`\n📊 Resumo:`);
+        console.log(`   ✅ Atualizados: ${updated}`);
+        console.log(`   ⏭️ Já corretos: ${skipped}`);
+        console.log(`   ⚠️ Sem executivo mapeado: ${noZona}`);
 
         revalidatePath('/clients');
         revalidatePath('/carteira');

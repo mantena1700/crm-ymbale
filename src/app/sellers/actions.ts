@@ -62,7 +62,14 @@ async function ensureSellerZonasTableExists() {
 
 // Atribuir restaurantes automaticamente ao executivo baseado nas zonas
 async function assignRestaurantsToSellerByZones(sellerId: string, zonasIds: string[]) {
-    if (!zonasIds || zonasIds.length === 0) return { assigned: 0 };
+    console.log(`\n🚀 ===== ATRIBUINDO RESTAURANTES AO EXECUTIVO =====`);
+    console.log(`   Executivo ID: ${sellerId}`);
+    console.log(`   Zonas IDs: ${JSON.stringify(zonasIds)}`);
+    
+    if (!zonasIds || zonasIds.length === 0) {
+        console.log(`   ⚠️ Nenhuma zona fornecida`);
+        return { assigned: 0 };
+    }
     
     try {
         // Verificar se a coluna zona_id existe
@@ -75,17 +82,18 @@ async function assignRestaurantsToSellerByZones(sellerId: string, zonasIds: stri
             `;
             columnExists = columnCheck.length > 0;
         } catch (e) {
-            console.warn('Erro ao verificar coluna zona_id:', e);
+            console.warn('   ⚠️ Erro ao verificar coluna zona_id:', e);
         }
 
         if (!columnExists) {
-            console.warn('Coluna zona_id não existe ainda. Execute a alocação de zonas primeiro.');
+            console.warn('   ⚠️ Coluna zona_id não existe ainda. Execute a alocação de zonas primeiro.');
             return { assigned: 0 };
         }
 
         const restaurantIds: string[] = [];
         
         // Buscar restaurantes uma zona por vez (mais compatível)
+        console.log(`\n   🔍 Buscando restaurantes das zonas...`);
         for (const zonaId of zonasIds) {
             try {
                 const result = await prisma.$queryRaw<Array<{ id: string }>>`
@@ -93,18 +101,25 @@ async function assignRestaurantsToSellerByZones(sellerId: string, zonasIds: stri
                     WHERE zona_id = ${zonaId}::uuid 
                     AND (seller_id IS NULL OR seller_id != ${sellerId}::uuid)
                 `;
-                restaurantIds.push(...result.map(r => r.id));
+                const ids = result.map(r => r.id);
+                console.log(`   Zona ${zonaId}: ${ids.length} restaurante(s) encontrado(s)`);
+                restaurantIds.push(...ids);
             } catch (zonaError: any) {
-                console.warn(`Erro ao buscar restaurantes da zona ${zonaId}:`, zonaError.message);
+                console.warn(`   ⚠️ Erro ao buscar restaurantes da zona ${zonaId}:`, zonaError.message);
             }
         }
 
+        console.log(`\n   📊 Total de restaurantes a atribuir: ${restaurantIds.length}`);
+
         if (restaurantIds.length === 0) {
+            console.log(`   ℹ️ Nenhum restaurante novo para atribuir`);
             return { assigned: 0 };
         }
 
         // Atualizar restaurantes um por um para garantir compatibilidade
         let updated = 0;
+        console.log(`\n🔄 Atribuindo ${restaurantIds.length} restaurante(s) ao executivo ${sellerId}`);
+        
         for (const restaurantId of restaurantIds) {
             try {
                 await prisma.$executeRaw`
@@ -114,6 +129,7 @@ async function assignRestaurantsToSellerByZones(sellerId: string, zonasIds: stri
                     WHERE id = ${restaurantId}::uuid
                 `;
                 updated++;
+                console.log(`   ✅ Restaurante ${restaurantId} atribuído ao executivo`);
             } catch (updateError: any) {
                 // Se falhar com SQL, tentar com Prisma
                 try {
@@ -125,11 +141,15 @@ async function assignRestaurantsToSellerByZones(sellerId: string, zonasIds: stri
                         }
                     });
                     updated++;
+                    console.log(`   ✅ Restaurante ${restaurantId} atribuído ao executivo (via Prisma)`);
                 } catch (prismaError: any) {
-                    console.warn(`Erro ao atualizar restaurante ${restaurantId}:`, prismaError.message);
+                    console.warn(`   ❌ Erro ao atualizar restaurante ${restaurantId}:`, prismaError.message);
                 }
             }
         }
+
+        console.log(`\n   ✅ Total atribuído: ${updated} restaurante(s)`);
+        console.log(`🚀 ============================================\n`);
 
         if (updated > 0) {
             console.log(`✅ ${updated} restaurantes atribuídos automaticamente ao executivo baseado nas zonas`);
@@ -137,7 +157,8 @@ async function assignRestaurantsToSellerByZones(sellerId: string, zonasIds: stri
 
         return { assigned: updated };
     } catch (error: any) {
-        console.error('Erro ao atribuir restaurantes por zonas:', error);
+        console.error(`\n❌ Erro ao atribuir restaurantes por zonas:`, error);
+        console.error(`   Stack:`, error.stack);
         return { assigned: 0 };
     }
 }
@@ -362,12 +383,17 @@ export async function updateSeller(id: string, data: {
 
     // Após atualizar as zonas, atribuir automaticamente os restaurantes dessas zonas ao executivo
     if (data.zonasIds && data.zonasIds.length > 0 && seller.active) {
+        console.log(`\n🔄 Atualizando executivo ${id} - atribuindo restaurantes das zonas...`);
         try {
-            await assignRestaurantsToSellerByZones(id, data.zonasIds);
+            const result = await assignRestaurantsToSellerByZones(id, data.zonasIds);
+            console.log(`✅ ${result.assigned} restaurante(s) atribuído(s) ao executivo ${id}`);
         } catch (error: any) {
-            console.warn('Erro ao atribuir restaurantes automaticamente:', error.message);
+            console.error('❌ Erro ao atribuir restaurantes automaticamente:', error.message);
+            console.error('   Stack:', error.stack);
             // Não falhar a atualização do executivo se a atribuição de restaurantes falhar
         }
+    } else {
+        console.log(`\n⚠️ Executivo ${id} não receberá restaurantes: zonas=${data.zonasIds?.length || 0}, ativo=${seller.active}`);
     }
 
     revalidatePath('/sellers');
