@@ -104,10 +104,19 @@ async function importExcelFile(filePath: string, fileName: string) {
         // Encontrar vendedor responsável
         const sellerId = await findSellerForRegion(city);
         
+        // Gerar código de cliente único
+        const maxCodigo = await prisma.restaurant.findFirst({
+          where: { codigoCliente: { not: null } },
+          orderBy: { codigoCliente: 'desc' },
+          select: { codigoCliente: true }
+        });
+        const codigoCliente = maxCodigo?.codigoCliente ? maxCodigo.codigoCliente + 1 : 10000;
+        
         // Criar restaurante
         const restaurant = await prisma.restaurant.create({
           data: {
             name: name,
+            codigoCliente: codigoCliente,
             rating: parseFloat(row['Avaliação']) || 0,
             reviewCount: parseInt(row['Nº Avaliações']) || 0,
             totalComments: parseInt(row['Total Comentários']) || 0,

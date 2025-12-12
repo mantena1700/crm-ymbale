@@ -181,6 +181,7 @@ model Seller {
 model Restaurant {
   id                  String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   name                String    @db.VarChar(255)
+  codigoCliente       Int?      @unique @map("codigo_cliente") // Código único do cliente (5 dígitos, começando em 10000)
   rating              Decimal?  @default(0) @db.Decimal(3, 2)
   reviewCount         Int?      @default(0) @map("review_count")
   totalComments       Int?      @default(0) @map("total_comments")
@@ -213,6 +214,7 @@ model Restaurant {
   @@index([sellerId], map: "idx_restaurants_seller_id")
   @@index([status], map: "idx_restaurants_status")
   @@index([zonaId], map: "idx_restaurants_zona_id")
+  @@index([codigoCliente], map: "idx_restaurants_codigo_cliente")
   @@map("restaurants")
 }
 

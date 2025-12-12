@@ -8,6 +8,33 @@ import { FollowUp, Restaurant, AnalysisResult, Note } from '@/lib/types';
 import { generateEmailWithAI as generateEmail, generateStrategyWithAI as generateStrategy, generateFollowUpMessageWithAI as generateFollowUp } from '@/lib/openai-service';
 import { analyzeRestaurant } from '@/lib/ai-service';
 
+// Função para gerar o próximo código de cliente (começando em 10000)
+async function getNextCodigoCliente(): Promise<number> {
+    const { prisma } = await import('@/lib/db');
+    
+    // Buscar o maior código existente
+    const maxCodigo = await prisma.restaurant.findFirst({
+        where: {
+            codigoCliente: {
+                not: null
+            }
+        },
+        orderBy: {
+            codigoCliente: 'desc'
+        },
+        select: {
+            codigoCliente: true
+        }
+    });
+    
+    // Se não há códigos, começar em 10000
+    const startCode = 10000;
+    const nextCode = maxCodigo?.codigoCliente ? maxCodigo.codigoCliente + 1 : startCode;
+    
+    // Garantir que seja pelo menos 10000
+    return Math.max(nextCode, startCode);
+}
+
 // Função para criar notificações automaticamente
 async function createSystemNotification(type: string, title: string, message: string, metadata?: any) {
     try {
@@ -764,10 +791,14 @@ export async function importExcelFile(formData: FormData) {
                             }
                         }
 
+                        // Gerar código de cliente único
+                        const codigoCliente = await getNextCodigoCliente();
+                        
                         // Criar restaurante com zona e executivo já atribuídos
                         await prisma.restaurant.create({
                             data: {
                                 name: name,
+                                codigoCliente: codigoCliente,
                                 rating: (() => {
                                     const val = getColumnValue(row, ['Avaliação', 'AvaliaÃ§Ã£o', 'avaliação', 'AVALIAÇÃO', 'Nota', 'Rating', 'rating']);
                                     return val ? parseFloat(String(val).replace(',', '.')) : 0;
@@ -2149,7 +2180,8 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
                 newRow.getCell(columnMap['Ativo']).value = 'Sim';
             }
             if (columnMap['Código Cliente'] !== undefined) {
-                newRow.getCell(columnMap['Código Cliente']).value = '';
+                // Preencher com o código do cliente do banco de dados
+                newRow.getCell(columnMap['Código Cliente']).value = r.codigoCliente || '';
             }
             if (columnMap['Clientes'] !== undefined) {
                 newRow.getCell(columnMap['Clientes']).value = r.name || '';
