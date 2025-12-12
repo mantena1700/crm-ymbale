@@ -291,6 +291,35 @@ export async function saveWeeklySchedule(
     }
 }
 
+// Deletar múltiplos agendamentos da semana
+export async function deleteMultipleScheduleSlots(followUpIds: string[]) {
+    'use server';
+    
+    try {
+        if (!followUpIds || followUpIds.length === 0) {
+            return { success: false, error: 'Nenhum agendamento selecionado' };
+        }
+
+        // Deletar os follow-ups selecionados
+        await prisma.followUp.deleteMany({
+            where: {
+                id: { in: followUpIds },
+                completed: false // Apenas agendamentos não concluídos
+            }
+        });
+
+        revalidatePath('/carteira');
+        return { 
+            success: true, 
+            deleted: followUpIds.length,
+            message: `${followUpIds.length} agendamento(s) removido(s) com sucesso`
+        };
+    } catch (error: any) {
+        console.error('Erro ao deletar agendamentos:', error);
+        return { success: false, error: error.message || 'Erro ao deletar agendamentos' };
+    }
+}
+
 // Obter agendamentos semanais
 // Preenchimento automático inteligente da semana
 export async function autoFillWeeklySchedule(

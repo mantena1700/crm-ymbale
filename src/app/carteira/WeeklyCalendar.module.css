@@ -822,6 +822,130 @@
     box-shadow: 0 0 4px rgba(245, 158, 11, 0.6);
 }
 
+/* Seleção Múltipla */
+.calendarSlot.selected {
+    border: 2px solid var(--primary);
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(139, 92, 246, 0.25));
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+}
+
+.slotContent.selectedContent {
+    position: relative;
+}
+
+.slotCheckbox {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    z-index: 10;
+    accent-color: var(--primary);
+}
+
+.slotCheckbox:checked {
+    background-color: var(--primary);
+}
+
+/* Barra de Seleção */
+.selectionBar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-3);
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
+    border: 2px solid var(--primary);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--space-3);
+    gap: var(--space-3);
+}
+
+.selectionInfo {
+    font-weight: 600;
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.selectionActions {
+    display: flex;
+    gap: var(--space-2);
+}
+
+.clearSelectionBtn {
+    padding: 6px 12px;
+    background: var(--secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--foreground);
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s;
+}
+
+.clearSelectionBtn:hover {
+    background: var(--muted);
+    border-color: var(--primary);
+}
+
+.removeSelectedBtn {
+    padding: 6px 16px;
+    background: #ef4444;
+    border: 1px solid #dc2626;
+    border-radius: var(--radius-sm);
+    color: white;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.removeSelectedBtn:hover:not(:disabled) {
+    background: #dc2626;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
+}
+
+.removeSelectedBtn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Barra de Seleção Rápida */
+.quickSelectionBar {
+    display: flex;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    background: var(--card-bg);
+    border-bottom: 1px solid var(--border);
+    margin-bottom: var(--space-2);
+}
+
+.selectAllBtn {
+    padding: 6px 12px;
+    background: var(--primary);
+    border: 1px solid var(--primary);
+    border-radius: var(--radius-sm);
+    color: white;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.selectAllBtn:hover:not(:disabled) {
+    background: var(--primary-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(99, 102, 241, 0.3);
+}
+
+.selectAllBtn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 .fixedClientContent {
     position: relative;
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { saveWeeklySchedule, getWeeklySchedule, getFixedClientsForWeek } from './actions';
+import { saveWeeklySchedule, getWeeklySchedule, getFixedClientsForWeek, deleteMultipleScheduleSlots } from './actions';
 import styles from './WeeklyCalendar.module.css';
 
 interface Restaurant {
@@ -64,6 +64,7 @@ export default function WeeklyCalendar({ restaurants, sellerId, weekStart }: Wee
     const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('all');
     const [hideEmptySlots, setHideEmptySlots] = useState(false);
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+    const [selectedSlots, setSelectedSlots] = useState<Set<string>>(new Set()); // IDs dos slots selecionados
 
     // Gerar dias da semana
     const weekDays = useMemo(() => {
@@ -250,6 +251,62 @@ export default function WeeklyCalendar({ restaurants, sellerId, weekStart }: Wee
         } catch (error) {
             console.error('Erro ao remover agendamento:', error);
             setScheduledSlots(scheduledSlots);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Toggle seleção de slot
+    const toggleSlotSelection = (slotId: string, isFixed: boolean) => {
+        if (isFixed) return; // Não permitir selecionar clientes fixos
+        
+        setSelectedSlots(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(slotId)) {
+                newSet.delete(slotId);
+            } else {
+                newSet.add(slotId);
+            }
+            return newSet;
+        });
+    };
+
+    // Selecionar todos os slots (exceto fixos)
+    const handleSelectAll = () => {
+        const selectableSlots = scheduledSlots.filter(slot => {
+            const isFixed = isFixedClientSlot(slot.date, slot.visitIndex || parseInt(slot.time || '0'));
+            return !isFixed;
+        });
+        setSelectedSlots(new Set(selectableSlots.map(s => s.id)));
+    };
+
+    // Limpar seleção
+    const handleClearSelection = () => {
+        setSelectedSlots(new Set());
+    };
+
+    // Remover slots selecionados
+    const handleRemoveSelected = async () => {
+        if (selectedSlots.size === 0) {
+            alert('Nenhum agendamento selecionado');
+            return;
+        }
+
+        if (!confirm(`Deseja remover ${selectedSlots.size} agendamento(s) selecionado(s)?`)) return;
+
+        setLoading(true);
+        try {
+            const result = await deleteMultipleScheduleSlots(Array.from(selectedSlots));
+            if (result.success) {
+                await loadSchedule();
+                setSelectedSlots(new Set());
+                alert(`✅ ${result.deleted} agendamento(s) removido(s) com sucesso!`);
+            } else {
+                alert(`❌ Erro: ${result.error}`);
+            }
+        } catch (error) {
+            console.error('Erro ao remover agendamentos:', error);
+            alert('❌ Erro ao remover agendamentos');
         } finally {
             setLoading(false);
         }
@@ -456,6 +513,49 @@ export default function WeeklyCalendar({ restaurants, sellerId, weekStart }: Wee
 
             {/* Calendário Semanal */}
             <div className={`${styles.calendar} ${styles[`view${calendarViewMode.charAt(0).toUpperCase() + calendarViewMode.slice(1)}`]}`}>
+                {/* Barra de Controle de Seleção */}
+                {selectedSlots.size > 0 && (
+                    <div className={styles.selectionBar}>
+                        <div className={styles.selectionInfo}>
+                            <span>📋 {selectedSlots.size} agendamento(s) selecionado(s)</span>
+                        </div>
+                        <div className={styles.selectionActions}>
+                            <button
+                                className={styles.clearSelectionBtn}
+                                onClick={handleClearSelection}
+                            >
+                                Limpar Seleção
+                            </button>
+                            <button
+                                className={styles.removeSelectedBtn}
+                                onClick={handleRemoveSelected}
+                                disabled={loading}
+                            >
+                                🗑️ Remover Selecionados ({selectedSlots.size})
+                            </button>
+                        </div>
+                    </div>
+                )}
+                
+                {/* Botões de Seleção Rápida */}
+                <div className={styles.quickSelectionBar}>
+                    <button
+                        className={styles.selectAllBtn}
+                        onClick={handleSelectAll}
+                        disabled={scheduledSlots.filter(s => !isFixedClientSlot(s.date, s.visitIndex || parseInt(s.time || '0'))).length === 0}
+                    >
+                        ☑️ Selecionar Tudo
+                    </button>
+                    {selectedSlots.size > 0 && (
+                        <button
+                            className={styles.clearSelectionBtn}
+                            onClick={handleClearSelection}
+                        >
+                            Limpar Seleção
+                        </button>
+                    )}
+                </div>
+
                 <div className={styles.calendarHeader}>
                     <div className={styles.timeColumn}>
                         <div className={styles.timeHeader}>Visita</div>
@@ -479,21 +579,37 @@ export default function WeeklyCalendar({ restaurants, sellerId, weekStart }: Wee
                                 const isOccupied = !!slot;
                                 const isFixed = isFixedClientSlot(day.date, visitIndex);
                                 
+                                const isSelected = slot && selectedSlots.has(slot.id);
+                                
                                 return (
                                     <div
                                         key={`${day.date}-${visitIndex}`}
-                                        className={`${styles.calendarSlot} ${isOccupied ? styles.occupied : styles.empty} ${isFixed ? styles.fixedClient : ''}`}
+                                        className={`${styles.calendarSlot} ${isOccupied ? styles.occupied : styles.empty} ${isFixed ? styles.fixedClient : ''} ${isSelected ? styles.selected : ''}`}
                                         onDragOver={isFixed ? undefined : handleDragOver}
                                         onDrop={isFixed ? undefined : (e) => handleDrop(e, day.date, visitIndex)}
                                         onClick={() => {
-                                            if (isOccupied && !isFixed) {
-                                                setSelectedSlot({ date: day.date, time: String(visitIndex) });
+                                            if (isOccupied && !isFixed && slot) {
+                                                toggleSlotSelection(slot.id, isFixed);
                                             }
                                         }}
-                                        title={isFixed ? 'Cliente Fixo (não pode ser removido)' : undefined}
+                                        title={isFixed ? 'Cliente Fixo (não pode ser removido)' : isSelected ? 'Clique para desmarcar' : 'Clique para selecionar'}
                                     >
                                         {isOccupied && slot ? (
-                                            <div className={`${styles.slotContent} ${isFixed ? styles.fixedClientContent : ''}`}>
+                                            <div className={`${styles.slotContent} ${isFixed ? styles.fixedClientContent : ''} ${isSelected ? styles.selectedContent : ''}`}>
+                                                {/* Checkbox de seleção */}
+                                                {!isFixed && (
+                                                    <input
+                                                        type="checkbox"
+                                                        className={styles.slotCheckbox}
+                                                        checked={isSelected}
+                                                        onChange={(e) => {
+                                                            e.stopPropagation();
+                                                            toggleSlotSelection(slot.id, isFixed);
+                                                        }}
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        title={isSelected ? 'Desmarcar' : 'Selecionar'}
+                                                    />
+                                                )}
                                                 {isFixed && <span className={styles.fixedClientBadge}>📌</span>}
                                                 {calendarViewMode === 'minimal' ? (
                                                     // Modo minimalista: apenas indicador colorido
