@@ -349,7 +349,7 @@ export default function FixedClientsSection({ sellerId, restaurants }: FixedClie
                                 <label>Nome do Cliente *</label>
                                 <input
                                     type="text"
-                                    value={formData.clientName}
+                                    value={formData.clientName || ''}
                                     onChange={e => setFormData(prev => ({ ...prev, clientName: e.target.value }))}
                                     placeholder="Nome do cliente/restaurante"
                                 />
