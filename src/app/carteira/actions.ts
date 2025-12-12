@@ -1207,9 +1207,28 @@ export async function createFixedClient(data: {
             return { success: false, error: 'Executivo é obrigatório' };
         }
         
-        // Deve ter restaurantId OU clientName
-        if (!data.restaurantId && !data.clientName) {
+        // Deve ter restaurantId OU clientName (não vazio)
+        const hasRestaurantId = data.restaurantId && data.restaurantId.trim() !== '';
+        const hasClientName = data.clientName && data.clientName.trim() !== '';
+        
+        if (!hasRestaurantId && !hasClientName) {
             return { success: false, error: 'Selecione um restaurante da base OU cadastre um cliente manualmente' };
+        }
+        
+        // Se for cliente manual, validar endereço
+        if (hasClientName && !hasRestaurantId) {
+            if (!data.clientAddress?.street || data.clientAddress.street.trim() === '') {
+                return { success: false, error: 'Endereço (rua) é obrigatório para cliente manual' };
+            }
+            if (!data.clientAddress?.neighborhood || data.clientAddress.neighborhood.trim() === '') {
+                return { success: false, error: 'Bairro é obrigatório para cliente manual' };
+            }
+            if (!data.clientAddress?.city || data.clientAddress.city.trim() === '') {
+                return { success: false, error: 'Cidade é obrigatória para cliente manual' };
+            }
+            if (!data.clientAddress?.state || data.clientAddress.state.trim() === '') {
+                return { success: false, error: 'Estado é obrigatório para cliente manual' };
+            }
         }
         
         if (data.recurrenceType === 'monthly_days' && (!data.monthlyDays || data.monthlyDays.length === 0)) {

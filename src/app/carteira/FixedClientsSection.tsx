@@ -4,6 +4,29 @@ import { useState, useEffect, useMemo } from 'react';
 import { getFixedClients, createFixedClient, updateFixedClient, deleteFixedClient } from './actions';
 import styles from './page.module.css';
 
+// Função auxiliar para ajustar dias do mês que caem em finais de semana
+function adjustMonthlyDaysToWeekdays(monthlyDays: number[]): number[] {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1;
+    const adjustedDays: number[] = [];
+    
+    monthlyDays.forEach(day => {
+        const date = new Date(year, month - 1, day);
+        const dayOfWeek = date.getDay(); // 0 = domingo, 6 = sábado
+        if (dayOfWeek === 0 || dayOfWeek === 6) {
+            const daysToAdd = dayOfWeek === 0 ? 1 : 2; // Domingo -> +1 dia, Sábado -> +2 dias
+            const adjustedDate = new Date(date);
+            adjustedDate.setDate(date.getDate() + daysToAdd);
+            adjustedDays.push(adjustedDate.getDate());
+        } else {
+            adjustedDays.push(day);
+        }
+    });
+    
+    return [...new Set(adjustedDays)].sort((a, b) => a - b);
+}
+
 interface FixedClientsSectionProps {
     sellerId: string;
     restaurants: Array<{
@@ -154,9 +177,9 @@ export default function FixedClientsSection({ sellerId, restaurants }: FixedClie
             } else {
                 result = await createFixedClient({
                     sellerId,
-                    restaurantId: formData.clientType === 'base' ? formData.restaurantId : undefined,
-                    clientName: formData.clientType === 'manual' ? formData.clientName : undefined,
-                    clientAddress: formData.clientType === 'manual' ? formData.clientAddress : undefined,
+                    restaurantId: formData.clientType === 'base' && formData.restaurantId ? formData.restaurantId : undefined,
+                    clientName: formData.clientType === 'manual' && formData.clientName?.trim() ? formData.clientName.trim() : undefined,
+                    clientAddress: formData.clientType === 'manual' && formData.clientName?.trim() ? formData.clientAddress : undefined,
                     recurrenceType: formData.recurrenceType,
                     monthlyDays: adjustedMonthlyDays,
                     weeklyDays: formData.weeklyDays,
@@ -200,7 +223,16 @@ export default function FixedClientsSection({ sellerId, restaurants }: FixedClie
     const handleEdit = (fixedClient: FixedClient) => {
         setEditingId(fixedClient.id);
         setFormData({
-            restaurantId: fixedClient.restaurantId,
+            clientType: fixedClient.restaurantId ? 'base' : 'manual',
+            restaurantId: fixedClient.restaurantId || '',
+            clientName: fixedClient.clientName || '',
+            clientAddress: fixedClient.clientAddress || {
+                street: '',
+                neighborhood: '',
+                city: '',
+                state: '',
+                zip: ''
+            },
             recurrenceType: fixedClient.recurrenceType,
             monthlyDays: fixedClient.monthlyDays,
             weeklyDays: fixedClient.weeklyDays,
@@ -273,7 +305,16 @@ export default function FixedClientsSection({ sellerId, restaurants }: FixedClie
                         setShowForm(true);
                         setEditingId(null);
                         setFormData({
+                            clientType: 'manual',
                             restaurantId: '',
+                            clientName: '',
+                            clientAddress: {
+                                street: '',
+                                neighborhood: '',
+                                city: '',
+                                state: '',
+                                zip: ''
+                            },
                             recurrenceType: 'weekly_days',
                             monthlyDays: [],
                             weeklyDays: [],
@@ -553,9 +594,19 @@ export default function FixedClientsSection({ sellerId, restaurants }: FixedClie
                         </thead>
                         <tbody>
                             {fixedClients.map(fc => {
-                                const address = typeof fc.restaurant.address === 'string' 
-                                    ? JSON.parse(fc.restaurant.address) 
-                                    : fc.restaurant.address;
+                                // Cliente pode ser da base (restaurant) ou manual (clientName/clientAddress)
+                                const clientName = fc.restaurant?.name || fc.clientName || 'Cliente sem nome';
+                                let address: any = null;
+                                
+                                if (fc.restaurant) {
+                                    address = typeof fc.restaurant.address === 'string' 
+                                        ? JSON.parse(fc.restaurant.address) 
+                                        : fc.restaurant.address;
+                                } else if (fc.clientAddress) {
+                                    address = typeof fc.clientAddress === 'string'
+                                        ? JSON.parse(fc.clientAddress)
+                                        : fc.clientAddress;
+                                }
                                 
                                 let recurrenceText = '';
                                 if (fc.recurrenceType === 'weekly_days') {
@@ -568,7 +619,10 @@ export default function FixedClientsSection({ sellerId, restaurants }: FixedClie
 
                                 return (
                                     <tr key={fc.id}>
-                                        <td><strong>{fc.restaurant.name}</strong></td>
+                                        <td>
+                                            <strong>{clientName}</strong>
+                                            {!fc.restaurant && <span style={{ fontSize: '0.8em', color: '#666', marginLeft: '8px' }}>(Manual)</span>}
+                                        </td>
                                         <td>
                                             {address?.city || address?.cidade || 'N/D'}
                                             {address?.neighborhood && ` - ${address.neighborhood}`}
