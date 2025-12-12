@@ -832,3 +832,231 @@ export async function exportWeeklyScheduleToExcel(
     }
 }
 
+// Exportar agenda semanal para template de agendamento
+export async function exportWeeklyScheduleToAgendamentoTemplate(
+    sellerId: string,
+    weekStart: string
+): Promise<{ success: boolean; data?: string; filename?: string; error?: string; count?: number }> {
+    'use server';
+    
+    try {
+        const ExcelJS = await import('exceljs');
+        const fs = await import('fs');
+        const path = await import('path');
+        const { prisma } = await import('@/lib/db');
+        
+        // Caminhos possíveis do template
+        const possiblePaths = [
+            path.resolve(process.cwd(), 'template_agendamento.xlsx'),
+            path.resolve(process.cwd(), '..', 'template_agendamento.xlsx'),
+            path.join(process.cwd(), 'template_agendamento.xlsx'),
+            'C:\\Users\\Bel\\Documents\\CRM_Ymbale\\crm-ymbale\\template_agendamento.xlsx',
+        ];
+        
+        let finalTemplatePath = '';
+        let triedPaths: string[] = [];
+        
+        for (const templatePath of possiblePaths) {
+            triedPaths.push(templatePath);
+            try {
+                const normalizedPath = path.resolve(templatePath);
+                if (fs.existsSync(normalizedPath)) {
+                    finalTemplatePath = normalizedPath;
+                    console.log(`✅ Template encontrado em: ${normalizedPath}`);
+                    break;
+                }
+            } catch (error: any) {
+                continue;
+            }
+        }
+        
+        if (!finalTemplatePath || !fs.existsSync(finalTemplatePath)) {
+            const errorMsg = `Template não encontrado.\n\nCaminhos tentados:\n${triedPaths.map((p, i) => `${i + 1}. ${p}`).join('\n')}`;
+            console.error('❌ Erro:', errorMsg);
+            throw new Error(errorMsg);
+        }
+        
+        // Buscar dados da agenda semanal
+        const startDate = new Date(weekStart);
+        startDate.setHours(0, 0, 0, 0);
+        const endDate = new Date(startDate);
+        endDate.setDate(startDate.getDate() + 7);
+        endDate.setHours(23, 59, 59, 999);
+        
+        // Buscar follow-ups da semana
+        const followUps = await prisma.followUp.findMany({
+            where: {
+                scheduledDate: {
+                    gte: startDate,
+                    lte: endDate
+                },
+                completed: false,
+                restaurant: {
+                    sellerId: sellerId
+                }
+            },
+            include: {
+                restaurant: {
+                    include: {
+                        seller: {
+                            select: {
+                                name: true
+                            }
+                        }
+                    }
+                }
+            },
+            orderBy: {
+                scheduledDate: 'asc'
+            }
+        });
+        
+        console.log(`📊 Encontrados ${followUps.length} agendamentos para exportar`);
+        
+        // Carregar template
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.readFile(finalTemplatePath);
+        
+        // Obter planilha "Registros"
+        let worksheet = workbook.getWorksheet('Registros');
+        if (!worksheet) {
+            // Se não encontrar, usar primeira planilha
+            worksheet = workbook.getWorksheet(1);
+        }
+        
+        if (!worksheet) {
+            throw new Error('Planilha não encontrada no template');
+        }
+        
+        // Encontrar linha de cabeçalho
+        let headerRow = 1;
+        const firstRow = worksheet.getRow(1);
+        const firstRowValues = firstRow.values as any[];
+        
+        console.log(`\n📋 Mapeando colunas do template de agendamento...`);
+        console.log(`   Valores do cabeçalho:`, firstRowValues.map((v, i) => `[${i}]: "${v}"`).join(', '));
+        
+        // Mapear colunas
+        const columnMap: { [key: string]: number } = {};
+        firstRowValues.forEach((value, index) => {
+            if (value && typeof value === 'string') {
+                const normalizedValue = value.trim().toLowerCase();
+                if (normalizedValue.includes('código cliente') || normalizedValue.includes('codigo cliente')) {
+                    columnMap['Código Cliente'] = index;
+                    console.log(`   ✅ Coluna "Código Cliente" encontrada na coluna ${index}`);
+                } else if (normalizedValue.includes('cliente') && !normalizedValue.includes('código') && !normalizedValue.includes('codigo')) {
+                    columnMap['Cliente'] = index;
+                    console.log(`   ✅ Coluna "Cliente" encontrada na coluna ${index}`);
+                } else if (normalizedValue.includes('segmento')) {
+                    columnMap['Segmento'] = index;
+                } else if (normalizedValue.includes('contato')) {
+                    columnMap['Contato'] = index;
+                } else if (normalizedValue.includes('data prevista de início') || normalizedValue.includes('data prevista de inicio')) {
+                    columnMap['Data Início'] = index;
+                } else if (normalizedValue.includes('hora prevista de início') || normalizedValue.includes('hora prevista de inicio')) {
+                    columnMap['Hora Início'] = index;
+                } else if (normalizedValue.includes('data esperada de conclusão') || normalizedValue.includes('data esperada de conclusao')) {
+                    columnMap['Data Conclusão'] = index;
+                } else if (normalizedValue.includes('hora prevista de conclusão') || normalizedValue.includes('hora prevista de conclusao')) {
+                    columnMap['Hora Conclusão'] = index;
+                } else if (normalizedValue.includes('objetivo')) {
+                    columnMap['Objetivo'] = index;
+                } else if (normalizedValue.includes('equipe')) {
+                    columnMap['Equipe'] = index;
+                } else if (normalizedValue.includes('nome do usuário') || normalizedValue.includes('nome do usuario')) {
+                    columnMap['Nome Usuário'] = index;
+                } else if (normalizedValue.includes('ativo')) {
+                    columnMap['Ativo'] = index;
+                }
+            }
+        });
+        
+        console.log(`\n📊 Colunas mapeadas:`, Object.keys(columnMap).map(k => `${k}: coluna ${columnMap[k]}`).join(', '));
+        
+        // Remover dados de exemplo (linhas 2 em diante)
+        const lastRow = worksheet.rowCount;
+        if (lastRow > headerRow) {
+            const rowsToDelete = lastRow - headerRow;
+            worksheet.spliceRows(headerRow + 1, rowsToDelete);
+        }
+        
+        // Preencher com dados reais
+        console.log(`\n📝 Preenchendo ${followUps.length} agendamentos...`);
+        followUps.forEach((followUp, index) => {
+            const targetRowNumber = headerRow + 1 + index;
+            const newRow = worksheet.getRow(targetRowNumber);
+            
+            const scheduledDate = new Date(followUp.scheduledDate);
+            
+            // Calcular data/hora de conclusão (assumindo 1 hora de duração)
+            const endDateObj = new Date(scheduledDate);
+            endDateObj.setHours(endDateObj.getHours() + 1);
+            
+            // Preencher campos
+            if (columnMap['Código Cliente'] !== undefined) {
+                const codigoCliente = (followUp.restaurant as any).codigoCliente || '';
+                newRow.getCell(columnMap['Código Cliente']).value = codigoCliente ? String(codigoCliente) : '';
+            }
+            if (columnMap['Cliente'] !== undefined) {
+                newRow.getCell(columnMap['Cliente']).value = followUp.restaurant.name || '';
+            }
+            if (columnMap['Segmento'] !== undefined) {
+                // Usar potencial de vendas como segmento
+                newRow.getCell(columnMap['Segmento']).value = followUp.restaurant.salesPotential || '';
+            }
+            if (columnMap['Contato'] !== undefined) {
+                newRow.getCell(columnMap['Contato']).value = ''; // Deixar vazio ou buscar do banco
+            }
+            if (columnMap['Data Início'] !== undefined) {
+                newRow.getCell(columnMap['Data Início']).value = scheduledDate;
+            }
+            if (columnMap['Hora Início'] !== undefined) {
+                newRow.getCell(columnMap['Hora Início']).value = scheduledDate;
+            }
+            if (columnMap['Data Conclusão'] !== undefined) {
+                newRow.getCell(columnMap['Data Conclusão']).value = endDateObj;
+            }
+            if (columnMap['Hora Conclusão'] !== undefined) {
+                newRow.getCell(columnMap['Hora Conclusão']).value = endDateObj;
+            }
+            if (columnMap['Objetivo'] !== undefined) {
+                newRow.getCell(columnMap['Objetivo']).value = followUp.type || 'Visita técnica';
+            }
+            if (columnMap['Equipe'] !== undefined) {
+                newRow.getCell(columnMap['Equipe']).value = followUp.restaurant.seller?.name || '';
+            }
+            if (columnMap['Nome Usuário'] !== undefined) {
+                newRow.getCell(columnMap['Nome Usuário']).value = followUp.restaurant.seller?.name || '';
+            }
+            if (columnMap['Ativo'] !== undefined) {
+                newRow.getCell(columnMap['Ativo']).value = 'Sim';
+            }
+            
+            if (index < 5) {
+                console.log(`   [${index + 1}] ${followUp.restaurant.name} - ${scheduledDate.toLocaleString('pt-BR')}`);
+            }
+        });
+        
+        // Converter para buffer
+        const buffer = await workbook.xlsx.writeBuffer();
+        
+        // Converter para base64
+        const base64 = Buffer.from(buffer).toString('base64');
+        
+        const weekStartFormatted = new Date(weekStart).toLocaleDateString('pt-BR').replace(/\//g, '-');
+        
+        return {
+            success: true,
+            data: base64,
+            filename: `Agendamento_Semanal_${weekStartFormatted}.xlsx`,
+            count: followUps.length
+        };
+    } catch (error: any) {
+        console.error('Erro ao exportar agenda semanal:', error);
+        return {
+            success: false,
+            error: error.message || 'Erro ao exportar agenda semanal'
+        };
+    }
+}
+

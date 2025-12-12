@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import styles from './page.module.css';
-import { scheduleVisit, updateClientPriority, updateClientStatus, addNote, autoFillWeeklySchedule, exportWeeklyScheduleToExcel, getWeeklySchedule } from './actions';
+import { scheduleVisit, updateClientPriority, updateClientStatus, addNote, autoFillWeeklySchedule, exportWeeklyScheduleToExcel, getWeeklySchedule, exportWeeklyScheduleToAgendamentoTemplate } from './actions';
 import { exportRestaurantsToCheckmob } from '@/app/actions';
 import WeeklyCalendar from './WeeklyCalendar';
 import MapaTecnologico from './MapaTecnologico';
@@ -84,7 +84,7 @@ export default function CarteiraClient({ initialData }: Props) {
     const [showScheduleModal, setShowScheduleModal] = useState<string | null>(null);
     const [scheduleData, setScheduleData] = useState({ date: '', time: '', notes: '' });
     const [loading, setLoading] = useState(false);
-    const [activeTab, setActiveTab] = useState<'carteira-padrao' | 'carteira' | 'semana' | 'agenda' | 'mapa' | 'exportar-checkmob'>('carteira-padrao');
+    const [activeTab, setActiveTab] = useState<'carteira-padrao' | 'carteira' | 'semana' | 'agenda' | 'mapa' | 'exportar-checkmob' | 'exportar-agendamento'>('carteira-padrao');
     const [weekViewMode, setWeekViewMode] = useState<'list' | 'calendar'>('calendar');
     const [currentWeekStart, setCurrentWeekStart] = useState(() => {
         const today = new Date();
@@ -543,6 +543,55 @@ export default function CarteiraClient({ initialData }: Props) {
             alert(`❌ Erro ao exportar planilha.\n\n${error.message || 'Erro desconhecido'}`);
         } finally {
             setLoading(false);
+        }
+    };
+
+    // Exportar agenda semanal para template de agendamento
+    const [agendamentoExporting, setAgendamentoExporting] = useState(false);
+    const handleExportAgendamento = async () => {
+        if (!selectedSellerId) {
+            alert('Selecione um executivo primeiro.');
+            return;
+        }
+
+        setAgendamentoExporting(true);
+        try {
+            const result = await exportWeeklyScheduleToAgendamentoTemplate(
+                selectedSellerId,
+                currentWeekStart.toISOString()
+            );
+
+            if (result.success && result.data) {
+                // Converter base64 para Blob
+                const byteCharacters = atob(result.data);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                const blob = new Blob([byteArray], { 
+                    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+                });
+
+                // Criar link temporário para download
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = result.filename || `Agendamento_Semanal_${new Date().toISOString().split('T')[0]}.xlsx`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+
+                alert(`✅ Planilha de Agendamento exportada com sucesso!\n\n${result.count || 0} agendamento(s) exportado(s).`);
+            } else {
+                alert(`❌ Erro ao exportar planilha.\n\n${result.error || 'Erro desconhecido'}`);
+            }
+        } catch (error: any) {
+            console.error('Erro ao exportar:', error);
+            alert(`❌ Erro ao exportar planilha.\n\n${error.message || 'Erro desconhecido'}`);
+        } finally {
+            setAgendamentoExporting(false);
         }
     };
 
@@ -1194,6 +1243,14 @@ export default function CarteiraClient({ initialData }: Props) {
                                 title="Exportar agenda semanal para planilha Excel profissional"
                             >
                                 {loading ? '⏳ Gerando...' : '📊 Exportar Excel'}
+                            </button>
+                            <button
+                                className={styles.checkmobBtn}
+                                onClick={handleExportAgendamento}
+                                disabled={agendamentoExporting}
+                                title="Exportar agenda semanal para template de agendamento"
+                            >
+                                {agendamentoExporting ? '⏳ Exportando...' : '📅 Exportar Agendamento'}
                             </button>
                             <div className={styles.weekViewToggle}>
                                 <button
