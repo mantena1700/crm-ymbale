@@ -1278,11 +1278,18 @@ export async function updateFixedClient(
             return { success: false, error: 'Tabela de clientes fixos ainda não foi criada. Execute a migration primeiro.' };
         }
 
+        // Ajustar dias do mês que caem em finais de semana
+        let adjustedMonthlyDays = data.monthlyDays;
+        if (data.recurrenceType === 'monthly_days' && adjustedMonthlyDays && adjustedMonthlyDays.length > 0) {
+            const now = new Date();
+            adjustedMonthlyDays = adjustMonthlyDaysToWeekdays(adjustedMonthlyDays, now.getFullYear(), now.getMonth() + 1);
+        }
+
         const fixedClient = await prisma.fixedClient.update({
             where: { id },
             data: {
                 ...(data.recurrenceType && { recurrenceType: data.recurrenceType }),
-                ...(data.monthlyDays !== undefined && { monthlyDays: data.monthlyDays }),
+                ...(adjustedMonthlyDays !== undefined && { monthlyDays: adjustedMonthlyDays }),
                 ...(data.weeklyDays !== undefined && { weeklyDays: data.weeklyDays }),
                 ...(data.radiusKm !== undefined && { radiusKm: data.radiusKm }),
                 ...(data.active !== undefined && { active: data.active })
