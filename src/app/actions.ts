@@ -2233,9 +2233,8 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
         headerValues.forEach((value, index) => {
             if (value && typeof value === 'string') {
                 const normalizedValue = value.trim().toLowerCase();
-                if (normalizedValue.includes('nome') && !normalizedValue.includes('e-mail')) {
-                    columnMap['Nome'] = index;
-                } else if (normalizedValue.includes('e-mail') || normalizedValue.includes('email')) {
+                // Pular "Nome" aqui - será mapeado depois com lógica mais específica
+                if (normalizedValue.includes('e-mail') || normalizedValue.includes('email')) {
                     columnMap['E-mail'] = index;
                 } else if (normalizedValue.includes('telefone')) {
                     columnMap['Telefone'] = index;
@@ -2261,12 +2260,13 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
                     columnMap['Coordenadas'] = index;
                 } else if (normalizedValue.includes('ativo')) {
                     columnMap['Ativo'] = index;
-                } else if (normalizedValue === 'código' || normalizedValue === 'codigo' || (normalizedValue.includes('codigo') && !normalizedValue.includes('postal'))) {
+                } else if (normalizedValue === 'código' || normalizedValue === 'codigo' || (normalizedValue.includes('codigo') && !normalizedValue.includes('postal') && !normalizedValue.includes('cliente'))) {
                     columnMap['Código'] = index;
                     console.log(`   ✅ Coluna "Código" encontrada na coluna ${index} (valor: "${value}")`);
-                } else if (normalizedValue === 'nome' || (normalizedValue.includes('nome') && !normalizedValue.includes('e-mail'))) {
+                } else if (normalizedValue === 'nome' || (normalizedValue === 'nome do cliente' || (normalizedValue.includes('nome') && !normalizedValue.includes('e-mail') && !normalizedValue.includes('social')))) {
+                    // Mapear "Nome" - deve ser a coluna B (índice 2, mas vamos usar o índice real)
                     columnMap['Nome'] = index;
-                    console.log(`   ✅ Coluna "Nome" encontrada na coluna ${index} (valor: "${value}")`);
+                    console.log(`   ✅ Coluna "Nome" encontrada na coluna ${index} (valor: "${value}") - Esta é a coluna onde o nome do restaurante será preenchido`);
                 } else if (normalizedValue.includes('código cliente') || normalizedValue.includes('codigo cliente')) {
                     // Fallback para template antigo
                     columnMap['Código Cliente'] = index;
@@ -2346,10 +2346,24 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
             const newRow = worksheet.getRow(targetRowNumber);
             
             // Preencher dados nas colunas corretas
-            // Nome - preencher com nome do restaurante (coluna B no novo template)
+            // IMPORTANTE: Nome do restaurante (nome do cliente) vai na coluna "Nome" (coluna B)
+            // Esta é a PRIMEIRA coisa a preencher para garantir que está na posição correta
             if (columnMap['Nome'] !== undefined) {
-                newRow.getCell(columnMap['Nome']).value = r.name || '';
-                console.log(`      Preenchendo coluna "Nome" (${columnMap['Nome']}) com: "${r.name}"`);
+                const nomeCell = newRow.getCell(columnMap['Nome']);
+                nomeCell.value = r.name || '';
+                console.log(`      ✅ Preenchendo coluna "Nome" (índice ${columnMap['Nome']}, célula ${nomeCell.address}) com nome do restaurante: "${r.name}"`);
+            } else {
+                // Se não encontrou "Nome", tentar encontrar manualmente na coluna B (índice 2)
+                console.warn(`   ⚠️ Coluna "Nome" não encontrada! Tentando encontrar na coluna B...`);
+                const colunaB = worksheet.getCell(headerRow, 2); // Coluna B = índice 2
+                if (colunaB && colunaB.value) {
+                    const cellValue = String(colunaB.value).toLowerCase().trim();
+                    if (cellValue.includes('nome') || cellValue === 'nome') {
+                        const nomeCell = newRow.getCell(2);
+                        nomeCell.value = r.name || '';
+                        console.log(`      ✅ Nome do restaurante preenchido na coluna B (índice 2): "${r.name}"`);
+                    }
+                }
             }
             if (columnMap['E-mail'] !== undefined) {
                 newRow.getCell(columnMap['E-mail']).value = '';
@@ -2429,15 +2443,12 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
                 }
             }
             
-            // Preencher Clientes (template antigo) - nome do restaurante vai aqui
-            // No novo template, "Nome" fica vazio e não preenchemos com nome do restaurante
-            if (columnMap['Clientes'] !== undefined) {
-                // Template antigo: preencher "Clientes" com nome do restaurante
+            // Preencher Clientes (template antigo) - apenas se existir e NÃO for o novo template
+            // No novo template, o nome já foi preenchido na coluna "Nome" acima
+            if (columnMap['Clientes'] !== undefined && columnMap['Nome'] === undefined) {
+                // Template antigo: preencher "Clientes" com nome do restaurante apenas se não houver coluna "Nome"
                 newRow.getCell(columnMap['Clientes']).value = r.name || '';
-                console.log(`      Preenchendo coluna "Clientes" com: "${r.name}"`);
-            } else {
-                // No novo template, não há coluna "Clientes", então não preenchemos nada
-                // O nome do restaurante não vai em nenhuma coluna no novo template
+                console.log(`      Preenchendo coluna "Clientes" (template antigo) com: "${r.name}"`);
             }
         });
         
