@@ -1298,12 +1298,14 @@ export async function allocateRestaurantsToZones() {
                 
                 // Buscar zona que contém o CEP
                 for (const zona of zonas) {
-                    console.log(`\n   --- Verificando zona: ${(zona as any).zonaNome || (zona as any).zona_nome} ---`);
+                    const zonaNome = (zona as any).zonaNome || (zona as any).zona_nome;
+                    console.log(`\n   --- Verificando zona: ${zonaNome} ---`);
+                    
                     const cepInicial = (zona as any).cepInicial || (zona as any).cep_inicial;
                     const cepFinal = (zona as any).cepFinal || (zona as any).cep_final;
                     
                     if (!cepInicial || !cepFinal) {
-                        console.warn(`⚠️ Zona ${(zona as any).zonaNome || (zona as any).zona_nome} sem CEP inicial ou final`);
+                        console.warn(`   ⚠️ Zona ${zonaNome} sem CEP inicial ou final`);
                         continue;
                     }
                     
@@ -1312,23 +1314,26 @@ export async function allocateRestaurantsToZones() {
                     const zonaInicio = parseInt(cepInicialCleaned, 10);
                     const zonaFim = parseInt(cepFinalCleaned, 10);
                     
+                    console.log(`   CEP inicial: ${cepInicial} -> limpo: ${cepInicialCleaned} -> número: ${zonaInicio}`);
+                    console.log(`   CEP final: ${cepFinal} -> limpo: ${cepFinalCleaned} -> número: ${zonaFim}`);
+                    
                     // Validar se os CEPs da zona são válidos
                     if (isNaN(zonaInicio) || isNaN(zonaFim) || zonaInicio <= 0 || zonaFim <= 0) {
-                        console.warn(`⚠️ Zona ${(zona as any).zonaNome || (zona as any).zona_nome} com CEPs inválidos: ${cepInicial} (${cepInicialCleaned} -> ${zonaInicio}) - ${cepFinal} (${cepFinalCleaned} -> ${zonaFim})`);
+                        console.warn(`   ⚠️ Zona ${zonaNome} com CEPs inválidos: ${cepInicial} (${cepInicialCleaned} -> ${zonaInicio}) - ${cepFinal} (${cepFinalCleaned} -> ${zonaFim})`);
                         continue;
                     }
                     
                     // Verificar se o CEP está dentro do range
                     const isInRange = cepNum >= zonaInicio && cepNum <= zonaFim;
-                    console.log(`   Verificando zona ${(zona as any).zonaNome || (zona as any).zona_nome}: CEP ${cepNum} está entre ${zonaInicio} (${cepInicial} -> ${cepInicialCleaned}) e ${zonaFim} (${cepFinal} -> ${cepFinalCleaned})? ${isInRange ? 'SIM ✅' : 'NÃO ❌'}`);
+                    console.log(`   Comparação: ${cepNum} >= ${zonaInicio} && ${cepNum} <= ${zonaFim} = ${isInRange ? 'SIM ✅' : 'NÃO ❌'}`);
                     
                     if (isInRange) {
-                        console.log(`✅ CEP ${cep} (${cepNum}) encontrado na zona ${(zona as any).zonaNome || (zona as any).zona_nome} (${cepInicial} - ${cepFinal})`);
+                        console.log(`   ✅ CEP ${cep} (${cepNum}) encontrado na zona ${zonaNome} (${cepInicial} - ${cepFinal})`);
                         return (zona as any).id;
                     }
                 }
 
-                console.warn(`❌ Nenhuma zona encontrada para CEP ${cep} (${cepNum}). Verificadas ${zonas.length} zonas ativas.`);
+                console.warn(`\n❌ Nenhuma zona encontrada para CEP ${cep} (${cepNum}). Verificadas ${zonas.length} zonas ativas.`);
                 return null;
             } catch (error) {
                 console.error('❌ Erro ao buscar zona por CEP:', error);
@@ -1592,6 +1597,15 @@ export async function allocateRestaurantsToZones() {
         revalidatePath('/clients');
         revalidatePath('/carteira');
         revalidatePath('/pipeline');
+
+        console.log('\n\n📊 ============================================');
+        console.log('📊 RESUMO DA ALOCAÇÃO');
+        console.log('📊 ============================================');
+        console.log(`   ✅ Alocados: ${allocated}`);
+        console.log(`   🔄 Atualizados: ${updated}`);
+        console.log(`   ❌ Sem zona: ${unallocated.length}`);
+        console.log(`   ⚠️ Erros: ${errors}`);
+        console.log('📊 ============================================\n\n');
 
         return {
             success: true,
