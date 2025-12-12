@@ -144,7 +144,8 @@ export default function WeeklyCalendar({ restaurants, sellerId, weekStart }: Wee
         const fixedClient = getFixedClientInSlot(date, visitIndex);
         if (fixedClient) {
             return {
-                id: fixedClient.restaurantId,
+                id: `fixed-${fixedClient.id}`, // ID especial para clientes fixos (não selecionáveis)
+                restaurantId: fixedClient.restaurantId,
                 restaurantName: fixedClient.restaurantName,
                 isFixedClient: true
             };
@@ -258,7 +259,7 @@ export default function WeeklyCalendar({ restaurants, sellerId, weekStart }: Wee
 
     // Toggle seleção de slot
     const toggleSlotSelection = (slotId: string, isFixed: boolean) => {
-        if (isFixed) return; // Não permitir selecionar clientes fixos
+        if (isFixed || slotId.startsWith('fixed-')) return; // Não permitir selecionar clientes fixos
         
         setSelectedSlots(prev => {
             const newSet = new Set(prev);
