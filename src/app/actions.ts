@@ -2262,6 +2262,9 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
                     columnMap['Telefone'] = index;
                 } else if (normalizedValue.includes('celular')) {
                     columnMap['Celular'] = index;
+                } else if (normalizedValue.includes('logradouro') || normalizedValue.includes('logadouro')) {
+                    columnMap['Logradouro'] = index;
+                    console.log(`   ✅ Coluna "Logradouro" encontrada na coluna ${index}`);
                 } else if (normalizedValue.includes('endereço') || normalizedValue.includes('endereco')) {
                     columnMap['Endereço'] = index;
                 } else if (normalizedValue.includes('número') || normalizedValue.includes('numero')) {
@@ -2388,6 +2391,11 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
             }
             if (columnMap['Celular'] !== undefined) {
                 newRow.getCell(columnMap['Celular']).value = '';
+            }
+            // Preencher Logradouro (endereço completo sem número)
+            if (columnMap['Logradouro'] !== undefined) {
+                newRow.getCell(columnMap['Logradouro']).value = endereco;
+                console.log(`      ✅ Logradouro preenchido: "${endereco}"`);
             }
             if (columnMap['Endereço'] !== undefined) {
                 newRow.getCell(columnMap['Endereço']).value = endereco;
