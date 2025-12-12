@@ -1570,6 +1570,19 @@ export default function CarteiraClient({ initialData }: Props) {
                             </div>
 
                             <div className={styles.filterGroup}>
+                                <label>🗺️ Estado</label>
+                                <select 
+                                    value={checkmobFilterState} 
+                                    onChange={e => setCheckmobFilterState(e.target.value)}
+                                >
+                                    <option value="all">Todos</option>
+                                    {checkmobStates.filter(s => s !== 'all').map(state => (
+                                        <option key={state} value={state}>{state}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className={styles.filterGroup}>
                                 <label>⭐ Mín. Avaliações</label>
                                 <input 
                                     type="number" 
