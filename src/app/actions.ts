@@ -1343,7 +1343,7 @@ export async function allocateRestaurantsToZones() {
         
         // Buscar todos os restaurantes (incluindo os que já têm zona para revalidar)
         // Usar SQL direto para evitar problemas com Prisma Client e campos não reconhecidos
-        let restaurants: Array<{ id: string; address: any; zonaId: string | null }> = [];
+        let restaurants: Array<{ id: string; name: string; address: any; zonaId: string | null }> = [];
         
         try {
             // Verificar se a coluna existe antes de buscar
@@ -1357,14 +1357,16 @@ export async function allocateRestaurantsToZones() {
                 // Coluna existe, usar SQL direto
                 const result = await prisma.$queryRaw<Array<{
                     id: string;
+                    name: string;
                     address: any;
                     zona_id: string | null;
                 }>>`
-                    SELECT id, address, zona_id
+                    SELECT id, name, address, zona_id
                     FROM restaurants
                 `;
                 restaurants = result.map(r => ({
                     id: r.id,
+                    name: r.name,
                     address: typeof r.address === 'string' ? JSON.parse(r.address) : r.address,
                     zonaId: r.zona_id
                 }));
@@ -1372,13 +1374,15 @@ export async function allocateRestaurantsToZones() {
                 // Coluna não existe ainda, buscar sem ela e adicionar null
                 const result = await prisma.$queryRaw<Array<{
                     id: string;
+                    name: string;
                     address: any;
                 }>>`
-                    SELECT id, address
+                    SELECT id, name, address
                     FROM restaurants
                 `;
                 restaurants = result.map(r => ({
                     id: r.id,
+                    name: r.name,
                     address: typeof r.address === 'string' ? JSON.parse(r.address) : r.address,
                     zonaId: null
                 }));
@@ -1390,12 +1394,14 @@ export async function allocateRestaurantsToZones() {
                 const prismaResult = await prisma.restaurant.findMany({
                     select: {
                         id: true,
+                        name: true,
                         address: true,
                     }
                 });
                 
                 restaurants = prismaResult.map(r => ({
                     id: r.id,
+                    name: r.name,
                     address: r.address as any,
                     zonaId: null // Inicializar como null se não conseguir buscar
                 }));
@@ -1513,7 +1519,7 @@ export async function allocateRestaurantsToZones() {
 
                 // Log detalhado do CEP encontrado para debug
                 console.log(`\n🔍 ===== PROCESSANDO RESTAURANTE ${restaurant.id} =====`);
-                console.log(`   Nome: ${(restaurant as any).name || 'N/A'}`);
+                console.log(`   Nome: ${restaurant.name || 'N/A'}`);
                 console.log(`   CEP encontrado: "${cep}"`);
                 console.log(`   CEP limpo: ${cleanedCep}`);
                 console.log(`   CEP número: ${cepNum}`);
