@@ -15,16 +15,27 @@ interface FollowUp {
     restaurant?: Restaurant;
 }
 
+interface Seller {
+    id: string;
+    name: string;
+}
+
 interface AgendaClientProps {
     initialFollowUps: FollowUp[];
     restaurants: Restaurant[];
+    availableSellers?: Seller[];
 }
 
-export default function AgendaClient({ initialFollowUps, restaurants }: AgendaClientProps) {
+export default function AgendaClient({ initialFollowUps, restaurants, availableSellers = [] }: AgendaClientProps) {
     const [followUps, setFollowUps] = useState(initialFollowUps);
     const [view, setView] = useState<'calendar' | 'list' | 'kanban'>('list');
     const [filter, setFilter] = useState<'all' | 'today' | 'week' | 'overdue'>('all');
     const [typeFilter, setTypeFilter] = useState<'all' | 'call' | 'email' | 'meeting'>('all');
+    const [sellerFilter, setSellerFilter] = useState<string>('all');
+    const [statusFilter, setStatusFilter] = useState<string>('all');
+    const [potentialFilter, setPotentialFilter] = useState<string>('all');
+    const [cityFilter, setCityFilter] = useState<string>('all');
+    const [neighborhoodFilter, setNeighborhoodFilter] = useState<string>('all');
     const [showCompleted, setShowCompleted] = useState(false);
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [showNewModal, setShowNewModal] = useState(false);
@@ -47,6 +58,42 @@ export default function AgendaClient({ initialFollowUps, restaurants }: AgendaCl
     const weekEnd = new Date(today);
     weekEnd.setDate(weekEnd.getDate() + 7);
 
+    // Extract unique values for filters
+    const sellersOptions = useMemo(() => {
+        const uniqueSellers = new Set<string>();
+        let hasWithoutSeller = false;
+        followUps.forEach(f => {
+            if (f.restaurant?.seller?.name) {
+                uniqueSellers.add(f.restaurant.seller.name);
+            } else {
+                hasWithoutSeller = true;
+            }
+        });
+        const options = ['all', ...Array.from(uniqueSellers).sort()];
+        if (hasWithoutSeller) {
+            options.push('sem-executivo');
+        }
+        return options;
+    }, [followUps]);
+
+    const cities = useMemo(() => {
+        const unique = new Set(
+            followUps
+                .map(f => f.restaurant?.address?.city)
+                .filter(c => c && c !== 'undefined')
+        );
+        return ['all', ...Array.from(unique).sort()];
+    }, [followUps]);
+
+    const neighborhoods = useMemo(() => {
+        const unique = new Set(
+            followUps
+                .map(f => f.restaurant?.address?.neighborhood)
+                .filter(n => n && n !== 'undefined' && n.trim() !== '')
+        );
+        return ['all', ...Array.from(unique).sort()];
+    }, [followUps]);
+
     // Filter follow-ups
     const filteredFollowUps = useMemo(() => {
         let result = followUps;
@@ -57,6 +104,35 @@ export default function AgendaClient({ initialFollowUps, restaurants }: AgendaCl
 
         if (typeFilter !== 'all') {
             result = result.filter(f => f.type === typeFilter);
+        }
+
+        // Filtro por executivo
+        if (sellerFilter !== 'all') {
+            if (sellerFilter === 'sem-executivo') {
+                result = result.filter(f => !f.restaurant?.seller?.name);
+            } else {
+                result = result.filter(f => f.restaurant?.seller?.name === sellerFilter);
+            }
+        }
+
+        // Filtro por status do restaurante
+        if (statusFilter !== 'all') {
+            result = result.filter(f => (f.restaurant?.status || 'A Analisar') === statusFilter);
+        }
+
+        // Filtro por potencial
+        if (potentialFilter !== 'all') {
+            result = result.filter(f => f.restaurant?.salesPotential === potentialFilter);
+        }
+
+        // Filtro por cidade
+        if (cityFilter !== 'all') {
+            result = result.filter(f => f.restaurant?.address?.city === cityFilter);
+        }
+
+        // Filtro por bairro
+        if (neighborhoodFilter !== 'all') {
+            result = result.filter(f => f.restaurant?.address?.neighborhood === neighborhoodFilter);
         }
 
         if (filter === 'today') {
@@ -80,7 +156,7 @@ export default function AgendaClient({ initialFollowUps, restaurants }: AgendaCl
         return result.sort((a, b) =>
             new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime()
         );
-    }, [followUps, filter, typeFilter, showCompleted, today, weekEnd]);
+    }, [followUps, filter, typeFilter, sellerFilter, statusFilter, potentialFilter, cityFilter, neighborhoodFilter, showCompleted, today, weekEnd]);
 
     // Group by date for list view
     const groupedByDate = useMemo(() => {
@@ -216,28 +292,28 @@ export default function AgendaClient({ initialFollowUps, restaurants }: AgendaCl
                     <span className={styles.statIcon}>📋</span>
                     <div>
                         <span className={styles.statValue}>{stats.total}</span>
-                        <span className={styles.statLabel}>Pendentes</span>
+                        <span className={styles.statLabel}>Follow-ups Pendentes</span>
                     </div>
                 </div>
                 <div className={`${styles.statCard} ${styles.statToday}`}>
                     <span className={styles.statIcon}>🎯</span>
                     <div>
                         <span className={styles.statValue}>{stats.today}</span>
-                        <span className={styles.statLabel}>Hoje</span>
+                        <span className={styles.statLabel}>Follow-ups de Hoje</span>
                     </div>
                 </div>
                 <div className={`${styles.statCard} ${styles.statOverdue}`}>
                     <span className={styles.statIcon}>⚠️</span>
                     <div>
                         <span className={styles.statValue}>{stats.overdue}</span>
-                        <span className={styles.statLabel}>Atrasados</span>
+                        <span className={styles.statLabel}>Follow-ups Atrasados</span>
                     </div>
                 </div>
                 <div className={`${styles.statCard} ${styles.statCompleted}`}>
                     <span className={styles.statIcon}>✅</span>
                     <div>
                         <span className={styles.statValue}>{stats.completed}</span>
-                        <span className={styles.statLabel}>Concluídos</span>
+                        <span className={styles.statLabel}>Follow-ups Concluídos</span>
                     </div>
                 </div>
             </div>
@@ -259,37 +335,128 @@ export default function AgendaClient({ initialFollowUps, restaurants }: AgendaCl
                     </button>
                 </div>
 
-                <div className={styles.filters}>
-                    <select
-                        value={filter}
-                        onChange={(e) => setFilter(e.target.value as any)}
-                        className={styles.filterSelect}
-                    >
-                        <option value="all">Todos</option>
-                        <option value="today">Hoje</option>
-                        <option value="week">Esta Semana</option>
-                        <option value="overdue">Atrasados</option>
-                    </select>
+                <div className={styles.filtersContainer}>
+                    <div className={styles.filtersSection}>
+                        <label className={styles.filterSectionLabel}>📅 Período</label>
+                        <select
+                            value={filter}
+                            onChange={(e) => setFilter(e.target.value as any)}
+                            className={styles.filterSelect}
+                            title="Filtre follow-ups por período"
+                        >
+                            <option value="all">Todos os Períodos</option>
+                            <option value="today">Follow-ups de Hoje</option>
+                            <option value="week">Follow-ups desta Semana</option>
+                            <option value="overdue">Follow-ups Atrasados</option>
+                        </select>
+                    </div>
 
-                    <select
-                        value={typeFilter}
-                        onChange={(e) => setTypeFilter(e.target.value as any)}
-                        className={styles.filterSelect}
-                    >
-                        <option value="all">Todos os Tipos</option>
-                        <option value="call">📞 Ligações</option>
-                        <option value="email">📧 Emails</option>
-                        <option value="meeting">🤝 Reuniões</option>
-                    </select>
+                    <div className={styles.filtersSection}>
+                        <label className={styles.filterSectionLabel}>📋 Tipo</label>
+                        <select
+                            value={typeFilter}
+                            onChange={(e) => setTypeFilter(e.target.value as any)}
+                            className={styles.filterSelect}
+                            title="Filtre por tipo de follow-up"
+                        >
+                            <option value="all">Todos os Tipos</option>
+                            <option value="call">📞 Ligações</option>
+                            <option value="email">📧 Emails</option>
+                            <option value="meeting">🤝 Reuniões</option>
+                        </select>
+                    </div>
 
-                    <label className={styles.checkboxLabel}>
-                        <input
-                            type="checkbox"
-                            checked={showCompleted}
-                            onChange={(e) => setShowCompleted(e.target.checked)}
-                        />
-                        Mostrar concluídos
-                    </label>
+                    <div className={styles.filtersSection}>
+                        <label className={styles.filterSectionLabel}>👔 Executivo</label>
+                        <select
+                            value={sellerFilter}
+                            onChange={(e) => setSellerFilter(e.target.value)}
+                            className={styles.filterSelect}
+                            title="Filtre follow-ups por executivo responsável"
+                        >
+                            <option value="all">Todos os Executivos</option>
+                            {sellersOptions.filter(s => s !== 'all' && s !== 'sem-executivo').map(seller => (
+                                <option key={seller} value={seller}>{seller}</option>
+                            ))}
+                            {sellersOptions.includes('sem-executivo') && (
+                                <option value="sem-executivo">Sem Executivo</option>
+                            )}
+                        </select>
+                    </div>
+
+                    <div className={styles.filtersSection}>
+                        <label className={styles.filterSectionLabel}>📊 Status Cliente</label>
+                        <select
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                            className={styles.filterSelect}
+                            title="Filtre follow-ups por status do cliente"
+                        >
+                            <option value="all">Todos os Status</option>
+                            <option value="A Analisar">A Analisar</option>
+                            <option value="Qualificado">Qualificado</option>
+                            <option value="Contatado">Contatado</option>
+                            <option value="Negociação">Negociação</option>
+                            <option value="Fechado">Fechado</option>
+                        </select>
+                    </div>
+
+                    <div className={styles.filtersSection}>
+                        <label className={styles.filterSectionLabel}>🔥 Potencial</label>
+                        <select
+                            value={potentialFilter}
+                            onChange={(e) => setPotentialFilter(e.target.value)}
+                            className={styles.filterSelect}
+                            title="Filtre follow-ups por potencial de vendas"
+                        >
+                            <option value="all">Todos os Potenciais</option>
+                            <option value="ALTÍSSIMO">🔥 Altíssimo</option>
+                            <option value="ALTO">⬆️ Alto</option>
+                            <option value="MÉDIO">➡️ Médio</option>
+                            <option value="BAIXO">⬇️ Baixo</option>
+                        </select>
+                    </div>
+
+                    <div className={styles.filtersSection}>
+                        <label className={styles.filterSectionLabel}>🏙️ Cidade</label>
+                        <select
+                            value={cityFilter}
+                            onChange={(e) => setCityFilter(e.target.value)}
+                            className={styles.filterSelect}
+                            title="Filtre follow-ups por cidade do cliente"
+                        >
+                            <option value="all">Todas as Cidades</option>
+                            {cities.filter(c => c !== 'all').map(city => (
+                                <option key={city} value={city}>{city}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className={styles.filtersSection}>
+                        <label className={styles.filterSectionLabel}>📍 Bairro</label>
+                        <select
+                            value={neighborhoodFilter}
+                            onChange={(e) => setNeighborhoodFilter(e.target.value)}
+                            className={styles.filterSelect}
+                            title="Filtre follow-ups por bairro do cliente"
+                        >
+                            <option value="all">Todos os Bairros</option>
+                            {neighborhoods.filter(n => n !== 'all').map(neighborhood => (
+                                <option key={neighborhood} value={neighborhood}>{neighborhood}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className={styles.filtersSection}>
+                        <label className={styles.checkboxLabel} title="Mostrar ou ocultar follow-ups já concluídos">
+                            <input
+                                type="checkbox"
+                                checked={showCompleted}
+                                onChange={(e) => setShowCompleted(e.target.checked)}
+                            />
+                            <span>Mostrar concluídos</span>
+                        </label>
+                    </div>
                 </div>
             </div>
 
@@ -314,7 +481,7 @@ export default function AgendaClient({ initialFollowUps, restaurants }: AgendaCl
                                 <div key={date} className={styles.dateGroup}>
                                     <div className={styles.dateHeader}>
                                         <span className={styles.dateText}>{date}</span>
-                                        <span className={styles.dateCount}>{items.length} item(s)</span>
+                                        <span className={styles.dateCount}>{items.length} follow-up(s)</span>
                                     </div>
                                     <div className={styles.dateItems}>
                                         {items.map(item => (

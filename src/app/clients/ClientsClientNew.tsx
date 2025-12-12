@@ -22,6 +22,7 @@ interface Props {
 export default function ClientsClientNew({ initialRestaurants, availableSellers = [] }: Props) {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCity, setSelectedCity] = useState('Todos');
+    const [selectedNeighborhood, setSelectedNeighborhood] = useState('Todos');
     const [selectedStatus, setSelectedStatus] = useState('Todos');
     const [selectedPotential, setSelectedPotential] = useState('Todos');
     const [selectedSeller, setSelectedSeller] = useState('Todos');
@@ -37,15 +38,49 @@ export default function ClientsClientNew({ initialRestaurants, availableSellers 
         return ['Todos', ...Array.from(unique).sort()];
     }, [restaurants]);
 
+    const neighborhoods = useMemo(() => {
+        const unique = new Set(
+            restaurants
+                .map(r => r.address?.neighborhood || 'Outros')
+                .filter(n => n && n !== 'undefined' && n.trim() !== '' && n !== 'Outros')
+        );
+        return ['Todos', ...Array.from(unique).sort()];
+    }, [restaurants]);
+
     const statuses = ['Todos', 'A Analisar', 'Qualificado', 'Contatado', 'Negociação', 'Fechado'];
     const potentials = ['Todos', 'ALTÍSSIMO', 'ALTO', 'MÉDIO', 'BAIXO'];
+    
+    // Calcular contagem de leads por executivo
+    const sellerCounts = useMemo(() => {
+        const counts = new Map<string, number>();
+        restaurants.forEach(r => {
+            if (r.seller?.name) {
+                counts.set(r.seller.name, (counts.get(r.seller.name) || 0) + 1);
+            }
+        });
+        return counts;
+    }, [restaurants]);
+    
+    // Contar leads sem executivo
+    const withoutSellerCount = useMemo(() => {
+        return restaurants.filter(r => !r.seller).length;
+    }, [restaurants]);
+    
     // Opções de executivos: Todos + lista de executivos + "Sem Executivo" se houver restaurantes sem executivo
     const hasRestaurantsWithoutSeller = restaurants.some(r => !r.seller);
     // Criar array de opções com IDs únicos para evitar chaves duplicadas
     const sellersOptions = [
         { value: 'Todos', label: 'Todos', id: 'todos' },
-        ...(availableSellers || []).map(s => ({ value: s.name, label: s.name, id: s.id })),
-        ...(hasRestaurantsWithoutSeller ? [{ value: 'Sem Executivo', label: 'Sem Executivo', id: 'sem-executivo' }] : [])
+        ...(availableSellers || []).map(s => ({ 
+            value: s.name, 
+            label: `${s.name} (${sellerCounts.get(s.name) || 0})`, 
+            id: s.id 
+        })),
+        ...(hasRestaurantsWithoutSeller ? [{ 
+            value: 'Sem Executivo', 
+            label: `Sem Executivo (${withoutSellerCount})`, 
+            id: 'sem-executivo' 
+        }] : [])
     ];
 
     const filteredRestaurants = useMemo(() => {
@@ -57,8 +92,11 @@ export default function ClientsClientNew({ initialRestaurants, availableSellers 
             const sellerName = r.seller?.name || '';
             const matchesSearch = r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 (r.address?.city?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
+                (r.address?.neighborhood?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
                 sellerName.toLowerCase().includes(searchTerm.toLowerCase());
             const matchesCity = selectedCity === 'Todos' || (r.address?.city || 'Outros') === selectedCity;
+            const matchesNeighborhood = selectedNeighborhood === 'Todos' || 
+                (r.address?.neighborhood || 'Outros') === selectedNeighborhood;
             const matchesStatus = selectedStatus === 'Todos' || (r.status || 'A Analisar') === selectedStatus;
             const matchesPotential = selectedPotential === 'Todos' || r.salesPotential === selectedPotential;
             // Filtro de executivo: comparar o nome do executivo
@@ -66,7 +104,7 @@ export default function ClientsClientNew({ initialRestaurants, availableSellers 
                 (sellerName && sellerName === selectedSeller) ||
                 (!sellerName && selectedSeller === 'Sem Executivo');
 
-            return matchesSearch && matchesCity && matchesStatus && matchesPotential && matchesSeller;
+            return matchesSearch && matchesCity && matchesNeighborhood && matchesStatus && matchesPotential && matchesSeller;
         }).sort((a, b) => {
             if (sortOption === 'name') return a.name.localeCompare(b.name);
             if (sortOption === 'rating-high') return b.rating - a.rating;
@@ -75,7 +113,7 @@ export default function ClientsClientNew({ initialRestaurants, availableSellers 
             if (sortOption === 'reviews-low') return (a.reviewCount || 0) - (b.reviewCount || 0);
             return 0;
         });
-    }, [restaurants, searchTerm, selectedCity, selectedStatus, selectedPotential, selectedSeller, sortOption, activeTab]);
+    }, [restaurants, searchTerm, selectedCity, selectedNeighborhood, selectedStatus, selectedPotential, selectedSeller, sortOption, activeTab]);
 
     // Calculate stats
     const stats = useMemo(() => {
@@ -310,11 +348,11 @@ export default function ClientsClientNew({ initialRestaurants, availableSellers 
                         <label className={styles.filterLabel}>🔍 Buscar</label>
                         <input
                             type="text"
-                            placeholder="Nome, cidade ou executivo..."
+                            placeholder="Nome, cidade, bairro ou executivo..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className={styles.searchInput}
-                            title="Busque por nome do restaurante, cidade ou executivo responsável"
+                            title="Busque por nome do restaurante, cidade, bairro ou executivo responsável"
                         />
                     </div>
 
@@ -328,6 +366,20 @@ export default function ClientsClientNew({ initialRestaurants, availableSellers 
                         >
                             {cities.map(city => (
                                 <option key={city} value={city}>{city}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className={styles.filterGroup}>
+                        <label className={styles.filterLabel}>📍 Bairro</label>
+                        <select
+                            value={selectedNeighborhood}
+                            onChange={(e) => setSelectedNeighborhood(e.target.value)}
+                            className={styles.filterSelect}
+                            title="Filtre os clientes pelo bairro onde estão localizados"
+                        >
+                            {neighborhoods.map(neighborhood => (
+                                <option key={neighborhood} value={neighborhood}>{neighborhood}</option>
                             ))}
                         </select>
                     </div>
