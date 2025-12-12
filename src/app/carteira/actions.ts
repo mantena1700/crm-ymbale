@@ -1161,6 +1161,13 @@ export async function createFixedClient(data: {
     'use server';
     
     try {
+        // Verificar se a tabela existe
+        try {
+            await prisma.$queryRaw`SELECT 1 FROM fixed_clients LIMIT 1`;
+        } catch (error: any) {
+            return { success: false, error: 'Tabela de clientes fixos ainda não foi criada. Execute a migration primeiro.' };
+        }
+
         // Validar dados
         if (!data.sellerId || !data.restaurantId) {
             return { success: false, error: 'Executivo e restaurante são obrigatórios' };
