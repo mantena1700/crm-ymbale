@@ -1780,6 +1780,120 @@ export async function syncRestaurantsWithSellers() {
     }
 }
 
+// Exportar restaurantes selecionados para Excel (mesmo formato da importação)
+export async function exportRestaurantsToExcel(restaurantIds: string[]) {
+    'use server';
+    
+    try {
+        const xlsx = await import('xlsx');
+        const { prisma } = await import('@/lib/db');
+        
+        // Buscar restaurantes selecionados
+        const restaurants = await prisma.restaurant.findMany({
+            where: {
+                id: { in: restaurantIds }
+            },
+            include: {
+                seller: {
+                    select: {
+                        name: true
+                    }
+                },
+                comments: {
+                    select: {
+                        content: true
+                    },
+                    orderBy: {
+                        createdAt: 'asc'
+                    }
+                }
+            },
+            orderBy: {
+                name: 'asc'
+            }
+        });
+
+        // Preparar dados para Excel (mesmo formato da importação)
+        const excelData = restaurants.map((r: any) => {
+            const address = typeof r.address === 'string' ? JSON.parse(r.address) : r.address;
+            
+            // Preparar comentários (Comentário 1, Comentário 2, etc.)
+            const commentObj: any = {};
+            r.comments.forEach((comment: any, index: number) => {
+                commentObj[`Comentário ${index + 1}`] = comment.content || '';
+            });
+            
+            return {
+                'Nome': r.name || '',
+                'Endereço (Rua)': address?.street || address?.address || '',
+                'Bairro': address?.neighborhood || address?.bairro || '',
+                'Cidade': address?.city || address?.cidade || '',
+                'Estado': address?.state || address?.estado || '',
+                'CEP': address?.zip || address?.cep || address?.postal_code || '',
+                'Avaliação': r.rating || 0,
+                'Nº Avaliações': r.reviewCount || 0,
+                'Total Comentários': r.totalComments || r.comments?.length || 0,
+                'Projeção Entregas/Mês': r.projectedDeliveries || 0,
+                'Potencial Vendas': r.salesPotential || 'N/A',
+                'Categoria': r.category || 'N/A',
+                'Status': r.status || 'A Analisar',
+                'Executivo': r.seller?.name || 'Sem executivo',
+                'Data Coleta': r.lastCollectionDate ? new Date(r.lastCollectionDate).toLocaleDateString('pt-BR') : '',
+                ...commentObj
+            };
+        });
+
+        // Criar workbook
+        const wb = xlsx.utils.book_new();
+        const ws = xlsx.utils.json_to_sheet(excelData);
+        
+        // Ajustar largura das colunas
+        const colWidths = [
+            { wch: 30 }, // Nome
+            { wch: 40 }, // Endereço
+            { wch: 20 }, // Bairro
+            { wch: 20 }, // Cidade
+            { wch: 10 }, // Estado
+            { wch: 12 }, // CEP
+            { wch: 12 }, // Avaliação
+            { wch: 15 }, // Nº Avaliações
+            { wch: 18 }, // Total Comentários
+            { wch: 20 }, // Projeção Entregas
+            { wch: 18 }, // Potencial Vendas
+            { wch: 20 }, // Categoria
+            { wch: 15 }, // Status
+            { wch: 20 }, // Executivo
+            { wch: 15 }, // Data Coleta
+        ];
+        // Adicionar largura para colunas de comentários (até 50 comentários)
+        for (let i = 1; i <= 50; i++) {
+            colWidths.push({ wch: 30 });
+        }
+        ws['!cols'] = colWidths;
+        
+        xlsx.utils.book_append_sheet(wb, ws, 'Clientes');
+        
+        // Converter para buffer
+        const buffer = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
+        
+        // Converter para base64
+        const base64 = Buffer.from(buffer).toString('base64');
+        
+        return {
+            success: true,
+            data: base64,
+            filename: `Clientes_Exportados_${new Date().toISOString().split('T')[0]}.xlsx`,
+            count: restaurants.length
+        };
+    } catch (error: any) {
+        console.error('Erro ao exportar restaurantes:', error);
+        return {
+            success: false,
+            error: error.message || 'Erro ao exportar restaurantes'
+        };
+    }
+}
+
 // Função auxiliar para encontrar executivo por zona (reutilizada)
 async function findSellerByZona(zonaId: string): Promise<string | null> {
     const { prisma } = await import('@/lib/db');

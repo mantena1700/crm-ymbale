@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Restaurant } from '@/lib/types';
 import { PageLayout, Card, Grid, Badge, Button } from '@/components/PageLayout';
 import { Table } from '@/components/Table';
-import { updateRestaurantStatus, allocateRestaurantsToZones } from '@/app/actions';
+import { updateRestaurantStatus, allocateRestaurantsToZones, exportRestaurantsToExcel } from '@/app/actions';
 import styles from './ClientsNew.module.css';
 
 interface Seller {
@@ -31,6 +31,8 @@ export default function ClientsClientNew({ initialRestaurants, availableSellers 
     const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
     const [activeTab, setActiveTab] = useState<'active' | 'discarded'>('active');
     const [allocating, setAllocating] = useState(false);
+    const [selectedRestaurants, setSelectedRestaurants] = useState<Set<string>>(new Set());
+    const [exporting, setExporting] = useState(false);
 
     // Extract unique values for filters
     const cities = useMemo(() => {
@@ -134,6 +136,24 @@ export default function ClientsClientNew({ initialRestaurants, availableSellers 
 
     // Table columns
     const tableColumns = [
+        {
+            key: 'select',
+            label: '',
+            width: '50px',
+            align: 'center' as const,
+            render: (value: any, row: Restaurant) => (
+                <input
+                    type="checkbox"
+                    checked={selectedRestaurants.has(row.id)}
+                    onChange={(e) => {
+                        e.stopPropagation();
+                        handleSelectRestaurant(row.id);
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ cursor: 'pointer', width: '18px', height: '18px' }}
+                />
+            )
+        },
         {
             key: 'name',
             label: 'Restaurante',
@@ -241,6 +261,80 @@ export default function ClientsClientNew({ initialRestaurants, availableSellers 
         }
     };
 
+    // Funções para gerenciar seleção
+    const handleSelectRestaurant = (restaurantId: string) => {
+        setSelectedRestaurants(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(restaurantId)) {
+                newSet.delete(restaurantId);
+            } else {
+                newSet.add(restaurantId);
+            }
+            return newSet;
+        });
+    };
+
+    const handleSelectAll = () => {
+        if (selectedRestaurants.size === filteredRestaurants.length) {
+            setSelectedRestaurants(new Set());
+        } else {
+            setSelectedRestaurants(new Set(filteredRestaurants.map(r => r.id)));
+        }
+    };
+
+    const handleExportSelected = async () => {
+        const idsToExport = selectedRestaurants.size > 0 
+            ? Array.from(selectedRestaurants) 
+            : filteredRestaurants.map(r => r.id);
+
+        if (idsToExport.length === 0) {
+            alert('⚠️ Nenhum cliente selecionado para exportar.');
+            return;
+        }
+
+        if (!confirm(`Deseja exportar ${idsToExport.length} cliente(s) para Excel?\n\nO arquivo será baixado no mesmo formato usado para importação.`)) {
+            return;
+        }
+
+        setExporting(true);
+        try {
+            const result = await exportRestaurantsToExcel(idsToExport);
+            
+            if (result.success && result.data) {
+                // Converter base64 para Blob
+                const byteCharacters = atob(result.data);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                const blob = new Blob([byteArray], { 
+                    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+                });
+
+                // Criar link temporário para download
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = result.filename || `Clientes_Exportados_${new Date().toISOString().split('T')[0]}.xlsx`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+
+                alert(`✅ Planilha exportada com sucesso!\n\n${result.count} cliente(s) exportado(s).`);
+                setSelectedRestaurants(new Set());
+            } else {
+                alert(`❌ Erro ao exportar planilha.\n\n${result.error || 'Erro desconhecido'}`);
+            }
+        } catch (error: any) {
+            console.error('Erro ao exportar:', error);
+            alert(`❌ Erro ao exportar: ${error.message || 'Erro desconhecido'}`);
+        } finally {
+            setExporting(false);
+        }
+    };
+
     return (
         <PageLayout
             title="Base de Clientes"
@@ -248,6 +342,23 @@ export default function ClientsClientNew({ initialRestaurants, availableSellers 
             icon="👥"
             actions={
                 <>
+                    {selectedRestaurants.size > 0 && (
+                        <Button 
+                            variant="secondary" 
+                            onClick={handleExportSelected}
+                            disabled={exporting}
+                        >
+                            {exporting ? '⏳ Exportando...' : `📥 Exportar Selecionados (${selectedRestaurants.size})`}
+                        </Button>
+                    )}
+                    <Button 
+                        variant="secondary" 
+                        onClick={handleExportSelected}
+                        disabled={exporting || filteredRestaurants.length === 0}
+                        title={filteredRestaurants.length === 0 ? 'Nenhum cliente para exportar' : 'Exportar todos os clientes filtrados'}
+                    >
+                        {exporting ? '⏳ Exportando...' : `📥 Exportar Todos (${filteredRestaurants.length})`}
+                    </Button>
                     <Button 
                         variant="secondary" 
                         onClick={handleAllocateZones}
@@ -444,8 +555,28 @@ export default function ClientsClientNew({ initialRestaurants, availableSellers 
                     </div>
                 </div>
 
-                <div className={styles.resultsCount}>
-                    Mostrando <strong>{filteredRestaurants.length}</strong> de <strong>{restaurants.length}</strong> clientes
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem', marginBottom: '1rem' }}>
+                    <div className={styles.resultsCount}>
+                        Mostrando <strong>{filteredRestaurants.length}</strong> de <strong>{restaurants.length}</strong> clientes
+                        {selectedRestaurants.size > 0 && (
+                            <span style={{ marginLeft: '1rem', color: '#3b82f6', fontWeight: '600' }}>
+                                • {selectedRestaurants.size} selecionado(s)
+                            </span>
+                        )}
+                    </div>
+                    {filteredRestaurants.length > 0 && (
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                            <label style={{ fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                                <input
+                                    type="checkbox"
+                                    checked={selectedRestaurants.size === filteredRestaurants.length && filteredRestaurants.length > 0}
+                                    onChange={handleSelectAll}
+                                    style={{ cursor: 'pointer', width: '18px', height: '18px' }}
+                                />
+                                <span>Selecionar Todos</span>
+                            </label>
+                        </div>
+                    )}
                 </div>
             </Card>
 
@@ -457,9 +588,28 @@ export default function ClientsClientNew({ initialRestaurants, availableSellers 
                             <div 
                                 className={styles.cardHeader}
                                 style={{ 
-                                    borderLeft: `4px solid ${getPotentialColor(restaurant.salesPotential)}`
+                                    borderLeft: `4px solid ${getPotentialColor(restaurant.salesPotential)}`,
+                                    position: 'relative'
                                 }}
                             >
+                                <input
+                                    type="checkbox"
+                                    checked={selectedRestaurants.has(restaurant.id)}
+                                    onChange={(e) => {
+                                        e.stopPropagation();
+                                        handleSelectRestaurant(restaurant.id);
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                    style={{ 
+                                        cursor: 'pointer', 
+                                        width: '18px', 
+                                        height: '18px',
+                                        position: 'absolute',
+                                        top: '0.5rem',
+                                        right: '0.5rem',
+                                        zIndex: 10
+                                    }}
+                                />
                                 <h3 className={styles.cardTitle}>{restaurant.name}</h3>
                                 <Badge variant={
                                     restaurant.salesPotential === 'ALTÍSSIMO' ? 'danger' : 
