@@ -110,6 +110,7 @@ export default function CarteiraClient({ initialData }: Props) {
     const [checkmobFilterPotential, setCheckmobFilterPotential] = useState<string[]>([]);
     const [checkmobFilterNeighborhood, setCheckmobFilterNeighborhood] = useState<string>('all');
     const [checkmobFilterCity, setCheckmobFilterCity] = useState<string>('all');
+    const [checkmobFilterState, setCheckmobFilterState] = useState<string>('all');
     const [checkmobFilterMinReviews, setCheckmobFilterMinReviews] = useState<number>(0);
     const [checkmobFilterMinRating, setCheckmobFilterMinRating] = useState<number>(0);
     const [checkmobFilterHotLeads, setCheckmobFilterHotLeads] = useState<boolean>(false);
@@ -197,6 +198,15 @@ export default function CarteiraClient({ initialData }: Props) {
         return ['all', ...Array.from(unique).sort()];
     }, [restaurants]);
     
+    const checkmobStates = useMemo(() => {
+        const unique = new Set(
+            restaurants
+                .map(r => r.address?.state || '')
+                .filter(s => s && s !== 'undefined' && s.trim() !== '')
+        );
+        return ['all', ...Array.from(unique).sort()];
+    }, [restaurants]);
+    
     // Filtrar restaurantes para exportação Checkmob
     const checkmobFilteredRestaurants = useMemo(() => {
         return restaurants.filter(r => {
@@ -227,6 +237,12 @@ export default function CarteiraClient({ initialData }: Props) {
                 if (city !== checkmobFilterCity) return false;
             }
             
+            // Filtro por estado
+            if (checkmobFilterState !== 'all') {
+                const state = r.address?.state || '';
+                if (state !== checkmobFilterState) return false;
+            }
+            
             // Filtro por mínimo de avaliações
             if (checkmobFilterMinReviews > 0 && (r.reviewCount || 0) < checkmobFilterMinReviews) return false;
             
@@ -249,6 +265,7 @@ export default function CarteiraClient({ initialData }: Props) {
         checkmobFilterPotential,
         checkmobFilterNeighborhood,
         checkmobFilterCity,
+        checkmobFilterState,
         checkmobFilterMinReviews,
         checkmobFilterMinRating,
         checkmobFilterHotLeads

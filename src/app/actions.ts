@@ -2346,9 +2346,10 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
             const newRow = worksheet.getRow(targetRowNumber);
             
             // Preencher dados nas colunas corretas
-            // Nome - deixar vazio (não preencher com nome do restaurante, apenas "Nome" do cliente)
+            // Nome - preencher com nome do restaurante (coluna B no novo template)
             if (columnMap['Nome'] !== undefined) {
-                newRow.getCell(columnMap['Nome']).value = '';
+                newRow.getCell(columnMap['Nome']).value = r.name || '';
+                console.log(`      Preenchendo coluna "Nome" (${columnMap['Nome']}) com: "${r.name}"`);
             }
             if (columnMap['E-mail'] !== undefined) {
                 newRow.getCell(columnMap['E-mail']).value = '';
