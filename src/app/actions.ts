@@ -2097,9 +2097,13 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
             
             const bairro = address?.neighborhood || address?.bairro || '';
             
-            // Criar nova linha após o cabeçalho (linha 2, 3, 4, etc.)
+            // Criar nova linha diretamente na posição correta (linha 2, 3, 4, etc.)
             // A primeira linha de dados será na linha 2 (A2)
-            const newRow = worksheet.addRow([]);
+            // Calcular o número da linha: headerRow (1) + 1 + index (0, 1, 2, ...)
+            const targetRowNumber = headerRow + 1 + index;
+            
+            // Obter a linha na posição correta (criará se não existir)
+            const newRow = worksheet.getRow(targetRowNumber);
             
             // Preencher dados nas colunas corretas
             if (columnMap['Nome'] !== undefined) {
