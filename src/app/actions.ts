@@ -1964,7 +1964,11 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
             where: {
                 id: { in: restaurantIds }
             },
-            include: {
+            select: {
+                id: true,
+                name: true,
+                codigoCliente: true,
+                address: true,
                 seller: {
                     select: {
                         name: true
