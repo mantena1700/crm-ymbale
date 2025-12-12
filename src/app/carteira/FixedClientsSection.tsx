@@ -444,18 +444,28 @@ export default function FixedClientsSection({ sellerId, restaurants }: FixedClie
                         <div className={styles.formField}>
                             <label>Dias do Mês *</label>
                             <div className={styles.monthlyDaysGrid}>
-                                {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
-                                    <label key={day} className={styles.dayCheckbox}>
-                                        <input
-                                            type="checkbox"
-                                            checked={formData.monthlyDays.includes(day)}
-                                            onChange={e => handleMonthlyDayChange(day, e.target.checked)}
-                                        />
-                                        <span>{day}</span>
-                                    </label>
-                                ))}
+                                {Array.from({ length: 31 }, (_, i) => i + 1).map(day => {
+                                    const now = new Date();
+                                    const date = new Date(now.getFullYear(), now.getMonth(), day);
+                                    const dayOfWeek = date.getDay();
+                                    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+                                    
+                                    return (
+                                        <label key={day} className={styles.dayCheckbox} title={isWeekend ? `⚠️ Este dia cai em ${dayOfWeek === 0 ? 'domingo' : 'sábado'} e será ajustado para o próximo dia útil` : ''}>
+                                            <input
+                                                type="checkbox"
+                                                checked={formData.monthlyDays.includes(day)}
+                                                onChange={e => handleMonthlyDayChange(day, e.target.checked)}
+                                            />
+                                            <span style={{ color: isWeekend ? '#f59e0b' : 'inherit' }}>
+                                                {day}
+                                                {isWeekend && ' ⚠️'}
+                                            </span>
+                                        </label>
+                                    );
+                                })}
                             </div>
-                            <small>Selecione os dias do mês em que este cliente será visitado (ex: 2, 14, 28)</small>
+                            <small>⚠️ Dias que caem em sábado ou domingo serão automaticamente ajustados para o próximo dia útil (segunda-feira)</small>
                         </div>
                     )}
 
