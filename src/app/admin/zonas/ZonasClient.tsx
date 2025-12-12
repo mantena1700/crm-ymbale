@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { createZona, updateZona, deleteZona, ZonaCepData } from './actions';
+import { createZona, updateZona, deleteZona, ZonaCepData, exportClientesSemZonaToExcel, deleteMultipleRestaurants } from './actions';
 import styles from './page.module.css';
 
 interface Zona {
@@ -48,6 +48,10 @@ function formatCep(cep: string): string {
 
 export default function ZonasClient({ initialZonas, clientesSemZona }: ZonasClientProps) {
     const [zonas, setZonas] = useState<Zona[]>(initialZonas);
+    const [clientes, setClientes] = useState<ClienteSemZona[]>(clientesSemZona);
+    const [selectedClientes, setSelectedClientes] = useState<Set<string>>(new Set());
+    const [exporting, setExporting] = useState(false);
+    const [deleting, setDeleting] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [editingZona, setEditingZona] = useState<Zona | null>(null);
     const [formData, setFormData] = useState({
@@ -141,6 +145,99 @@ export default function ZonasClient({ initialZonas, clientesSemZona }: ZonasClie
         }
     };
 
+    // Funções para gerenciar seleção de clientes
+    const handleSelectCliente = (clienteId: string) => {
+        setSelectedClientes(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(clienteId)) {
+                newSet.delete(clienteId);
+            } else {
+                newSet.add(clienteId);
+            }
+            return newSet;
+        });
+    };
+
+    const handleSelectAll = () => {
+        if (selectedClientes.size === clientes.length) {
+            setSelectedClientes(new Set());
+        } else {
+            setSelectedClientes(new Set(clientes.map(c => c.id)));
+        }
+    };
+
+    const handleExportExcel = async () => {
+        setExporting(true);
+        try {
+            const result = await exportClientesSemZonaToExcel();
+            
+            if (result.success && result.data) {
+                // Converter base64 para Blob
+                const byteCharacters = atob(result.data);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                const blob = new Blob([byteArray], { 
+                    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+                });
+
+                // Criar link temporário para download
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = result.filename || `Clientes_Sem_Zona_${new Date().toISOString().split('T')[0]}.xlsx`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+
+                alert(`✅ Planilha exportada com sucesso!\n\n${result.count} cliente(s) exportado(s).`);
+            } else {
+                alert(`❌ Erro ao exportar planilha.\n\n${result.error || 'Erro desconhecido'}`);
+            }
+        } catch (error: any) {
+            console.error('Erro ao exportar:', error);
+            alert(`❌ Erro ao exportar: ${error.message || 'Erro desconhecido'}`);
+        } finally {
+            setExporting(false);
+        }
+    };
+
+    const handleDeleteSelected = async () => {
+        if (selectedClientes.size === 0) {
+            alert('⚠️ Selecione pelo menos um cliente para excluir.');
+            return;
+        }
+
+        const count = selectedClientes.size;
+        if (!confirm(`Tem certeza que deseja excluir ${count} cliente(s) selecionado(s)?\n\nEsta ação não pode ser desfeita!`)) {
+            return;
+        }
+
+        setDeleting(true);
+        try {
+            const result = await deleteMultipleRestaurants(Array.from(selectedClientes));
+            
+            if (result.success) {
+                // Remover clientes excluídos da lista
+                setClientes(prev => prev.filter(c => !selectedClientes.has(c.id)));
+                setSelectedClientes(new Set());
+                alert(`✅ ${result.deleted} cliente(s) excluído(s) com sucesso!`);
+                // Recarregar a página para atualizar os dados
+                window.location.reload();
+            } else {
+                alert(`❌ Erro ao excluir clientes.\n\n${result.error || 'Erro desconhecido'}`);
+            }
+        } catch (error: any) {
+            console.error('Erro ao excluir:', error);
+            alert(`❌ Erro ao excluir: ${error.message || 'Erro desconhecido'}`);
+        } finally {
+            setDeleting(false);
+        }
+    };
+
     const handleDelete = async (id: string) => {
         if (!confirm('Tem certeza que deseja excluir esta zona?')) return;
 
@@ -206,24 +303,76 @@ export default function ZonasClient({ initialZonas, clientesSemZona }: ZonasClie
                     </div>
                     <div className={styles.statContent}>
                         <div className={styles.statLabel}>Clientes Sem Zona</div>
-                        <div className={styles.statValue} style={{ color: '#f59e0b' }}>{clientesSemZona.length}</div>
+                        <div className={styles.statValue} style={{ color: '#f59e0b' }}>{clientes.length}</div>
                     </div>
                 </div>
             </div>
 
             {/* Clientes Sem Zona */}
-            {clientesSemZona.length > 0 && (
+            {clientes.length > 0 && (
                 <div className={styles.clientesSemZonaSection}>
                     <div className={styles.sectionHeader}>
                         <div>
                             <h2>⚠️ Clientes Sem Zona Configurada</h2>
-                            <p>Total de {clientesSemZona.length} cliente(s) que precisam ser alocados em uma zona</p>
+                            <p>Total de {clientes.length} cliente(s) que precisam ser alocados em uma zona</p>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                            <button
+                                onClick={handleExportExcel}
+                                disabled={exporting || clientes.length === 0}
+                                style={{
+                                    padding: '0.5rem 1rem',
+                                    background: '#10b981',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    cursor: exporting || clientes.length === 0 ? 'not-allowed' : 'pointer',
+                                    opacity: exporting || clientes.length === 0 ? 0.6 : 1,
+                                    fontWeight: '500',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.5rem',
+                                    fontSize: '0.875rem'
+                                }}
+                            >
+                                {exporting ? '⏳' : '📥'} {exporting ? 'Exportando...' : 'Exportar para Excel'}
+                            </button>
+                            {selectedClientes.size > 0 && (
+                                <button
+                                    onClick={handleDeleteSelected}
+                                    disabled={deleting}
+                                    style={{
+                                        padding: '0.5rem 1rem',
+                                        background: '#ef4444',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '6px',
+                                        cursor: deleting ? 'not-allowed' : 'pointer',
+                                        opacity: deleting ? 0.6 : 1,
+                                        fontWeight: '500',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.5rem',
+                                        fontSize: '0.875rem'
+                                    }}
+                                >
+                                    {deleting ? '⏳' : '🗑️'} {deleting ? 'Excluindo...' : `Excluir Selecionados (${selectedClientes.size})`}
+                                </button>
+                            )}
                         </div>
                     </div>
                     <div className={styles.clientesTableContainer}>
                         <table className={styles.clientesTable}>
                             <thead>
                                 <tr>
+                                    <th style={{ width: '40px' }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedClientes.size === clientes.length && clientes.length > 0}
+                                            onChange={handleSelectAll}
+                                            style={{ cursor: 'pointer' }}
+                                        />
+                                    </th>
                                     <th>Nome do Cliente</th>
                                     <th>Endereço</th>
                                     <th>Bairro</th>
@@ -236,8 +385,16 @@ export default function ZonasClient({ initialZonas, clientesSemZona }: ZonasClie
                                 </tr>
                             </thead>
                             <tbody>
-                                {clientesSemZona.map((cliente) => (
+                                {clientes.map((cliente) => (
                                     <tr key={cliente.id}>
+                                        <td>
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedClientes.has(cliente.id)}
+                                                onChange={() => handleSelectCliente(cliente.id)}
+                                                style={{ cursor: 'pointer' }}
+                                            />
+                                        </td>
                                         <td>
                                             <strong>{cliente.name}</strong>
                                         </td>

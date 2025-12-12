@@ -743,6 +743,159 @@ export async function seedZonasSorocaba() {
 }
 
 // Função para encontrar zona por CEP
+// Exportar clientes sem zona para Excel
+export async function exportClientesSemZonaToExcel() {
+    'use server';
+    
+    try {
+        const xlsx = await import('xlsx');
+        
+        // Buscar clientes sem zona
+        const clientes = await prisma.restaurant.findMany({
+            where: {
+                zonaId: null,
+            },
+            select: {
+                id: true,
+                name: true,
+                address: true,
+                status: true,
+                salesPotential: true,
+                createdAt: true,
+                seller: {
+                    select: {
+                        id: true,
+                        name: true,
+                    },
+                },
+            },
+            orderBy: {
+                createdAt: 'desc',
+            },
+        });
+
+        // Preparar dados para Excel (mesmo formato da importação)
+        const excelData = clientes.map((r: any) => {
+            const address = typeof r.address === 'string' ? JSON.parse(r.address) : r.address;
+            
+            return {
+                'Nome': r.name || '',
+                'Endereço': address?.street || address?.address || '',
+                'Bairro': address?.neighborhood || address?.bairro || '',
+                'Cidade': address?.city || address?.cidade || '',
+                'Estado': address?.state || address?.estado || '',
+                'CEP': address?.zip || address?.cep || address?.postal_code || '',
+                'Status': r.status || '',
+                'Potencial de Vendas': r.salesPotential || '',
+                'Executivo': r.seller?.name || 'Sem executivo',
+                'Data de Criação': r.createdAt ? new Date(r.createdAt).toLocaleDateString('pt-BR') : '',
+            };
+        });
+
+        // Criar workbook
+        const wb = xlsx.utils.book_new();
+        const ws = xlsx.utils.json_to_sheet(excelData);
+        
+        // Ajustar largura das colunas
+        const colWidths = [
+            { wch: 30 }, // Nome
+            { wch: 40 }, // Endereço
+            { wch: 20 }, // Bairro
+            { wch: 20 }, // Cidade
+            { wch: 10 }, // Estado
+            { wch: 12 }, // CEP
+            { wch: 15 }, // Status
+            { wch: 20 }, // Potencial
+            { wch: 20 }, // Executivo
+            { wch: 15 }, // Data
+        ];
+        ws['!cols'] = colWidths;
+        
+        xlsx.utils.book_append_sheet(wb, ws, 'Clientes Sem Zona');
+        
+        // Converter para buffer
+        const buffer = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
+        
+        // Converter para base64
+        const base64 = Buffer.from(buffer).toString('base64');
+        
+        return {
+            success: true,
+            data: base64,
+            filename: `Clientes_Sem_Zona_${new Date().toISOString().split('T')[0]}.xlsx`,
+            count: clientes.length
+        };
+    } catch (error: any) {
+        console.error('Erro ao exportar clientes sem zona:', error);
+        return {
+            success: false,
+            error: error.message || 'Erro ao exportar clientes sem zona'
+        };
+    }
+}
+
+// Excluir múltiplos restaurantes
+export async function deleteMultipleRestaurants(restaurantIds: string[]) {
+    'use server';
+    
+    try {
+        if (!restaurantIds || restaurantIds.length === 0) {
+            return {
+                success: false,
+                error: 'Nenhum restaurante selecionado'
+            };
+        }
+
+        const { prisma } = await import('@/lib/db');
+        
+        // Deletar dados relacionados primeiro
+        await prisma.comment.deleteMany({ 
+            where: { restaurantId: { in: restaurantIds } } 
+        });
+        await prisma.analysis.deleteMany({ 
+            where: { restaurantId: { in: restaurantIds } } 
+        });
+        await prisma.note.deleteMany({ 
+            where: { restaurantId: { in: restaurantIds } } 
+        });
+        await prisma.followUp.deleteMany({ 
+            where: { restaurantId: { in: restaurantIds } } 
+        });
+        await prisma.activityLog.deleteMany({ 
+            where: { restaurantId: { in: restaurantIds } } 
+        });
+        
+        // Deletar visitas relacionadas (se a tabela existir)
+        try {
+            await prisma.visit.deleteMany({ 
+                where: { restaurantId: { in: restaurantIds } } 
+            });
+        } catch (e) {
+            // Tabela visits pode não existir
+        }
+
+        // Deletar restaurantes
+        const deleted = await prisma.restaurant.deleteMany({
+            where: { id: { in: restaurantIds } }
+        });
+
+        revalidatePath('/admin/zonas');
+        revalidatePath('/clients');
+        
+        return {
+            success: true,
+            deleted: deleted.count,
+            message: `${deleted.count} restaurante(s) excluído(s) com sucesso`
+        };
+    } catch (error: any) {
+        console.error('Erro ao excluir restaurantes:', error);
+        return {
+            success: false,
+            error: error.message || 'Erro ao excluir restaurantes'
+        };
+    }
+}
+
 export async function findZonaByCep(cep: string): Promise<string | null> {
     try {
         const cleanedCep = cleanCep(cep);
