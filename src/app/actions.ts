@@ -2111,6 +2111,8 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
         
         // Adicionar dados dos restaurantes começando na linha 2 (A2)
         restaurants.forEach((r: any, index: number) => {
+            // Acessar codigoCliente de forma segura (pode não existir ainda no banco)
+            const codigoCliente = (r as any).codigoCliente || null;
             const address = typeof r.address === 'string' ? JSON.parse(r.address) : r.address;
             
             // Extrair CEP (tentar várias variações)
@@ -2197,8 +2199,9 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
             }
             if (columnMap['Código Cliente'] !== undefined) {
                 // Preencher com o código do cliente do banco de dados
-                // Usar codigoCliente da variável local (pode ser null se campo não existir)
-                newRow.getCell(columnMap['Código Cliente']).value = codigoCliente || '';
+                // Usar codigoCliente da variável local (pode ser null se campo não existir ainda)
+                const codigoValue = codigoCliente !== null && codigoCliente !== undefined ? String(codigoCliente) : '';
+                newRow.getCell(columnMap['Código Cliente']).value = codigoValue;
             }
             if (columnMap['Clientes'] !== undefined) {
                 newRow.getCell(columnMap['Clientes']).value = r.name || '';
