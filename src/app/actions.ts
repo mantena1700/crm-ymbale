@@ -1989,10 +1989,12 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
             headerRow = 1;
         }
         
-        // Limpar dados de exemplo (manter apenas o cabeçalho)
+        // Limpar dados de exemplo (manter apenas o cabeçalho na linha 1)
         // Deletar todas as linhas após o cabeçalho até o final
+        // Os dados começarão na linha 2 (A2)
         const lastRow = worksheet.rowCount;
         if (lastRow > headerRow) {
+            // Deletar todas as linhas após o cabeçalho
             worksheet.spliceRows(headerRow + 1, lastRow - headerRow);
         }
         
@@ -2076,7 +2078,8 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
             
             const bairro = address?.neighborhood || address?.bairro || '';
             
-            // Criar nova linha após o cabeçalho
+            // Criar nova linha após o cabeçalho (linha 2, 3, 4, etc.)
+            // A primeira linha de dados será na linha 2 (A2)
             const newRow = worksheet.addRow([]);
             
             // Preencher dados nas colunas corretas
