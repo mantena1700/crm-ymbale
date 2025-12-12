@@ -2064,10 +2064,12 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
         }
         
         // Buscar restaurantes selecionados - usar SQL direto se o campo existir, senão usar include
+        // IMPORTANTE: Buscar DEPOIS de gerar os códigos para garantir que os códigos estejam disponíveis
         let restaurants: any[];
         
         if (codigoClienteFieldExists) {
             // Usar SQL direto para garantir que codigoCliente seja retornado
+            // Buscar novamente para pegar os códigos recém-gerados
             const restaurantsResult = await prisma.$queryRaw<Array<{
                 id: string;
                 name: string;
@@ -2096,6 +2098,24 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
                 address: typeof r.address === 'string' ? JSON.parse(r.address) : r.address,
                 seller: r.seller_name ? { name: r.seller_name } : null
             }));
+            
+            console.log(`\n📊 Total de restaurantes encontrados: ${restaurants.length}`);
+            const withCode = restaurants.filter((r: any) => r.codigoCliente !== null && r.codigoCliente !== undefined);
+            const withoutCode = restaurants.filter((r: any) => !r.codigoCliente);
+            console.log(`📊 Restaurantes COM código: ${withCode.length}`);
+            console.log(`📊 Restaurantes SEM código: ${withoutCode.length}`);
+            
+            if (withoutCode.length > 0) {
+                console.warn(`\n⚠️ ATENÇÃO: ${withoutCode.length} restaurantes ainda não têm código!`);
+                console.warn(`   IDs sem código:`, withoutCode.map((r: any) => r.id).slice(0, 5).join(', '));
+            }
+            
+            if (withCode.length > 0) {
+                console.log(`\n✅ Exemplos de códigos gerados:`);
+                withCode.slice(0, 5).forEach((r: any) => {
+                    console.log(`   - ${r.name}: código ${r.codigoCliente}`);
+                });
+            }
         } else {
             // Campo não existe, usar include sem codigoCliente
             restaurants = await prisma.restaurant.findMany({
@@ -2119,12 +2139,9 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
                 ...r,
                 codigoCliente: null
             }));
-        }
-        
-        console.log(`📊 Total de restaurantes encontrados: ${restaurants.length}`);
-        if (codigoClienteFieldExists) {
-            console.log(`📊 Restaurantes com código: ${restaurants.filter((r: any) => r.codigoCliente).length}`);
-            console.log(`📊 Restaurantes sem código: ${restaurants.filter((r: any) => !r.codigoCliente).length}`);
+            
+            console.log(`\n⚠️ Campo codigo_cliente não existe no banco. Todos os códigos serão vazios.`);
+            console.log(`📊 Total de restaurantes encontrados: ${restaurants.length}`);
         }
 
         // Carregar o template original
