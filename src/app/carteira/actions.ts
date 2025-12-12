@@ -212,9 +212,10 @@ export async function saveWeeklySchedule(
     restaurantId: string | null
 ) {
     try {
-        const [hours, minutes] = time.split(':');
+        // Usar meio-dia como hora padrão (apenas para armazenar a data)
+        // O horário não será usado na visualização
         const scheduledDateTime = new Date(date);
-        scheduledDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+        scheduledDateTime.setHours(12, 0, 0, 0); // Meio-dia padrão
 
         if (restaurantId) {
             // Verificar se já existe agendamento neste horário para este restaurante
@@ -456,19 +457,31 @@ export async function getWeeklySchedule(sellerId: string, weekStart: string) {
             }
         });
 
-        return followUps.map(f => {
-            const scheduledDate = new Date(f.scheduledDate);
-            const hours = scheduledDate.getHours().toString().padStart(2, '0');
-            const minutes = scheduledDate.getMinutes().toString().padStart(2, '0');
-            
-            return {
-                id: f.id,
-                restaurantId: f.restaurantId,
-                restaurantName: f.restaurant.name,
-                time: `${hours}:${minutes}`,
-                date: scheduledDate.toISOString().split('T')[0]
-            };
+        // Agrupar por data e atribuir índices de visita (1-8)
+        const visitsByDate: { [date: string]: typeof followUps } = {};
+        followUps.forEach(f => {
+            const date = new Date(f.scheduledDate).toISOString().split('T')[0];
+            if (!visitsByDate[date]) visitsByDate[date] = [];
+            visitsByDate[date].push(f);
         });
+        
+        // Converter para slots com índices de visita
+        const slots: Array<{ id: string; restaurantId: string; restaurantName: string; time: string; date: string; visitIndex?: number }> = [];
+        Object.keys(visitsByDate).forEach(date => {
+            visitsByDate[date].forEach((f, index) => {
+                const visitIndex = index + 1; // 1 a 8
+                slots.push({
+                    id: f.id,
+                    restaurantId: f.restaurantId,
+                    restaurantName: f.restaurant.name,
+                    time: String(visitIndex), // Usar índice como time para compatibilidade
+                    date: date,
+                    visitIndex: visitIndex
+                });
+            });
+        });
+        
+        return slots;
     } catch (error) {
         console.error('Erro ao buscar agendamentos semanais:', error);
         return [];
@@ -995,9 +1008,10 @@ export async function exportWeeklyScheduleToAgendamentoTemplate(
             
             const scheduledDate = new Date(followUp.scheduledDate);
             
-            // Calcular data/hora de conclusão (assumindo 1 hora de duração)
-            const endDateObj = new Date(scheduledDate);
-            endDateObj.setHours(endDateObj.getHours() + 1);
+            // Criar data apenas (sem horário) para exportação
+            // Usar meio-dia como hora padrão para evitar problemas de timezone
+            const dateOnly = new Date(scheduledDate);
+            dateOnly.setHours(12, 0, 0, 0); // Meio-dia para garantir que a data seja preservada
             
             // Preencher campos
             if (columnMap['Código Cliente'] !== undefined) {
@@ -1021,15 +1035,16 @@ export async function exportWeeklyScheduleToAgendamentoTemplate(
                 newRow.getCell(columnMap['Contato']).value = ''; // Deixar vazio ou buscar do banco
             }
             if (columnMap['Data Início'] !== undefined) {
-                newRow.getCell(columnMap['Data Início']).value = scheduledDate;
+                // Preencher apenas com a data (sem horário visível)
+                newRow.getCell(columnMap['Data Início']).value = dateOnly;
             }
             if (columnMap['Hora Início'] !== undefined) {
                 // Deixar em branco
                 newRow.getCell(columnMap['Hora Início']).value = '';
             }
             if (columnMap['Data Conclusão'] !== undefined) {
-                // Usar a mesma data de início
-                newRow.getCell(columnMap['Data Conclusão']).value = scheduledDate;
+                // Usar a mesma data de início (sem horário)
+                newRow.getCell(columnMap['Data Conclusão']).value = dateOnly;
             }
             if (columnMap['Hora Conclusão'] !== undefined) {
                 // Deixar em branco

@@ -17,8 +17,9 @@ interface ScheduledSlot {
     id: string;
     restaurantId: string;
     restaurantName: string;
-    time: string;
+    time: string; // Mantido para compatibilidade, mas não será usado para horário
     date: string;
+    visitIndex?: number; // Índice da visita (1-8)
 }
 
 interface WeeklyCalendarProps {
@@ -28,14 +29,9 @@ interface WeeklyCalendarProps {
     onAutoFill?: (schedule: any[]) => void;
 }
 
-// Horários disponíveis: 8 prospecções das 08:00 às 18:00
-const TIME_SLOTS = [
-    '08:00', '09:15', '10:30', '11:45',
-    '13:00', '14:15', '15:30', '16:45'
-];
-
-const MORNING_SLOTS = ['08:00', '09:15', '10:30', '11:45'];
-const AFTERNOON_SLOTS = ['13:00', '14:15', '15:30', '16:45'];
+// 8 visitas por dia (sem horários específicos)
+// Usar índices de 1 a 8 para identificar as visitas
+const VISIT_SLOTS = Array.from({ length: 8 }, (_, i) => i + 1);
 
 // Função para normalizar salesPotential
 const normalizePotential = (potential: string | null | undefined): string => {
@@ -97,14 +93,22 @@ export default function WeeklyCalendar({ restaurants, sellerId, weekStart }: Wee
         loadSchedule();
     }, [loadSchedule]);
 
-    // Verificar se um slot está ocupado
-    const isSlotOccupied = (date: string, time: string) => {
-        return scheduledSlots.some(slot => slot.date === date && slot.time === time);
+    // Verificar se um slot está ocupado (por data e índice de visita)
+    const isSlotOccupied = (date: string, visitIndex: number) => {
+        return scheduledSlots.some(slot => {
+            if (slot.date !== date) return false;
+            // Compatibilidade: verificar por visitIndex ou por time convertido
+            return slot.visitIndex === visitIndex || parseInt(slot.time || '0') === visitIndex;
+        });
     };
 
-    // Obter restaurante em um slot
-    const getSlotRestaurant = (date: string, time: string) => {
-        return scheduledSlots.find(slot => slot.date === date && slot.time === time);
+    // Obter restaurante em um slot (por data e índice de visita)
+    const getSlotRestaurant = (date: string, visitIndex: number) => {
+        return scheduledSlots.find(slot => {
+            if (slot.date !== date) return false;
+            // Compatibilidade: verificar por visitIndex ou por time convertido
+            return slot.visitIndex === visitIndex || parseInt(slot.time || '0') === visitIndex;
+        });
     };
 
     // Obter restaurante por ID
@@ -125,15 +129,15 @@ export default function WeeklyCalendar({ restaurants, sellerId, weekStart }: Wee
         e.dataTransfer.dropEffect = 'move';
     };
 
-    // Handle drop
-    const handleDrop = async (e: React.DragEvent, date: string, time: string) => {
+    // Handle drop (agora usa visitIndex ao invés de time)
+    const handleDrop = async (e: React.DragEvent, date: string, visitIndex: number) => {
         e.preventDefault();
         
         if (!draggedRestaurant) return;
 
         // Verificar se o slot já está ocupado
-        if (isSlotOccupied(date, time)) {
-            alert('Este horário já está ocupado!');
+        if (isSlotOccupied(date, visitIndex)) {
+            alert('Esta visita já está ocupada!');
             return;
         }
 
@@ -142,22 +146,23 @@ export default function WeeklyCalendar({ restaurants, sellerId, weekStart }: Wee
             slot => !(slot.restaurantId === draggedRestaurant.id)
         );
 
-        // Adicionar ao novo slot
+        // Adicionar ao novo slot (usar visitIndex como time para compatibilidade)
         const newSlot: ScheduledSlot = {
-            id: `${date}-${time}-${draggedRestaurant.id}`,
+            id: `${date}-${visitIndex}-${draggedRestaurant.id}`,
             restaurantId: draggedRestaurant.id,
             restaurantName: draggedRestaurant.name,
-            time,
-            date
+            time: String(visitIndex), // Usar índice como string para compatibilidade
+            date,
+            visitIndex
         };
 
         newSlots.push(newSlot);
         setScheduledSlots(newSlots);
 
-        // Salvar no banco
+        // Salvar no banco (usar hora padrão 12:00 para evitar problemas de timezone)
         setLoading(true);
         try {
-            await saveWeeklySchedule(sellerId, date, time, draggedRestaurant.id);
+            await saveWeeklySchedule(sellerId, date, '12:00', draggedRestaurant.id);
         } catch (error) {
             console.error('Erro ao salvar agendamento:', error);
             alert('Erro ao salvar agendamento');
@@ -170,18 +175,27 @@ export default function WeeklyCalendar({ restaurants, sellerId, weekStart }: Wee
         setDraggedRestaurant(null);
     };
 
-    // Remover agendamento
-    const handleRemoveSlot = async (date: string, time: string) => {
+    // Remover agendamento (agora usa visitIndex)
+    const handleRemoveSlot = async (date: string, visitIndex: number) => {
         if (!confirm('Deseja remover este agendamento?')) return;
 
-        const newSlots = scheduledSlots.filter(
-            slot => !(slot.date === date && slot.time === time)
-        );
+        const newSlots = scheduledSlots.filter(slot => {
+            if (slot.date !== date) return true;
+            // Remover se for o mesmo visitIndex
+            return !(slot.visitIndex === visitIndex || parseInt(slot.time || '0') === visitIndex);
+        });
         setScheduledSlots(newSlots);
 
         setLoading(true);
         try {
-            await saveWeeklySchedule(sellerId, date, time, null);
+            // Buscar o slot para obter o restaurante e remover
+            const slotToRemove = scheduledSlots.find(slot => {
+                if (slot.date !== date) return false;
+                return slot.visitIndex === visitIndex || parseInt(slot.time || '0') === visitIndex;
+            });
+            if (slotToRemove) {
+                await saveWeeklySchedule(sellerId, date, '12:00', null);
+            }
         } catch (error) {
             console.error('Erro ao remover agendamento:', error);
             setScheduledSlots(scheduledSlots);
@@ -190,12 +204,10 @@ export default function WeeklyCalendar({ restaurants, sellerId, weekStart }: Wee
         }
     };
 
-    // Horários filtrados por período
-    const filteredTimeSlots = useMemo(() => {
-        if (periodFilter === 'morning') return MORNING_SLOTS;
-        if (periodFilter === 'afternoon') return AFTERNOON_SLOTS;
-        return TIME_SLOTS;
-    }, [periodFilter]);
+    // Slots de visita (8 por dia, sem horários)
+    const visitSlots = useMemo(() => {
+        return VISIT_SLOTS;
+    }, []);
 
     // Restaurantes disponíveis (não agendados) e filtrados
     const availableRestaurants = useMemo(() => {
@@ -211,9 +223,9 @@ export default function WeeklyCalendar({ restaurants, sellerId, weekStart }: Wee
     }, [restaurants, scheduledSlots, potentialFilter]);
 
     // Verificar se um slot deve ser mostrado (filtro de vazios)
-    const shouldShowSlot = (date: string, time: string) => {
+    const shouldShowSlot = (date: string, visitIndex: number) => {
         if (!hideEmptySlots) return true;
-        return isSlotOccupied(date, time);
+        return isSlotOccupied(date, visitIndex);
     };
 
     // Obter badge de prioridade (normalizado)
@@ -395,10 +407,10 @@ export default function WeeklyCalendar({ restaurants, sellerId, weekStart }: Wee
             <div className={`${styles.calendar} ${styles[`view${calendarViewMode.charAt(0).toUpperCase() + calendarViewMode.slice(1)}`]}`}>
                 <div className={styles.calendarHeader}>
                     <div className={styles.timeColumn}>
-                        <div className={styles.timeHeader}>Horário</div>
-                        {filteredTimeSlots.map(time => (
-                            <div key={time} className={styles.timeSlot}>
-                                {time}
+                        <div className={styles.timeHeader}>Visita</div>
+                        {visitSlots.map(visitIndex => (
+                            <div key={visitIndex} className={styles.timeSlot}>
+                                {visitIndex}
                             </div>
                         ))}
                     </div>
@@ -410,20 +422,20 @@ export default function WeeklyCalendar({ restaurants, sellerId, weekStart }: Wee
                                 <span className={styles.dayNum}>{day.dayNum}</span>
                                 <span className={styles.dayMonth}>{day.month}</span>
                             </div>
-                            {filteredTimeSlots.map(time => {
-                                if (!shouldShowSlot(day.date, time)) return null;
-                                const slot = getSlotRestaurant(day.date, time);
+                            {visitSlots.map(visitIndex => {
+                                if (!shouldShowSlot(day.date, visitIndex)) return null;
+                                const slot = getSlotRestaurant(day.date, visitIndex);
                                 const isOccupied = !!slot;
                                 
                                 return (
                                     <div
-                                        key={`${day.date}-${time}`}
+                                        key={`${day.date}-${visitIndex}`}
                                         className={`${styles.calendarSlot} ${isOccupied ? styles.occupied : styles.empty}`}
                                         onDragOver={handleDragOver}
-                                        onDrop={(e) => handleDrop(e, day.date, time)}
+                                        onDrop={(e) => handleDrop(e, day.date, visitIndex)}
                                         onClick={() => {
                                             if (isOccupied) {
-                                                setSelectedSlot({ date: day.date, time });
+                                                setSelectedSlot({ date: day.date, time: String(visitIndex) });
                                             }
                                         }}
                                     >
@@ -486,7 +498,7 @@ export default function WeeklyCalendar({ restaurants, sellerId, weekStart }: Wee
                                                                 className={styles.removeBtn}
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
-                                                                    handleRemoveSlot(day.date, time);
+                                                                    handleRemoveSlot(day.date, visitIndex);
                                                                 }}
                                                                 title="Remover"
                                                             >
