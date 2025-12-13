@@ -732,18 +732,22 @@ export default function CarteiraClient({ initialData }: Props) {
                     </div>
                     <div className={styles.sellerStats}>
                         <div className={styles.sellerStat}>
+                            <span className={styles.statIcon}>👥</span>
                             <span className={styles.statValue}>{stats.total}</span>
                             <span className={styles.statLabel}>Clientes</span>
                         </div>
                         <div className={styles.sellerStat}>
+                            <span className={styles.statIcon}>🔥</span>
                             <span className={styles.statValue}>{stats.altissimo + stats.alto}</span>
                             <span className={styles.statLabel}>Hot Leads</span>
                         </div>
                         <div className={styles.sellerStat}>
+                            <span className={styles.statIcon}>📅</span>
                             <span className={styles.statValue}>{sellerFollowUps.length}</span>
                             <span className={styles.statLabel}>Follow-ups</span>
                         </div>
                         <div className={styles.sellerStat}>
+                            <span className={styles.statIcon}>📋</span>
                             <span className={styles.statValue}>{weekPlan.length}</span>
                             <span className={styles.statLabel}>Plano Semana</span>
                         </div>
@@ -1240,39 +1244,55 @@ export default function CarteiraClient({ initialData }: Props) {
                             <h2>📅 Calendário de Prospecção Semanal</h2>
                             <p>Arraste os restaurantes para os horários disponíveis (8 prospecções por dia, das 08:00 às 18:00)</p>
                         </div>
-                        <div className={styles.weekControls}>
+                    </div>
+
+                    {/* Barra de Ações Destacada */}
+                    <div className={styles.actionBar}>
+                        <div className={styles.primaryActions}>
                             <button
-                                className={styles.autoFillBtn}
+                                className={styles.actionBtnPrimary}
                                 onClick={handleIntelligentAutoFill}
                                 disabled={loading || carteiraRestaurants.length === 0}
                                 title="Preencher automaticamente a semana priorizando os melhores restaurantes"
                             >
-                                {loading ? '⏳ Gerando...' : '🤖 Preenchimento Inteligente'}
+                                <span className={styles.actionIcon}>🤖</span>
+                                <span className={styles.actionText}>
+                                    {loading ? '⏳ Gerando...' : 'Preenchimento Inteligente'}
+                                </span>
                             </button>
                             <button
-                                className={styles.checkmobBtn}
+                                className={styles.actionBtnSecondary}
                                 onClick={handleExportToCheckmob}
                                 disabled={true}
                                 title="Em breve: Exportar para Checkmob"
                             >
-                                📱 Importar para Checkmob
+                                <span className={styles.actionIcon}>📱</span>
+                                <span className={styles.actionText}>Importar para Checkmob</span>
                             </button>
                             <button
-                                className={styles.excelBtn}
+                                className={styles.actionBtnSuccess}
                                 onClick={handleExportExcel}
                                 disabled={loading}
                                 title="Exportar agenda semanal para planilha Excel profissional"
                             >
-                                {loading ? '⏳ Gerando...' : '📊 Exportar Excel'}
+                                <span className={styles.actionIcon}>📊</span>
+                                <span className={styles.actionText}>
+                                    {loading ? '⏳ Gerando...' : 'Exportar Excel'}
+                                </span>
                             </button>
                             <button
-                                className={styles.checkmobBtn}
+                                className={styles.actionBtnPurple}
                                 onClick={handleExportAgendamento}
                                 disabled={agendamentoExporting}
                                 title="Exportar agenda semanal para template de agendamento"
                             >
-                                {agendamentoExporting ? '⏳ Exportando...' : '📅 Exportar Agendamento'}
+                                <span className={styles.actionIcon}>📅</span>
+                                <span className={styles.actionText}>
+                                    {agendamentoExporting ? '⏳ Exportando...' : 'Exportar Agendamento'}
+                                </span>
                             </button>
+                        </div>
+                        <div className={styles.secondaryActions}>
                             <div className={styles.weekViewToggle}>
                                 <button
                                     className={`${styles.viewToggleBtn} ${weekViewMode === 'calendar' ? styles.active : ''}`}

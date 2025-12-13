@@ -177,35 +177,50 @@
     min-width: 200px;
 }
 
-/* Seller Card */
+/* Seller Card - Redesign Minimalista */
 .sellerCard {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: var(--space-4);
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
-    border: 1px solid rgba(99, 102, 241, 0.2);
-    border-radius: var(--radius-xl);
-    flex-wrap: wrap;
-    gap: var(--space-4);
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: 1.5rem;
+    background: #1e293b;
+    border: 1px solid rgba(51, 65, 85, 0.5);
+    border-radius: 16px;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    margin-bottom: 2rem;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sellerCard:hover {
+    border-color: rgba(59, 130, 246, 0.4);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
 }
 
 .sellerInfo {
     display: flex;
     align-items: center;
-    gap: var(--space-4);
+    gap: 1rem;
+    position: relative;
+    z-index: 1;
 }
 
 .sellerAvatar {
-    width: 72px;
-    height: 72px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--primary), var(--accent));
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
-    border: 3px solid rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(59, 130, 246, 0.3);
+    flex-shrink: 0;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sellerAvatar:hover {
+    transform: scale(1.02);
+    border-color: rgba(59, 130, 246, 0.5);
 }
 
 .sellerAvatar img {
@@ -215,39 +230,52 @@
 }
 
 .sellerAvatar span {
-    font-size: 2rem;
+    font-size: 1.5rem;
     font-weight: 700;
     color: white;
 }
 
+.sellerDetails {
+    flex: 1;
+    min-width: 0;
+}
+
 .sellerDetails h2 {
-    font-size: var(--text-xl);
+    font-size: 1.25rem;
     font-weight: 700;
-    color: var(--foreground);
-    margin: 0;
+    color: #f8fafc;
+    margin: 0 0 0.25rem 0;
+    letter-spacing: -0.3px;
 }
 
 .sellerDetails p {
-    color: var(--text-muted);
-    font-size: var(--text-sm);
-    margin: var(--space-1) 0;
+    color: #cbd5e1;
+    font-size: 0.875rem;
+    font-weight: 400;
+    margin: 0;
 }
 
 .sellerRegions {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-1);
-    margin-top: var(--space-2);
+    gap: 0.5rem;
+    margin-top: 0.75rem;
 }
 
 .regionTag {
-    padding: 4px 10px;
-    background: rgba(99, 102, 241, 0.2);
-    border: 1px solid rgba(99, 102, 241, 0.3);
-    border-radius: 20px;
-    font-size: 11px;
-    color: var(--primary);
-    font-weight: 600;
+    padding: 0.375rem 0.75rem;
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    border-radius: 8px;
+    font-size: 0.75rem;
+    color: #93c5fd;
+    font-weight: 500;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.regionTag:hover {
+    background: rgba(59, 130, 246, 0.15);
+    border-color: rgba(59, 130, 246, 0.3);
 }
 
 .neighborhoodTag {
@@ -278,33 +306,52 @@
 }
 
 .sellerStats {
-    display: flex;
-    gap: var(--space-5);
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(51, 65, 85, 0.5);
 }
 
 .sellerStat {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    padding: var(--space-3) var(--space-4);
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 1rem;
     background: rgba(15, 23, 42, 0.4);
-    border-radius: var(--radius-lg);
-    min-width: 90px;
+    border: 1px solid rgba(51, 65, 85, 0.5);
+    border-radius: 12px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sellerStat:hover {
+    border-color: rgba(59, 130, 246, 0.4);
+    background: rgba(15, 23, 42, 0.6);
+    transform: translateY(-2px);
+}
+
+.sellerStat .statIcon {
+    font-size: 1.25rem;
+    opacity: 0.8;
+    margin-bottom: 0.25rem;
 }
 
 .sellerStat .statValue {
-    font-size: var(--text-2xl);
-    font-weight: 800;
-    background: linear-gradient(135deg, #fff, #a5b4fc);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #f8fafc;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.5px;
 }
 
 .sellerStat .statLabel {
-    font-size: var(--text-xs);
-    color: var(--text-muted);
-    margin-top: 4px;
+    font-size: 0.75rem;
+    color: #94a3b8;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 /* Tabs */
@@ -813,6 +860,134 @@
 
 .excelBtn:hover:not(:disabled) {
     box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+}
+
+/* Barra de Ações - Design Minimalista */
+.actionBar {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1.25rem;
+    background: #1e293b;
+    border: 1px solid rgba(51, 65, 85, 0.5);
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+}
+
+.primaryActions {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.secondaryActions {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    flex-wrap: wrap;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(51, 65, 85, 0.5);
+}
+
+.actionBtnPrimary,
+.actionBtnSecondary,
+.actionBtnSuccess,
+.actionBtnPurple {
+    padding: 0.625rem 1rem;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    white-space: nowrap;
+}
+
+.actionIcon {
+    font-size: 1rem;
+    line-height: 1;
+}
+
+.actionText {
+    font-weight: 600;
+}
+
+.actionBtnPrimary {
+    background: #3b82f6;
+    color: white;
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+
+.actionBtnPrimary:hover:not(:disabled) {
+    background: #2563eb;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+}
+
+.actionBtnPrimary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.actionBtnPrimary:disabled .actionIcon,
+.actionBtnSuccess:disabled .actionIcon,
+.actionBtnPurple:disabled .actionIcon {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.actionBtnSecondary {
+    background: rgba(139, 92, 246, 0.2);
+    color: #a78bfa;
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.actionBtnSuccess {
+    background: #10b981;
+    color: white;
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+
+.actionBtnSuccess:hover:not(:disabled) {
+    background: #059669;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+}
+
+.actionBtnSuccess:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.actionBtnPurple {
+    background: #a855f7;
+    color: white;
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+
+.actionBtnPurple:hover:not(:disabled) {
+    background: #9333ea;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+}
+
+.actionBtnPurple:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
 }
 
 .weekViewToggle {

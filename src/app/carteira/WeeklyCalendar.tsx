@@ -65,6 +65,7 @@ export default function WeeklyCalendar({ restaurants, sellerId, weekStart }: Wee
     const [hideEmptySlots, setHideEmptySlots] = useState(false);
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [selectedSlots, setSelectedSlots] = useState<Set<string>>(new Set()); // IDs dos slots selecionados
+    const [restaurantSearch, setRestaurantSearch] = useState(''); // Busca de restaurantes
 
     // Gerar dias da semana
     const weekDays = useMemo(() => {
@@ -328,8 +329,18 @@ export default function WeeklyCalendar({ restaurants, sellerId, weekStart }: Wee
             filtered = filtered.filter(r => normalizePotential(r.salesPotential) === potentialFilter);
         }
         
+        // Filtrar por busca
+        if (restaurantSearch.trim()) {
+            const search = restaurantSearch.toLowerCase().trim();
+            filtered = filtered.filter(r => 
+                r.name.toLowerCase().includes(search) ||
+                r.address?.neighborhood?.toLowerCase().includes(search) ||
+                r.address?.city?.toLowerCase().includes(search)
+            );
+        }
+        
         return filtered;
-    }, [restaurants, scheduledSlots, potentialFilter]);
+    }, [restaurants, scheduledSlots, potentialFilter, restaurantSearch]);
 
     // Verificar se um slot deve ser mostrado (filtro de vazios)
     const shouldShowSlot = (date: string, visitIndex: number) => {
@@ -426,20 +437,31 @@ export default function WeeklyCalendar({ restaurants, sellerId, weekStart }: Wee
                             <button
                                 className={`${styles.viewToggleBtn} ${restaurantsViewMode === 'cards' ? styles.active : ''}`}
                                 onClick={() => setRestaurantsViewMode('cards')}
-                                title="Cards"
+                                title="Visualização em cards"
                             >
                                 ▦
                             </button>
                             <button
                                 className={`${styles.viewToggleBtn} ${restaurantsViewMode === 'list' ? styles.active : ''}`}
                                 onClick={() => setRestaurantsViewMode('list')}
-                                title="Lista"
+                                title="Visualização em lista"
                             >
                                 ☰
                             </button>
                         </div>
                     )}
                 </div>
+                {!sidebarCollapsed && (
+                    <div className={styles.restaurantSearch}>
+                        <input
+                            type="text"
+                            placeholder="🔍 Buscar restaurante, bairro ou cidade..."
+                            value={restaurantSearch}
+                            onChange={(e) => setRestaurantSearch(e.target.value)}
+                            className={styles.searchInput}
+                        />
+                    </div>
+                )}
                 {sidebarCollapsed ? null : availableRestaurants.length === 0 ? (
                     <p className={styles.emptyMessage}>Todos os restaurantes estão agendados</p>
                 ) : restaurantsViewMode === 'cards' ? (
@@ -452,6 +474,7 @@ export default function WeeklyCalendar({ restaurants, sellerId, weekStart }: Wee
                                     className={styles.restaurantCard}
                                     draggable
                                     onDragStart={(e) => handleDragStart(e, restaurant)}
+                                    title={`${restaurant.name}\n📍 ${restaurant.address?.neighborhood || 'N/D'}, ${restaurant.address?.city || ''}\n⭐ ${restaurant.rating?.toFixed(1) || 'N/D'} | ${restaurant.status || 'A Analisar'}\n${priority.label} - Arraste para agendar`}
                                 >
                                     <div className={styles.restaurantHeader}>
                                         <span className={`${styles.priorityBadge} ${priority.class}`}>
@@ -463,6 +486,18 @@ export default function WeeklyCalendar({ restaurants, sellerId, weekStart }: Wee
                                         <span>📍 {restaurant.address?.neighborhood || 'N/D'}</span>
                                         <span>⭐ {restaurant.rating?.toFixed(1) || 'N/D'}</span>
                                     </div>
+                                    {restaurant.status && (
+                                        <div className={styles.restaurantStatus}>
+                                            <span className={styles.statusIndicator} style={{
+                                                background: restaurant.status === 'Fechado' ? '#22c55e' :
+                                                            restaurant.status === 'Negociação' ? '#8b5cf6' :
+                                                            restaurant.status === 'Contatado' ? '#3b82f6' :
+                                                            restaurant.status === 'Qualificado' ? '#10b981' : '#6366f1'
+                                            }}>
+                                                {restaurant.status}
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
                             );
                         })}
@@ -474,6 +509,7 @@ export default function WeeklyCalendar({ restaurants, sellerId, weekStart }: Wee
                                 <tr>
                                     <th>Restaurante</th>
                                     <th>Bairro</th>
+                                    <th>Status</th>
                                     <th>Avaliação</th>
                                     <th>Potencial</th>
                                 </tr>
@@ -481,6 +517,15 @@ export default function WeeklyCalendar({ restaurants, sellerId, weekStart }: Wee
                             <tbody>
                                 {availableRestaurants.map(restaurant => {
                                     const priority = getPriorityBadge(restaurant.salesPotential);
+                                    const statusColors: Record<string, string> = {
+                                        'Fechado': '#22c55e',
+                                        'Negociação': '#8b5cf6',
+                                        'Contatado': '#3b82f6',
+                                        'Qualificado': '#10b981',
+                                        'A Analisar': '#6366f1'
+                                    };
+                                    const statusColor = statusColors[restaurant.status || 'A Analisar'] || '#6366f1';
+                                    
                                     return (
                                         <tr
                                             key={restaurant.id}
@@ -497,6 +542,25 @@ export default function WeeklyCalendar({ restaurants, sellerId, weekStart }: Wee
                                                 </div>
                                             </td>
                                             <td>{restaurant.address?.neighborhood || 'N/D'}</td>
+                                            <td>
+                                                <span 
+                                                    className={styles.statusBadge} 
+                                                    style={{
+                                                        background: statusColor,
+                                                        color: 'white',
+                                                        padding: '5px 12px',
+                                                        borderRadius: '12px',
+                                                        fontSize: '11px',
+                                                        fontWeight: '700',
+                                                        display: 'inline-block',
+                                                        boxShadow: `0 3px 10px ${statusColor}60`,
+                                                        border: `1px solid ${statusColor}80`
+                                                    }}
+                                                    title={`Status: ${restaurant.status || 'A Analisar'}`}
+                                                >
+                                                    {restaurant.status || 'A Analisar'}
+                                                </span>
+                                            </td>
                                             <td>⭐ {restaurant.rating?.toFixed(1) || 'N/D'}</td>
                                             <td>
                                                 <span className={`${styles.priorityBadge} ${priority.class}`}>
@@ -573,6 +637,35 @@ export default function WeeklyCalendar({ restaurants, sellerId, weekStart }: Wee
                                 <span className={styles.dayName}>{day.dayName}</span>
                                 <span className={styles.dayNum}>{day.dayNum}</span>
                                 <span className={styles.dayMonth}>{day.month}</span>
+                                {(() => {
+                                    const daySlots = visitSlots.filter(vi => {
+                                        const slot = getSlotRestaurant(day.date, vi);
+                                        return !!slot;
+                                    });
+                                    const progress = daySlots.length;
+                                    const maxSlots = 8;
+                                    const progressPercent = (progress / maxSlots) * 100;
+                                    return (
+                                        <div className={styles.dayProgress}>
+                                            <div className={styles.progressBar}>
+                                                <div 
+                                                    className={styles.progressFill} 
+                                                    style={{ 
+                                                        width: `${progressPercent}%`,
+                                                        background: progress === maxSlots 
+                                                            ? 'linear-gradient(90deg, #10b981, #059669)' 
+                                                            : progress >= maxSlots / 2 
+                                                                ? 'linear-gradient(90deg, #f59e0b, #d97706)' 
+                                                                : 'linear-gradient(90deg, #ef4444, #dc2626)'
+                                                    }}
+                                                />
+                                            </div>
+                                            <span className={styles.progressText}>
+                                                {progress}/{maxSlots}
+                                            </span>
+                                        </div>
+                                    );
+                                })()}
                             </div>
                             {visitSlots.map(visitIndex => {
                                 if (!shouldShowSlot(day.date, visitIndex)) return null;
@@ -593,7 +686,13 @@ export default function WeeklyCalendar({ restaurants, sellerId, weekStart }: Wee
                                                 toggleSlotSelection(slot.id, isFixed);
                                             }
                                         }}
-                                        title={isFixed ? 'Cliente Fixo (não pode ser removido)' : isSelected ? 'Clique para desmarcar' : 'Clique para selecionar'}
+                                        title={
+                                            isFixed 
+                                                ? `📌 Cliente Fixo\n${slot.restaurantName}\nNão pode ser removido` 
+                                                : isOccupied 
+                                                    ? `${slot.restaurantName}\n📍 ${getRestaurantById(slot.restaurantId)?.address?.neighborhood || 'N/D'}\n⭐ ${getRestaurantById(slot.restaurantId)?.rating?.toFixed(1) || 'N/D'}\n${isSelected ? '✓ Selecionado - Clique para desmarcar' : 'Clique para selecionar'}`
+                                                    : 'Arraste um restaurante aqui para agendar'
+                                        }
                                     >
                                         {isOccupied && slot ? (
                                             <div className={`${styles.slotContent} ${isFixed ? styles.fixedClientContent : ''} ${isSelected ? styles.selectedContent : ''}`}>
@@ -694,7 +793,7 @@ export default function WeeklyCalendar({ restaurants, sellerId, weekStart }: Wee
                                             </div>
                                         ) : (
                                             <div className={styles.emptySlot}>
-                                                <span className={styles.dropHint}>{calendarViewMode === 'minimal' ? '+' : 'Arraste aqui'}</span>
+                                                <span className={styles.plusIcon}>+</span>
                                             </div>
                                         )}
                                     </div>
