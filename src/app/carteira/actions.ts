@@ -2,6 +2,7 @@
 
 import { prisma } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
+import { generateIntelligentWeeklySchedule } from './actions-intelligent';
 
 // Agendar visita
 export async function scheduleVisit(
@@ -341,7 +342,6 @@ export async function autoFillWeeklySchedule(
             return { success: false, error: 'Nenhum restaurante disponível para agendar' };
         }
 
-        const { generateIntelligentWeeklySchedule } = await import('./actions-intelligent');
         const weekStartDate = new Date(weekStart);
         
         // Garantir que a data é válida
