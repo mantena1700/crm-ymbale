@@ -393,41 +393,48 @@ export async function autoFillWeeklySchedule(
                 if (slot.restaurantId) {
                     try {
                         // Criar data/hora completa
-                        const [hours, minutes] = slot.time.split(':');
+                        // slot.time agora é um índice de visita (1-8), não um horário
+                        // Usar hora padrão 12:00 para todos os agendamentos
                         const scheduledDateTime = new Date(day.date);
-                        scheduledDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-
-                        // Verificar se já existe follow-up neste horário para este restaurante
+                        scheduledDateTime.setHours(12, 0, 0, 0); // Hora padrão (meio-dia)
+                        
+                        // Verificar se já existe follow-up neste dia para este restaurante
+                        // (comparar por dia completo, não por horário específico)
+                        const dayStart = new Date(scheduledDateTime);
+                        dayStart.setHours(0, 0, 0, 0);
+                        const dayEnd = new Date(scheduledDateTime);
+                        dayEnd.setHours(23, 59, 59, 999);
+                        
                         const existing = await prisma.followUp.findFirst({
                             where: {
                                 restaurantId: slot.restaurantId,
                                 scheduledDate: {
-                                    gte: new Date(scheduledDateTime.getTime() - 30 * 60000),
-                                    lte: new Date(scheduledDateTime.getTime() + 30 * 60000)
+                                    gte: dayStart,
+                                    lte: dayEnd
                                 },
                                 completed: false
                             }
                         });
 
                         if (!existing) {
-                        await prisma.followUp.create({
-                            data: {
-                                restaurantId: slot.restaurantId,
-                                type: 'meeting',
-                                scheduledDate: scheduledDateTime,
-                                completed: false,
-                                notes: 'Agendamento automático inteligente - Prospecção',
-                            },
-                        });
+                            await prisma.followUp.create({
+                                data: {
+                                    restaurantId: slot.restaurantId,
+                                    type: 'meeting',
+                                    scheduledDate: scheduledDateTime,
+                                    completed: false,
+                                    notes: 'Agendamento automático inteligente - Prospecção',
+                                },
+                            });
                             savedSlots.push({ 
                                 date: day.date, 
                                 time: slot.time, 
                                 restaurantId: slot.restaurantId,
                                 restaurantName: slot.restaurantName 
                             });
-                            console.log(`✅ Salvo: ${slot.restaurantName} em ${day.date} ${slot.time}`);
+                            console.log(`✅ Salvo: ${slot.restaurantName} em ${day.date} (visita ${slot.time})`);
                         } else {
-                            console.log(`⚠️ Já existe agendamento para ${slot.restaurantName}`);
+                            console.log(`⚠️ Já existe agendamento para ${slot.restaurantName} neste dia`);
                         }
                     } catch (slotError) {
                         console.error(`❌ Erro ao salvar slot:`, slotError);
