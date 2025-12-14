@@ -103,7 +103,18 @@ export async function generateIntelligentWeeklySchedule(
         
         try {
             fixedClientsByDay = await getFixedClientsForWeek(sellerId, weekStart.toISOString()) || {};
-            console.log(`📌 Clientes fixos encontrados para a semana:`, Object.keys(fixedClientsByDay).length, 'dias');
+            console.log(`\n📌 Clientes fixos encontrados para a semana:`, Object.keys(fixedClientsByDay).length, 'dias');
+            
+            // Log detalhado de quais dias têm clientes fixos
+            Object.keys(fixedClientsByDay).forEach(date => {
+                const clients = fixedClientsByDay[date];
+                if (clients && clients.length > 0) {
+                    console.log(`   📅 ${date}: ${clients.length} cliente(s) fixo(s)`);
+                    clients.forEach(fc => {
+                        console.log(`      - ${fc.restaurantName} (raio: ${fc.radiusKm}km)`);
+                    });
+                }
+            });
         } catch (error) {
             console.warn('Erro ao buscar clientes fixos (tabela pode não existir ainda):', error);
             fixedClientsByDay = {};
@@ -189,8 +200,14 @@ export async function generateIntelligentWeeklySchedule(
 
         // Distribuir restaurantes nos slots
         // Primeiro: preencher dias com clientes fixos usando clientes próximos
+        console.log(`\n🔄 Iniciando distribuição de restaurantes...`);
+        console.log(`📆 Total de dias da semana: ${weekDays.length}`);
+        
         for (const day of weekDays) {
             const fixedClientsToday = fixedClientsByDay[day.date] || [];
+            
+            console.log(`\n🔍 Verificando ${day.day} (${day.date}):`);
+            console.log(`   Clientes fixos encontrados: ${fixedClientsToday.length}`);
             
             if (fixedClientsToday.length > 0) {
                 // IMPORTANTE: Criar um Set local para este dia específico
@@ -220,7 +237,14 @@ export async function generateIntelligentWeeklySchedule(
                     );
                     
                     console.log(`   📍 Cliente fixo: ${fixedClient.restaurantName}`);
+                    console.log(`      Coordenadas: ${fixedClient.latitude || 'N/A'}, ${fixedClient.longitude || 'N/A'}`);
+                    console.log(`      Raio de busca: ${fixedClient.radiusKm}km`);
                     console.log(`      Encontrados: ${nearbyClients.length} restaurantes próximos`);
+                    
+                    if (nearbyClients.length === 0) {
+                        console.log(`      ⚠️ NENHUM restaurante encontrado no raio de ${fixedClient.radiusKm}km!`);
+                        console.log(`      💡 Verifique se há restaurantes com coordenadas próximas a este cliente fixo`);
+                    }
                     
                     // Filtrar apenas os que:
                     // 1. Não são o próprio cliente fixo
@@ -231,6 +255,14 @@ export async function generateIntelligentWeeklySchedule(
                     );
                     
                     console.log(`      Disponíveis após filtro: ${availableNearbyClients.length}`);
+                    
+                    if (availableNearbyClients.length > 0) {
+                        console.log(`      Top 3 restaurantes:`);
+                        availableNearbyClients.slice(0, 3).forEach((r, idx) => {
+                            const dist = r.distanceFromFixed || r.distance || 'N/A';
+                            console.log(`         ${idx + 1}. ${r.name} (${typeof dist === 'number' ? dist.toFixed(2) : dist}km)`);
+                        });
+                    }
                     
                     // Preencher slots vazios do dia com clientes próximos
                     let filledCount = 0;
@@ -258,7 +290,13 @@ export async function generateIntelligentWeeklySchedule(
                 
                 // Contar quantos slots foram preenchidos no total neste dia
                 const totalFilled = day.slots.filter(s => s.restaurantId).length;
+                const emptySlots = day.slots.filter(s => !s.restaurantId).length;
                 console.log(`   📊 Total de slots preenchidos em ${day.day}: ${totalFilled}/8`);
+                if (emptySlots > 0) {
+                    console.log(`   ⚠️ Ainda há ${emptySlots} slots vazios em ${day.day}`);
+                }
+            } else {
+                console.log(`   ℹ️ Nenhum cliente fixo neste dia - será preenchido depois com restaurantes gerais`);
             }
         }
         

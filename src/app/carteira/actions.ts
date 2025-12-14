@@ -1560,12 +1560,16 @@ export async function getFixedClientsForWeek(sellerId: string, weekStart: string
             longitude: number | null;
         }> } = {};
         
+        console.log(`\n🔍 Buscando clientes fixos para a semana começando em ${startDate.toISOString().split('T')[0]}`);
+        console.log(`📋 Total de clientes fixos ativos: ${fixedClients.length}`);
+        
         for (let i = 0; i < 7; i++) {
             const date = new Date(startDate);
             date.setDate(startDate.getDate() + i);
             const dateString = date.toISOString().split('T')[0];
             const dayOfWeek = date.getDay(); // 0 = domingo, 1 = segunda, etc.
             const dayOfMonth = date.getDate();
+            const dayName = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'][dayOfWeek];
             
             fixedClientsByDay[dateString] = [];
             
@@ -1576,6 +1580,7 @@ export async function getFixedClientsForWeek(sellerId: string, weekStart: string
                     const weeklyDays = Array.isArray(fc.weeklyDays) ? fc.weeklyDays : (typeof fc.weeklyDays === 'string' ? JSON.parse(fc.weeklyDays) : []);
                     if (weeklyDays.includes(dayOfWeek)) {
                         shouldInclude = true;
+                        console.log(`   ✅ ${dayName} (${dateString}): Cliente fixo "${fc.restaurant?.name || fc.clientName}" corresponde (dias semanais: ${JSON.stringify(weeklyDays)})`);
                     }
                 } else if (fc.recurrenceType === 'monthly_days') {
                     const monthlyDays = Array.isArray(fc.monthlyDays) ? fc.monthlyDays : (typeof fc.monthlyDays === 'string' ? JSON.parse(fc.monthlyDays) : []);
@@ -1583,6 +1588,7 @@ export async function getFixedClientsForWeek(sellerId: string, weekStart: string
                     const adjustedDays = adjustMonthlyDaysToWeekdays(monthlyDays, date.getFullYear(), date.getMonth() + 1);
                     if (adjustedDays.includes(dayOfMonth)) {
                         shouldInclude = true;
+                        console.log(`   ✅ ${dayName} (${dateString}): Cliente fixo "${fc.restaurant?.name || fc.clientName}" corresponde (dias mensais: ${JSON.stringify(monthlyDays)})`);
                     }
                 }
                 
@@ -1604,6 +1610,15 @@ export async function getFixedClientsForWeek(sellerId: string, weekStart: string
             });
         }
         
+        // Log final resumido
+        console.log(`\n📊 Resumo de clientes fixos por dia:`);
+        Object.keys(fixedClientsByDay).forEach(date => {
+            const count = fixedClientsByDay[date].length;
+            if (count > 0) {
+                console.log(`   ${date}: ${count} cliente(s) fixo(s)`);
+            }
+        });
+        
         return fixedClientsByDay;
     } catch (error: any) {
         console.error('Erro ao buscar clientes fixos da semana:', error);
@@ -1619,17 +1634,27 @@ export async function findNearbyProspectClients(
     maxResults: number = 7
 ): Promise<any[]> {
     try {
+        console.log(`\n🔍 findNearbyProspectClients chamada:`);
+        console.log(`   Cliente fixo: ${fixedClient.restaurantName || fixedClient.clientName}`);
+        console.log(`   Seller ID: ${sellerId}`);
+        console.log(`   Max results: ${maxResults}`);
+        
         // Obter coordenadas do cliente fixo
         let fixedLat = fixedClient.latitude;
         let fixedLon = fixedClient.longitude;
 
+        console.log(`   Coordenadas iniciais: ${fixedLat || 'N/A'}, ${fixedLon || 'N/A'}`);
+
         // Se não tiver coordenadas, calcular agora
         if (!fixedLat || !fixedLon) {
+            console.log(`   ⚠️ Coordenadas não encontradas, calculando...`);
             const address = fixedClient.restaurantAddress || fixedClient.clientAddress || fixedClient.address;
+            console.log(`   Endereço usado: ${JSON.stringify(address)}`);
             const coords = getCoordinatesFromAddress(address);
             if (coords) {
                 fixedLat = coords.latitude;
                 fixedLon = coords.longitude;
+                console.log(`   ✅ Coordenadas calculadas: ${fixedLat}, ${fixedLon}`);
                 
                 // Atualizar no banco para próximas vezes (se tiver ID)
                 if (fixedClient.id) {
@@ -1639,7 +1664,7 @@ export async function findNearbyProspectClients(
                     }).catch(() => {}); // Ignora erro se já foi atualizado
                 }
             } else {
-                console.warn(`Cliente fixo ${fixedClient.clientName || fixedClient.restaurantName} não tem coordenadas válidas`);
+                console.warn(`   ❌ Cliente fixo ${fixedClient.clientName || fixedClient.restaurantName} não tem coordenadas válidas`);
                 return [];
             }
         }
@@ -1653,6 +1678,8 @@ export async function findNearbyProspectClients(
                 }
             }
         });
+        
+        console.log(`   📊 Total de restaurantes na carteira: ${allRestaurants.length}`);
 
         // Calcular distância e score para cada restaurante
         const restaurantsWithDistance = await Promise.all(
@@ -1714,13 +1741,29 @@ export async function findNearbyProspectClients(
         // Filtrar e ordenar restaurantes com algoritmo de clustering
         const radiusKm = fixedClient.radiusKm || 15.0; // Aumentado padrão de 10km para 15km
         
+        console.log(`   🔍 Filtrando restaurantes no raio de ${radiusKm}km...`);
+        
         // 1. Filtrar restaurantes dentro do raio
         const restaurantsInRadius = restaurantsWithDistance
             .filter((r): r is NonNullable<typeof r> => r !== null)
             .filter(r => r.distance <= radiusKm);
         
+        console.log(`   📍 Restaurantes dentro do raio: ${restaurantsInRadius.length}`);
+        
         if (restaurantsInRadius.length === 0) {
-            console.log(`⚠️ Nenhum restaurante encontrado no raio de ${radiusKm}km`);
+            console.log(`   ⚠️ Nenhum restaurante encontrado no raio de ${radiusKm}km`);
+            console.log(`   💡 Verifique se há restaurantes com coordenadas próximas`);
+            // Log dos restaurantes mais próximos (mesmo fora do raio)
+            const sortedByDistance = restaurantsWithDistance
+                .filter((r): r is NonNullable<typeof r> => r !== null)
+                .sort((a, b) => a.distance - b.distance)
+                .slice(0, 5);
+            if (sortedByDistance.length > 0) {
+                console.log(`   📊 5 restaurantes mais próximos (fora do raio):`);
+                sortedByDistance.forEach((r, idx) => {
+                    console.log(`      ${idx + 1}. ${r.name}: ${r.distance.toFixed(2)}km`);
+                });
+            }
             return [];
         }
         
