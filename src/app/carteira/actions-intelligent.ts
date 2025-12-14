@@ -193,6 +193,14 @@ export async function generateIntelligentWeeklySchedule(
             const fixedClientsToday = fixedClientsByDay[day.date] || [];
             
             if (fixedClientsToday.length > 0) {
+                // IMPORTANTE: Criar um Set local para este dia específico
+                // Isso permite que o mesmo restaurante seja visitado em dias diferentes
+                // mas evita duplicatas no mesmo dia
+                const usedInThisDay = new Set<string>();
+                
+                console.log(`\n📅 Processando ${day.day} (${day.date})`);
+                console.log(`   Clientes fixos: ${fixedClientsToday.length}`);
+                
                 // Para cada cliente fixo, buscar clientes próximos
                 for (const fixedClient of fixedClientsToday) {
                     // Buscar clientes próximos usando distância geográfica real
@@ -202,7 +210,7 @@ export async function generateIntelligentWeeklySchedule(
                             restaurantId: fixedClient.restaurantId,
                             restaurantName: fixedClient.restaurantName,
                             restaurantAddress: fixedClient.restaurantAddress,
-                            clientAddress: fixedClient.restaurantAddress, // Para compatibilidade
+                            clientAddress: fixedClient.restaurantAddress,
                             radiusKm: fixedClient.radiusKm,
                             latitude: fixedClient.latitude,
                             longitude: fixedClient.longitude
@@ -211,34 +219,50 @@ export async function generateIntelligentWeeklySchedule(
                         7 // Máximo 7 clientes próximos (8 slots - 1 cliente fixo)
                     );
                     
-                    console.log(`📍 Cliente fixo: ${fixedClient.restaurantName} - ${nearbyClients.length} clientes próximos encontrados`);
+                    console.log(`   📍 Cliente fixo: ${fixedClient.restaurantName}`);
+                    console.log(`      Encontrados: ${nearbyClients.length} restaurantes próximos`);
                     
-                    // Filtrar apenas os que não estão já usados e não são o cliente fixo
+                    // Filtrar apenas os que:
+                    // 1. Não são o próprio cliente fixo
+                    // 2. Não foram usados NESTE dia específico (permite reusar em outros dias)
                     const availableNearbyClients = nearbyClients.filter(client => 
-                        !usedRestaurantIds.has(client.id) &&
-                        client.id !== fixedClient.restaurantId
+                        client.id !== fixedClient.restaurantId &&
+                        !usedInThisDay.has(client.id)
                     );
                     
+                    console.log(`      Disponíveis após filtro: ${availableNearbyClients.length}`);
+                    
                     // Preencher slots vazios do dia com clientes próximos
-                    let nearbyIndex = 0;
+                    let filledCount = 0;
                     for (const slot of day.slots) {
-                        if (!slot.restaurantId && nearbyIndex < availableNearbyClients.length) {
-                            const nearbyClient = availableNearbyClients[nearbyIndex];
+                        if (!slot.restaurantId && filledCount < availableNearbyClients.length) {
+                            const nearbyClient = availableNearbyClients[filledCount];
                             slot.restaurantId = nearbyClient.id;
                             slot.restaurantName = nearbyClient.name;
-                            // Adicionar distância do cliente fixo (se disponível)
+                            
+                            // Adicionar distância do cliente fixo
                             if (nearbyClient.distanceFromFixed !== undefined) {
                                 (slot as any).distanceFromFixed = nearbyClient.distanceFromFixed;
                             } else if (nearbyClient.distance !== undefined) {
                                 (slot as any).distanceFromFixed = nearbyClient.distance;
                             }
-                            usedRestaurantIds.add(nearbyClient.id);
-                            nearbyIndex++;
+                            
+                            // Marcar como usado APENAS neste dia
+                            usedInThisDay.add(nearbyClient.id);
+                            filledCount++;
                         }
                     }
+                    
+                    console.log(`      ✅ Preenchidos: ${filledCount} slots`);
                 }
+                
+                // Contar quantos slots foram preenchidos no total neste dia
+                const totalFilled = day.slots.filter(s => s.restaurantId).length;
+                console.log(`   📊 Total de slots preenchidos em ${day.day}: ${totalFilled}/8`);
             }
         }
+        
+        console.log('\n✨ Preenchimento inteligente concluído!\n');
         
         // Segundo: preencher dias restantes com lógica atual (prioridade por score)
         // IMPORTANTE: Só preencher dias que NÃO têm clientes fixos, para evitar misturar
