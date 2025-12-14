@@ -20,6 +20,8 @@ interface ScheduledSlot {
     time: string; // Mantido para compatibilidade, mas não será usado para horário
     date: string;
     visitIndex?: number; // Índice da visita (1-8)
+    distanceFromFixed?: number; // Distância do cliente fixo em km
+    durationMinutes?: number; // Tempo estimado em minutos (da Google Maps API)
 }
 
 interface WeeklyCalendarProps {
@@ -747,6 +749,9 @@ export default function WeeklyCalendar({ restaurants, sellerId, weekStart }: Wee
                                                                     {(slot as any).distanceFromFixed !== undefined && (
                                                                         <span className={styles.compactDistance}>
                                                                             📍 {(slot as any).distanceFromFixed.toFixed(1)}km
+                                                                            {(slot as any).durationMinutes && (
+                                                                                <> | ⏱️ {(slot as any).durationMinutes}min</>
+                                                                            )}
                                                                         </span>
                                                                     )}
                                                                     <button
@@ -783,9 +788,15 @@ export default function WeeklyCalendar({ restaurants, sellerId, weekStart }: Wee
                                                         {(slot as any).distanceFromFixed !== undefined && (
                                                             <div className={styles.distanceInfo}>
                                                                 📍 {(slot as any).distanceFromFixed.toFixed(1)}km do cliente fixo
-                                                                <span className={styles.estimatedTime}>
-                                                                    ⏱️ ~{Math.round((slot as any).distanceFromFixed * 3)} min
-                                                                </span>
+                                                                {(slot as any).durationMinutes ? (
+                                                                    <span className={styles.estimatedTime}>
+                                                                        ⏱️ {(slot as any).durationMinutes}min (Google Maps)
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className={styles.estimatedTime}>
+                                                                        ⏱️ ~{Math.round((slot as any).distanceFromFixed * 3)} min (estimado)
+                                                                    </span>
+                                                                )}
                                                             </div>
                                                         )}
                                                         {(() => {

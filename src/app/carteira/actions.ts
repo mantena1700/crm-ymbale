@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 import { generateIntelligentWeeklySchedule } from './actions-intelligent';
 import { calculateDistance, getCoordinatesFromAddress } from '@/lib/distance-calculator';
+import { getCoordinatesFromAddressWithGoogle, calculateBatchDistances, geocodeAddress } from '@/lib/google-maps';
 
 // Agendar visita
 export async function scheduleVisit(
@@ -1645,16 +1646,22 @@ export async function findNearbyProspectClients(
 
         console.log(`   Coordenadas iniciais: ${fixedLat || 'N/A'}, ${fixedLon || 'N/A'}`);
 
-        // Se não tiver coordenadas, calcular agora
+        // Se não tiver coordenadas, calcular agora usando Google Maps API
         if (!fixedLat || !fixedLon) {
-            console.log(`   ⚠️ Coordenadas não encontradas, calculando...`);
+            console.log(`   ⚠️ Coordenadas não encontradas, calculando com Google Maps API...`);
             const address = fixedClient.restaurantAddress || fixedClient.clientAddress || fixedClient.address;
             console.log(`   Endereço usado: ${JSON.stringify(address)}`);
-            const coords = getCoordinatesFromAddress(address);
+            
+            // Usar Google Maps API para obter coordenadas precisas
+            const coords = await getCoordinatesFromAddressWithGoogle(
+                address,
+                { latitude: fixedLat, longitude: fixedLon }
+            );
+            
             if (coords) {
                 fixedLat = coords.latitude;
                 fixedLon = coords.longitude;
-                console.log(`   ✅ Coordenadas calculadas: ${fixedLat}, ${fixedLon}`);
+                console.log(`   ✅ Coordenadas obtidas (Google Maps): ${fixedLat}, ${fixedLon}`);
                 
                 // Atualizar no banco para próximas vezes (se tiver ID)
                 if (fixedClient.id) {
@@ -1681,15 +1688,19 @@ export async function findNearbyProspectClients(
         
         console.log(`   📊 Total de restaurantes na carteira: ${allRestaurants.length}`);
 
-        // Calcular distância e score para cada restaurante
-        const restaurantsWithDistance = await Promise.all(
+        // Primeiro, garantir que todos os restaurantes têm coordenadas
+        console.log(`   🔄 Obtendo/atualizando coordenadas dos restaurantes...`);
+        const restaurantsWithCoords = await Promise.all(
             allRestaurants.map(async (restaurant) => {
                 let restLat = restaurant.latitude;
                 let restLon = restaurant.longitude;
 
-                // Se não tiver coordenadas, calcular agora
+                // Se não tiver coordenadas, calcular agora usando Google Maps API
                 if (!restLat || !restLon) {
-                    const coords = getCoordinatesFromAddress(restaurant.address);
+                    const coords = await getCoordinatesFromAddressWithGoogle(
+                        restaurant.address,
+                        { latitude: restLat, longitude: restLon }
+                    );
                     if (coords) {
                         restLat = coords.latitude;
                         restLon = coords.longitude;
@@ -1704,39 +1715,85 @@ export async function findNearbyProspectClients(
                     }
                 }
 
-                // Calcular distância real em km
-                const distance = calculateDistance(fixedLat!, fixedLon!, restLat, restLon);
-
-                // Calcular score de prioridade
-                let score = 0;
-                
-                // Potencial de vendas
-                if (restaurant.salesPotential === 'ALTISSIMO') score += 100;
-                else if (restaurant.salesPotential === 'ALTO') score += 75;
-                else if (restaurant.salesPotential === 'MEDIO') score += 50;
-                else if (restaurant.salesPotential === 'BAIXO') score += 25;
-                
-                // Rating e avaliações
-                score += (Number(restaurant.rating) || 0) * 10;
-                score += Math.min(Number(restaurant.reviewCount) || 0, 100) * 0.5;
-                score += Math.min((Number(restaurant.projectedDeliveries) || 0) / 100, 50);
-                
-                // Penalizar clientes já em negociação
-                if (restaurant.status === 'Contatado' || restaurant.status === 'Negociação') {
-                    score *= 0.7;
-                }
-
-                // BONUS POR PROXIMIDADE: quanto mais perto, maior o bonus
-                const proximityBonus = Math.max(0, 50 - distance);
-                score += proximityBonus;
-
                 return {
                     ...restaurant,
-                    distance,
-                    score
+                    latitude: restLat,
+                    longitude: restLon
                 };
             })
         );
+
+        const validRestaurants = restaurantsWithCoords.filter((r): r is NonNullable<typeof r> => r !== null);
+        console.log(`   ✅ ${validRestaurants.length} restaurantes com coordenadas válidas`);
+
+        // Usar Google Maps Distance Matrix API para calcular distâncias reais em lote
+        console.log(`   🗺️ Calculando distâncias reais com Google Maps API...`);
+        const origin = { latitude: fixedLat!, longitude: fixedLon! };
+        const destinations = validRestaurants.map(r => ({
+            id: r.id,
+            latitude: r.latitude!,
+            longitude: r.longitude!
+        }));
+
+        const realDistances = await calculateBatchDistances(origin, destinations, 'driving');
+        console.log(`   ✅ ${realDistances.filter(d => d.distanceKm !== Infinity).length} distâncias calculadas com sucesso`);
+
+        // Criar mapa de distâncias por ID
+        const distanceMap = new Map<string, { distanceKm: number; durationMinutes: number }>();
+        realDistances.forEach(d => {
+            if (d.distanceKm !== Infinity) {
+                distanceMap.set(d.id, { distanceKm: d.distanceKm, durationMinutes: d.durationMinutes });
+            }
+        });
+
+        // Calcular score e combinar com distâncias reais
+        const restaurantsWithDistance = validRestaurants.map((restaurant) => {
+            // Usar distância real da API se disponível, senão usar Haversine como fallback
+            let distance: number;
+            let durationMinutes: number | undefined;
+
+            const realDistance = distanceMap.get(restaurant.id);
+            if (realDistance) {
+                distance = realDistance.distanceKm;
+                durationMinutes = realDistance.durationMinutes;
+            } else {
+                // Fallback para Haversine se API falhar
+                distance = calculateDistance(fixedLat!, fixedLon!, restaurant.latitude!, restaurant.longitude!);
+                console.log(`   ⚠️ Usando distância Haversine para ${restaurant.name} (API falhou)`);
+            }
+
+            // Calcular score de prioridade
+            let score = 0;
+            
+            // Potencial de vendas
+            if (restaurant.salesPotential === 'ALTISSIMO') score += 100;
+            else if (restaurant.salesPotential === 'ALTO') score += 75;
+            else if (restaurant.salesPotential === 'MEDIO') score += 50;
+            else if (restaurant.salesPotential === 'BAIXO') score += 25;
+            
+            // Rating e avaliações
+            score += (Number(restaurant.rating) || 0) * 10;
+            score += Math.min(Number(restaurant.reviewCount) || 0, 100) * 0.5;
+            score += Math.min((Number(restaurant.projectedDeliveries) || 0) / 100, 50);
+            
+            // Penalizar clientes já em negociação
+            if (restaurant.status === 'Contatado' || restaurant.status === 'Negociação') {
+                score *= 0.7;
+            }
+
+            // BONUS POR PROXIMIDADE: quanto mais perto, maior o bonus
+            // Usar tempo estimado se disponível (mais relevante que distância em linha reta)
+            const proximityMetric = durationMinutes !== undefined ? durationMinutes / 10 : distance;
+            const proximityBonus = Math.max(0, 50 - proximityMetric);
+            score += proximityBonus;
+
+            return {
+                ...restaurant,
+                distance,
+                durationMinutes,
+                score
+            };
+        });
 
         // Filtrar e ordenar restaurantes com algoritmo de clustering
         const radiusKm = fixedClient.radiusKm || 15.0; // Aumentado padrão de 10km para 15km
@@ -1834,7 +1891,8 @@ export async function findNearbyProspectClients(
                 nearbyRestaurants.push({ 
                     ...restaurant, 
                     clusterId,
-                    distanceFromFixed: restaurant.distance
+                    distanceFromFixed: restaurant.distance,
+                    durationMinutes: restaurant.durationMinutes
                 });
             }
             
@@ -1862,8 +1920,9 @@ export async function findNearbyProspectClients(
             console.log('\n   Top 5 mais próximos:');
             finalResults.slice(0, 5).forEach((r, i) => {
                 const clusterInfo = r.clusterId !== undefined ? ` (Cluster ${r.clusterId})` : '';
+                const timeInfo = r.durationMinutes ? ` | ⏱️ ${r.durationMinutes}min` : '';
                 console.log(`   ${i + 1}. ${r.name}${clusterInfo}`);
-                console.log(`      📏 ${r.distanceFromFixed.toFixed(2)}km do cliente fixo | 📊 Score: ${r.score.toFixed(0)}`);
+                console.log(`      📏 ${r.distanceFromFixed.toFixed(2)}km do cliente fixo${timeInfo} | 📊 Score: ${r.score.toFixed(0)}`);
             });
         } else {
             console.log('   ⚠️ Nenhum restaurante encontrado no raio especificado');

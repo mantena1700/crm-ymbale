@@ -272,11 +272,16 @@ export async function generateIntelligentWeeklySchedule(
                             slot.restaurantId = nearbyClient.id;
                             slot.restaurantName = nearbyClient.name;
                             
-                            // Adicionar distância do cliente fixo
+                            // Adicionar distância e tempo do cliente fixo
                             if (nearbyClient.distanceFromFixed !== undefined) {
                                 (slot as any).distanceFromFixed = nearbyClient.distanceFromFixed;
                             } else if (nearbyClient.distance !== undefined) {
                                 (slot as any).distanceFromFixed = nearbyClient.distance;
+                            }
+                            
+                            // Adicionar tempo estimado se disponível
+                            if (nearbyClient.durationMinutes !== undefined) {
+                                (slot as any).durationMinutes = nearbyClient.durationMinutes;
                             }
                             
                             // Marcar como usado APENAS neste dia
