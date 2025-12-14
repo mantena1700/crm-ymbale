@@ -42,7 +42,6 @@ interface Seller {
 
 interface SellersClientProps {
     initialSellers: Seller[];
-    availableZonas: Zona[];
 }
 
 // Formatar CEP para exibição
@@ -54,7 +53,7 @@ function formatCep(cep: string): string {
     return cep;
 }
 
-export default function SellersClient({ initialSellers, availableZonas }: SellersClientProps) {
+export default function SellersClient({ initialSellers }: SellersClientProps) {
     const [sellers, setSellers] = useState<Seller[]>(initialSellers);
     const [showModal, setShowModal] = useState(false);
     const [editingSeller, setEditingSeller] = useState<Seller | null>(null);
