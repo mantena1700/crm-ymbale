@@ -48,7 +48,6 @@ export default async function SellersPage() {
                 email: s.email || '',
                 phone: s.phone || '',
                 photoUrl: s.photoUrl || undefined,
-                zonasIds: [], // Não usar mais zonas
                 active: s.active || false,
                 territorioTipo: s.territorioTipo,
                 baseCidade: s.baseCidade,

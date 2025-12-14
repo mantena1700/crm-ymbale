@@ -30,7 +30,6 @@ interface Seller {
     email: string;
     phone: string;
     photoUrl?: string;
-    zonasIds: string[];
     active: boolean;
     territorioTipo?: string | null;
     baseCidade?: string | null;
@@ -63,7 +62,6 @@ export default function SellersClient({ initialSellers, availableZonas }: Seller
         name: '',
         email: '',
         phone: '',
-        zonasIds: [] as string[],
         active: true,
         territorioTipo: 'raio' as string,
         baseCidade: null as string | null,
@@ -113,7 +111,6 @@ export default function SellersClient({ initialSellers, availableZonas }: Seller
                 name: seller.name,
                 email: seller.email,
                 phone: seller.phone,
-                zonasIds: [], // Não usar mais zonas
                 active: seller.active,
                 territorioTipo: seller.territorioTipo || 'raio',
                 baseCidade: seller.baseCidade || null,
@@ -131,7 +128,6 @@ export default function SellersClient({ initialSellers, availableZonas }: Seller
                 name: '',
                 email: '',
                 phone: '',
-                zonasIds: [],
                 active: true,
                 territorioTipo: 'raio',
                 baseCidade: null,
@@ -199,7 +195,6 @@ export default function SellersClient({ initialSellers, availableZonas }: Seller
                 name: formData.name,
                 email: formData.email,
                 phone: formData.phone,
-                zonasIds: [], // Não usar mais zonas
                 active: formData.active,
                 photoUrl,
                 territorioTipo: formData.territorioTipo,
@@ -216,7 +211,6 @@ export default function SellersClient({ initialSellers, availableZonas }: Seller
                 setSellers(prev => prev.map(s => s.id === updated.id ? {
                     ...s,
                     ...updated,
-                    zonasIds: [], // Não usar mais zonas
                     active: updated.active || false,
                     territorioTipo: updated.territorioTipo || 'raio',
                     baseCidade: updated.baseCidade,
@@ -233,7 +227,6 @@ export default function SellersClient({ initialSellers, availableZonas }: Seller
                 const created = await createSeller(sellerData);
                 setSellers(prev => [{
                     ...created,
-                    zonasIds: [], // Não usar mais zonas
                     active: created.active || false,
                     territorioTipo: created.territorioTipo || 'raio',
                     baseCidade: created.baseCidade,
