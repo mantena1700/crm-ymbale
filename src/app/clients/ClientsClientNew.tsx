@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Restaurant } from '@/lib/types';
 import { PageLayout, Card, Grid, Badge, Button } from '@/components/PageLayout';
 import { Table } from '@/components/Table';
-import { updateRestaurantStatus, allocateRestaurantsToZones, exportRestaurantsToExcel } from '@/app/actions';
+import { updateRestaurantStatus, syncRestaurantsWithSellers, exportRestaurantsToExcel } from '@/app/actions';
 import styles from './ClientsNew.module.css';
 
 interface Seller {
@@ -238,24 +238,24 @@ export default function ClientsClientNew({ initialRestaurants, availableSellers 
         }
     };
 
-    const handleAllocateZones = async () => {
-        if (!confirm('Deseja alocar todos os restaurantes às suas zonas baseado no CEP?\n\nIsso irá analisar o CEP de cada restaurante e atribuí-lo à zona correspondente.')) {
+    const handleSyncRestaurants = async () => {
+        if (!confirm('Deseja sincronizar todos os restaurantes com os executivos baseado nas áreas geográficas configuradas?\n\nIsso irá usar o Google Maps para atribuir restaurantes aos executivos corretos.')) {
             return;
         }
 
         setAllocating(true);
         try {
-            const result = await allocateRestaurantsToZones();
+            const result = await syncRestaurantsWithSellers();
             if (result.success) {
-                alert(`✅ ${result.message || 'Alocação concluída!'}\n\nRecarregando a página para atualizar os dados...`);
+                alert(`✅ ${result.message || 'Sincronização concluída!'}\n\nRecarregando a página para atualizar os dados...`);
                 // Forçar recarregamento completo da página
                 window.location.href = window.location.href;
             } else {
-                alert(`❌ ${result.message || 'Erro ao alocar restaurantes'}`);
+                alert(`❌ ${result.message || 'Erro ao sincronizar restaurantes'}`);
             }
         } catch (error: any) {
-            console.error('Erro ao alocar restaurantes:', error);
-            alert('❌ Erro ao alocar restaurantes: ' + (error.message || 'Erro desconhecido'));
+            console.error('Erro ao sincronizar restaurantes:', error);
+            alert('❌ Erro ao sincronizar restaurantes: ' + (error.message || 'Erro desconhecido'));
         } finally {
             setAllocating(false);
         }
@@ -361,10 +361,10 @@ export default function ClientsClientNew({ initialRestaurants, availableSellers 
                     </Button>
                     <Button 
                         variant="secondary" 
-                        onClick={handleAllocateZones}
+                        onClick={handleSyncRestaurants}
                         disabled={allocating}
                     >
-                        {allocating ? '⏳ Alocando...' : '🗺️ Alocar por CEP'}
+                        {allocating ? '⏳ Sincronizando...' : '🗺️ Sincronizar com Áreas'}
                     </Button>
                     <Button variant="secondary" onClick={() => window.location.href = '/batch-analysis'}>
                         🤖 Análise em Lote

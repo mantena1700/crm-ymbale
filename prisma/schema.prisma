@@ -182,7 +182,6 @@ model Seller {
 
   restaurants Restaurant[]
   visits      Visit[]
-  zonas       SellerZona[]
   fixedClients FixedClient[]
 
   @@map("sellers")
@@ -206,14 +205,12 @@ model Restaurant {
   sourceFile          String?   @map("source_file") @db.VarChar(255)
   sellerId            String?   @map("seller_id") @db.Uuid
   assignedAt          DateTime? @map("assigned_at") @db.Timestamptz(6)
-  zonaId              String?   @map("zona_id") @db.Uuid
   latitude            Float?
   longitude           Float?
   geocodingData       Json?     @map("geocoding_data")
   geocodingAtualizadoEm DateTime? @map("geocoding_atualizado_em") @db.Timestamptz(6)
 
   seller    Seller?   @relation(fields: [sellerId], references: [id], onDelete: SetNull)
-  zona      ZonaCep?  @relation(fields: [zonaId], references: [id], onDelete: SetNull)
   visits    Visit[]
   comments  Comment[]
   analyses  Analysis[]
@@ -229,7 +226,6 @@ model Restaurant {
   @@index([salesPotential], map: "idx_restaurants_sales_potential")
   @@index([sellerId], map: "idx_restaurants_seller_id")
   @@index([status], map: "idx_restaurants_status")
-  @@index([zonaId], map: "idx_restaurants_zona_id")
   @@index([codigoCliente], map: "idx_restaurants_codigo_cliente")
   @@index([latitude, longitude], map: "idx_restaurants_coords")
   @@map("restaurants")
@@ -547,42 +543,6 @@ model WorkflowExecution {
 }
 
 // ========================================
-// ZONAS DE ATENDIMENTO POR CEP
-// ========================================
-
-model ZonaCep {
-  id          String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  zonaNome    String    @map("zona_nome") @db.VarChar(100)
-  cepInicial  String    @map("cep_inicial") @db.VarChar(9)
-  cepFinal    String    @map("cep_final") @db.VarChar(9)
-  regiao      String?   @map("regiao") @db.VarChar(50)
-  ativo       Boolean   @default(true)
-  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  sellers    SellerZona[]
-  restaurants Restaurant[]
-
-  @@index([ativo], map: "idx_zonas_cep_ativo")
-  @@index([cepInicial, cepFinal], map: "idx_zonas_cep_range")
-  @@map("zonas_cep")
-}
-
-model SellerZona {
-  id          String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  sellerId    String    @map("seller_id") @db.Uuid
-  zonaId      String    @map("zona_id") @db.Uuid
-  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  seller     Seller    @relation(fields: [sellerId], references: [id], onDelete: Cascade)
-  zona       ZonaCep   @relation(fields: [zonaId], references: [id], onDelete: Cascade)
-
-  @@unique([sellerId, zonaId])
-  @@index([sellerId], map: "idx_seller_zonas_seller_id")
-  @@index([zonaId], map: "idx_seller_zonas_zona_id")
-  @@map("seller_zonas")
-}
-
 model FixedClient {
   id            String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   sellerId      String   @map("seller_id") @db.Uuid

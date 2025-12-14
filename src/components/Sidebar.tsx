@@ -152,7 +152,6 @@ const Sidebar = () => {
             items: [
                 { href: '/settings', icon: '⚙️', label: 'Configurações', adminOnly: true, permission: 'settings.view' },
                 { href: '/users', icon: '👤', label: 'Usuários', adminOnly: true, permission: 'users.view' },
-                { href: '/admin/zonas', icon: '🗺️', label: 'Zonas de Atendimento', adminOnly: true, permission: 'settings.view' },
             ]
         }
     ];
