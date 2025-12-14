@@ -1,0 +1,346 @@
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    padding: 20px;
+    animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.modal {
+    background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    max-width: 800px;
+    width: 100%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    animation: slideUp 0.3s ease-out;
+    border: 1px solid rgba(51, 65, 85, 0.5);
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 24px;
+    border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+}
+
+.icon {
+    font-size: 32px;
+    line-height: 1;
+}
+
+.title {
+    flex: 1;
+    font-size: 20px;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin: 0;
+}
+
+.closeButton {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    font-size: 32px;
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+
+.closeButton:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+.content {
+    padding: 24px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.message {
+    margin-bottom: 24px;
+}
+
+.message p {
+    color: #e2e8f0;
+    font-size: 15px;
+    line-height: 1.6;
+    margin: 0 0 12px 0;
+}
+
+.details {
+    color: #94a3b8;
+    font-size: 14px;
+    margin-top: 8px;
+}
+
+.infoBox {
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 8px;
+    padding: 16px;
+    margin-top: 16px;
+}
+
+.infoBox p {
+    color: #e2e8f0;
+    font-size: 14px;
+    line-height: 1.6;
+    margin: 0 0 8px 0;
+}
+
+.infoBox p:last-child {
+    margin-bottom: 0;
+}
+
+.fixedClientInfo {
+    background: rgba(15, 23, 42, 0.6);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 24px;
+    border: 1px solid rgba(51, 65, 85, 0.5);
+}
+
+.fixedClientInfo h3 {
+    color: #94a3b8;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 0 0 8px 0;
+}
+
+.fixedClientInfo p {
+    color: #f1f5f9;
+    font-size: 14px;
+    margin: 4px 0;
+}
+
+.address {
+    color: #94a3b8;
+    font-size: 13px;
+    margin-top: 8px;
+}
+
+.radius {
+    color: #60a5fa;
+    font-size: 13px;
+    margin-top: 8px;
+}
+
+.restaurantsList {
+    margin-top: 24px;
+}
+
+.restaurantsList h3 {
+    color: #e2e8f0;
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0 0 16px 0;
+}
+
+.restaurantsGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+}
+
+.restaurantCard {
+    background: rgba(15, 23, 42, 0.6);
+    border: 2px solid rgba(51, 65, 85, 0.5);
+    border-radius: 8px;
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.restaurantCard:hover {
+    border-color: #3b82f6;
+    background: rgba(59, 130, 246, 0.1);
+    transform: translateY(-2px);
+}
+
+.restaurantCard.selected {
+    border-color: #10b981;
+    background: rgba(16, 185, 129, 0.1);
+}
+
+.restaurantHeader {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.restaurantHeader input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: #10b981;
+}
+
+.restaurantName {
+    color: #f1f5f9;
+    font-size: 14px;
+    font-weight: 600;
+    flex: 1;
+}
+
+.restaurantDetails {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.distanceInfo {
+    display: flex;
+    gap: 12px;
+    font-size: 12px;
+    color: #94a3b8;
+}
+
+.potentialInfo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.status {
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.neighborhood {
+    color: #64748b;
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+.footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-top: 1px solid rgba(51, 65, 85, 0.5);
+    gap: 12px;
+}
+
+.actionButtons {
+    display: flex;
+    gap: 12px;
+}
+
+.skipButton,
+.cancelButton,
+.confirmButton {
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+}
+
+.skipButton {
+    background: rgba(245, 158, 11, 0.1);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.skipButton:hover {
+    background: rgba(245, 158, 11, 0.2);
+    transform: translateY(-1px);
+}
+
+.cancelButton {
+    background: transparent;
+    color: #94a3b8;
+    border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+.cancelButton:hover {
+    background: rgba(148, 163, 184, 0.1);
+    color: #e2e8f0;
+}
+
+.confirmButton {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.confirmButton:hover:not(:disabled) {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+}
+
+.confirmButton:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+    .modal {
+        max-width: 100%;
+        max-height: 95vh;
+    }
+
+    .restaurantsGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .footer {
+        flex-direction: column;
+    }
+
+    .actionButtons {
+        width: 100%;
+    }
+
+    .skipButton,
+    .cancelButton,
+    .confirmButton {
+        flex: 1;
+    }
+}
+

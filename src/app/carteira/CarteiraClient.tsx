@@ -4,9 +4,11 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import styles from './page.module.css';
 import { scheduleVisit, updateClientPriority, updateClientStatus, addNote, autoFillWeeklySchedule, exportWeeklyScheduleToExcel, getWeeklySchedule, exportWeeklyScheduleToAgendamentoTemplate } from './actions';
 import { exportRestaurantsToCheckmob } from '@/app/actions';
+import { analyzeIntelligentFill, type FillSuggestion, type UserDecision } from './actions-intelligent';
 import WeeklyCalendar from './WeeklyCalendar';
 import MapaTecnologico from './MapaTecnologico';
 import FixedClientsSection from './FixedClientsSection';
+import ConfirmationModal from './ConfirmationModal';
 
 interface ScheduledSlot {
     id: string;
@@ -117,6 +119,11 @@ export default function CarteiraClient({ initialData }: Props) {
     
     // Agendamentos da semana para o mapa
     const [weeklyScheduledSlots, setWeeklyScheduledSlots] = useState<ScheduledSlot[]>([]);
+    
+    // Estados para sistema de confirmação inteligente
+    const [suggestions, setSuggestions] = useState<FillSuggestion[]>([]);
+    const [currentSuggestionIndex, setCurrentSuggestionIndex] = useState<number>(-1);
+    const [userDecisions, setUserDecisions] = useState<UserDecision[]>([]);
 
     // Carregar agendamentos da semana
     const loadWeeklySchedule = useCallback(async () => {
@@ -378,28 +385,57 @@ export default function CarteiraClient({ initialData }: Props) {
     // Adicionar nota rápida
     // Preenchimento automático inteligente da semana
     const handleIntelligentAutoFill = async () => {
-        if (carteiraRestaurants.length === 0) {
-            alert('Não há restaurantes na carteira para preencher.');
-            return;
-        }
-
         if (!selectedSellerId) {
             alert('Selecione um executivo primeiro.');
             return;
         }
 
-        const restaurantsToSchedule = Math.min(carteiraRestaurants.length, 40);
-        if (!confirm(`Deseja preencher automaticamente a semana priorizando os melhores restaurantes?\n\nIsso irá preencher até ${restaurantsToSchedule} slots (8 por dia, 5 dias úteis).\n\nOs dados serão salvos no banco de dados.`)) {
-            return;
-        }
-
         setLoading(true);
         try {
-            console.log('🚀 Iniciando preenchimento automático...');
-            console.log('Restaurantes:', carteiraRestaurants.length);
-            console.log('Vendedor:', selectedSellerId);
-            console.log('Semana:', currentWeekStart.toISOString());
+            console.log('🔍 Iniciando análise de preenchimento inteligente...');
+            
+            // Primeiro, analisar e obter sugestões
+            const analyzedSuggestions = await analyzeIntelligentFill(
+                carteiraRestaurants.map(r => ({
+                    id: r.id,
+                    name: r.name,
+                    address: r.address,
+                    salesPotential: r.salesPotential,
+                    rating: r.rating,
+                    status: r.status,
+                    projectedDeliveries: r.projectedDeliveries || 0,
+                    reviewCount: r.reviewCount || 0
+                })),
+                selectedSellerId,
+                currentWeekStart
+            );
 
+            console.log(`📋 Encontradas ${analyzedSuggestions.length} sugestões que precisam de confirmação`);
+
+            // Se não há sugestões, executar preenchimento direto
+            if (analyzedSuggestions.length === 0) {
+                console.log('✅ Nenhuma confirmação necessária, executando preenchimento direto...');
+                await executeFillWithDecisions([]);
+                return;
+            }
+
+            // Se há sugestões, mostrar modais sequenciais
+            setSuggestions(analyzedSuggestions);
+            setCurrentSuggestionIndex(0);
+            setUserDecisions([]);
+            setLoading(false); // Parar loading para mostrar modal
+        } catch (error: any) {
+            console.error('Erro ao analisar preenchimento:', error);
+            alert(`❌ Erro ao analisar preenchimento inteligente.\n\n${error.message || 'Erro desconhecido'}`);
+            setLoading(false);
+        }
+    };
+
+    // Executar preenchimento com decisões do usuário
+    const executeFillWithDecisions = async (decisions: UserDecision[]) => {
+        try {
+            console.log('🚀 Executando preenchimento com decisões do usuário...');
+            
             const result = await autoFillWeeklySchedule(
                 selectedSellerId,
                 carteiraRestaurants.map(r => ({
@@ -412,14 +448,15 @@ export default function CarteiraClient({ initialData }: Props) {
                     projectedDeliveries: r.projectedDeliveries || 0,
                     reviewCount: r.reviewCount || 0
                 })),
-                currentWeekStart.toISOString()
+                currentWeekStart.toISOString(),
+                decisions
             );
 
             console.log('Resultado:', result);
 
             if (result.success) {
                 const total = result.total || result.schedule?.length || 0;
-                alert(`✅ Agenda preenchida automaticamente!\n\n${total} visitas agendadas e salvas no banco de dados priorizando os melhores restaurantes.`);
+                alert(`✅ Agenda preenchida automaticamente!\n\n${total} visitas agendadas e salvas no banco de dados.`);
                 // Recarregar a página para atualizar o calendário
                 window.location.reload();
             } else {
@@ -430,6 +467,76 @@ export default function CarteiraClient({ initialData }: Props) {
             alert(`❌ Erro ao preencher agenda automaticamente.\n\n${error.message || 'Erro desconhecido'}`);
         } finally {
             setLoading(false);
+        }
+    };
+
+    // Handler para confirmação do modal
+    const handleModalConfirm = (selectedRestaurantIds: string[]) => {
+        const currentSuggestion = suggestions[currentSuggestionIndex];
+        if (!currentSuggestion) return;
+
+        const decision: UserDecision = {
+            suggestionId: currentSuggestion.id,
+            accepted: true,
+            selectedRestaurantIds
+        };
+
+        const newDecisions = [...userDecisions, decision];
+        setUserDecisions(newDecisions);
+
+        // Avançar para próximo modal ou executar preenchimento
+        if (currentSuggestionIndex < suggestions.length - 1) {
+            setCurrentSuggestionIndex(currentSuggestionIndex + 1);
+        } else {
+            // Todas as confirmações feitas, executar preenchimento
+            setCurrentSuggestionIndex(-1); // Fechar modal
+            executeFillWithDecisions(newDecisions);
+        }
+    };
+
+    // Handler para cancelar modal
+    const handleModalCancel = () => {
+        const currentSuggestion = suggestions[currentSuggestionIndex];
+        if (!currentSuggestion) return;
+
+        const decision: UserDecision = {
+            suggestionId: currentSuggestion.id,
+            accepted: false
+        };
+
+        const newDecisions = [...userDecisions, decision];
+        setUserDecisions(newDecisions);
+
+        // Avançar para próximo modal ou executar preenchimento
+        if (currentSuggestionIndex < suggestions.length - 1) {
+            setCurrentSuggestionIndex(currentSuggestionIndex + 1);
+        } else {
+            // Todas as confirmações feitas, executar preenchimento
+            setCurrentSuggestionIndex(-1); // Fechar modal
+            executeFillWithDecisions(newDecisions);
+        }
+    };
+
+    // Handler para pular (skip) no modal
+    const handleModalSkip = () => {
+        const currentSuggestion = suggestions[currentSuggestionIndex];
+        if (!currentSuggestion) return;
+
+        const decision: UserDecision = {
+            suggestionId: currentSuggestion.id,
+            accepted: false // Skip = não aceitar
+        };
+
+        const newDecisions = [...userDecisions, decision];
+        setUserDecisions(newDecisions);
+
+        // Avançar para próximo modal ou executar preenchimento
+        if (currentSuggestionIndex < suggestions.length - 1) {
+            setCurrentSuggestionIndex(currentSuggestionIndex + 1);
+        } else {
+            // Todas as confirmações feitas, executar preenchimento
+            setCurrentSuggestionIndex(-1); // Fechar modal
+            executeFillWithDecisions(newDecisions);
         }
     };
 
@@ -2217,6 +2324,16 @@ export default function CarteiraClient({ initialData }: Props) {
                         </div>
                     </div>
                 </div>
+            )}
+            {/* Modal de Confirmação Inteligente */}
+            {currentSuggestionIndex >= 0 && currentSuggestionIndex < suggestions.length && (
+                <ConfirmationModal
+                    suggestion={suggestions[currentSuggestionIndex]}
+                    isOpen={true}
+                    onConfirm={handleModalConfirm}
+                    onCancel={handleModalCancel}
+                    onSkip={handleModalSkip}
+                />
             )}
         </div>
     );

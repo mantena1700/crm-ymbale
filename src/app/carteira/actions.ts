@@ -328,13 +328,15 @@ export async function deleteMultipleScheduleSlots(followUpIds: string[]) {
 export async function autoFillWeeklySchedule(
     sellerId: string,
     restaurants: any[],
-    weekStart: string
+    weekStart: string,
+    userDecisions: any[] = []
 ) {
     try {
         console.log('🚀 Iniciando preenchimento automático...');
         console.log(`📊 Seller ID: ${sellerId}`);
         console.log(`📊 Restaurantes recebidos: ${restaurants.length}`);
         console.log(`📊 Semana: ${weekStart}`);
+        console.log(`📊 Decisões do usuário: ${userDecisions.length}`);
 
         if (!sellerId) {
             return { success: false, error: 'ID do vendedor não informado' };
@@ -377,7 +379,8 @@ export async function autoFillWeeklySchedule(
             restaurants,
             sellerId,
             weekStartDate,
-            existingSchedule
+            existingSchedule,
+            userDecisions
         );
 
         if (!schedule || schedule.length === 0) {
@@ -1632,7 +1635,8 @@ export async function getFixedClientsForWeek(sellerId: string, weekStart: string
 export async function findNearbyProspectClients(
     fixedClient: any,
     sellerId: string,
-    maxResults: number = 7
+    maxResults: number = 7,
+    strictMode: boolean = true
 ): Promise<any[]> {
     try {
         console.log(`\n🔍 findNearbyProspectClients chamada:`);

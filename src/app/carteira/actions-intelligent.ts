@@ -3,6 +3,37 @@
 import { prisma } from '@/lib/db';
 import { getFixedClientsForWeek, findNearbyProspectClients } from './actions';
 
+// Importar tipos do modal
+export interface FillSuggestion {
+    id: string;
+    type: 'LOW_POTENTIAL' | 'FAR_DISTANCE' | 'NO_NEARBY';
+    day: string;
+    dayName: string;
+    fixedClient: {
+        id: string;
+        name: string;
+        address: any;
+        radiusKm: number;
+    };
+    restaurants: Array<{
+        id: string;
+        name: string;
+        distance: number;
+        durationMinutes?: number;
+        potential: string;
+        status: string;
+        address?: any;
+    }>;
+    message: string;
+    details: string;
+}
+
+export interface UserDecision {
+    suggestionId: string;
+    accepted: boolean;
+    selectedRestaurantIds?: string[];
+}
+
 interface Restaurant {
     id: string;
     name: string;
@@ -30,7 +61,8 @@ export async function generateIntelligentWeeklySchedule(
     restaurants: Restaurant[],
     sellerId: string,
     weekStart: Date,
-    existingSchedule: any[] = []
+    existingSchedule: any[] = [],
+    userDecisions: UserDecision[] = []
 ): Promise<WeeklySchedule[]> {
     try {
         console.log('📅 Iniciando geração de agenda inteligente...');
@@ -198,10 +230,17 @@ export async function generateIntelligentWeeklySchedule(
             });
         }
 
+        // Criar mapa de decisões do usuário por sugestão ID
+        const decisionsMap = new Map<string, UserDecision>();
+        userDecisions.forEach(decision => {
+            decisionsMap.set(decision.suggestionId, decision);
+        });
+
         // Distribuir restaurantes nos slots
         // Primeiro: preencher dias com clientes fixos usando clientes próximos
         console.log(`\n🔄 Iniciando distribuição de restaurantes...`);
         console.log(`📆 Total de dias da semana: ${weekDays.length}`);
+        console.log(`📊 Decisões do usuário: ${userDecisions.length}`);
         
         for (const day of weekDays) {
             const fixedClientsToday = fixedClientsByDay[day.date] || [];
@@ -249,10 +288,42 @@ export async function generateIntelligentWeeklySchedule(
                     // Filtrar apenas os que:
                     // 1. Não são o próprio cliente fixo
                     // 2. Não foram usados NESTE dia específico (permite reusar em outros dias)
-                    const availableNearbyClients = nearbyClients.filter(client => 
+                    let availableNearbyClients = nearbyClients.filter(client => 
                         client.id !== fixedClient.restaurantId &&
                         !usedInThisDay.has(client.id)
                     );
+                    
+                    // Verificar se há ALTISSIMO
+                    const hasAltissimo = availableNearbyClients.some(
+                        r => r.salesPotential?.toUpperCase() === 'ALTISSIMO'
+                    );
+                    
+                    // Se não há ALTISSIMO, verificar decisão do usuário
+                    if (!hasAltissimo && availableNearbyClients.length > 0) {
+                        // Buscar decisão do usuário para este dia/cliente fixo
+                        // Criar ID da sugestão baseado no dia e cliente fixo
+                        const suggestionId = `suggestion-${day.date}-${fixedClient.id}`;
+                        const userDecision = decisionsMap.get(suggestionId);
+                        
+                        if (userDecision) {
+                            if (!userDecision.accepted) {
+                                // Usuário rejeitou, pular estes restaurantes
+                                console.log(`      ⏭️ Usuário rejeitou restaurantes de baixo potencial para este dia`);
+                                availableNearbyClients = [];
+                            } else if (userDecision.selectedRestaurantIds && userDecision.selectedRestaurantIds.length > 0) {
+                                // Usuário aceitou apenas alguns restaurantes selecionados
+                                console.log(`      ✅ Usuário selecionou ${userDecision.selectedRestaurantIds.length} restaurante(s) para este dia`);
+                                availableNearbyClients = availableNearbyClients.filter(client =>
+                                    userDecision.selectedRestaurantIds!.includes(client.id)
+                                );
+                            }
+                            // Se accepted=true mas sem selectedRestaurantIds, aceitar todos
+                        } else {
+                            // Sem decisão do usuário - se não é ALTISSIMO, não agendar (será perguntado antes)
+                            console.log(`      ⚠️ Sem decisão do usuário para restaurantes de baixo potencial - não agendando`);
+                            availableNearbyClients = [];
+                        }
+                    }
                     
                     console.log(`      Disponíveis após filtro: ${availableNearbyClients.length}`);
                     
@@ -269,6 +340,7 @@ export async function generateIntelligentWeeklySchedule(
                     for (const slot of day.slots) {
                         if (!slot.restaurantId && filledCount < availableNearbyClients.length) {
                             const nearbyClient = availableNearbyClients[filledCount];
+                            
                             slot.restaurantId = nearbyClient.id;
                             slot.restaurantName = nearbyClient.name;
                             
@@ -372,6 +444,150 @@ export async function generateIntelligentWeeklySchedule(
     } catch (error) {
         console.error('❌ Erro ao gerar agenda inteligente:', error);
         throw error; // Propagar erro para tratamento adequado
+    }
+}
+
+// Analisar preenchimento inteligente e retornar sugestões que precisam de confirmação
+export async function analyzeIntelligentFill(
+    restaurants: Restaurant[],
+    sellerId: string,
+    weekStart: Date
+): Promise<FillSuggestion[]> {
+    try {
+        console.log('🔍 Iniciando análise de preenchimento inteligente...');
+        
+        const suggestions: FillSuggestion[] = [];
+        let suggestionIdCounter = 0;
+
+        // Buscar clientes fixos da semana
+        let fixedClientsByDay: { [date: string]: Array<{
+            id: string;
+            restaurantId: string;
+            restaurantName: string;
+            restaurantAddress: any;
+            radiusKm: number;
+            latitude: number | null;
+            longitude: number | null;
+        }> } = {};
+        
+        try {
+            fixedClientsByDay = await getFixedClientsForWeek(sellerId, weekStart.toISOString()) || {};
+            console.log(`📌 Clientes fixos encontrados para a semana:`, Object.keys(fixedClientsByDay).length, 'dias');
+        } catch (error) {
+            console.warn('Erro ao buscar clientes fixos:', error);
+            fixedClientsByDay = {};
+        }
+
+        // Gerar dias da semana (segunda a sexta)
+        const daysOfWeek = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta'];
+        const weekDays: Array<{ day: string; date: string }> = [];
+        
+        for (let i = 0; i < 5; i++) {
+            const date = new Date(weekStart);
+            date.setDate(weekStart.getDate() + i);
+            const dateString = date.toISOString().split('T')[0];
+            weekDays.push({
+                day: daysOfWeek[i],
+                date: dateString
+            });
+        }
+
+        // Analisar cada dia da semana
+        for (const day of weekDays) {
+            const fixedClientsToday = fixedClientsByDay[day.date] || [];
+            
+            if (fixedClientsToday.length > 0) {
+                // Para cada cliente fixo do dia
+                for (const fixedClient of fixedClientsToday) {
+                    console.log(`\n🔍 Analisando ${day.day} (${day.date}) - Cliente fixo: ${fixedClient.restaurantName}`);
+                    
+                    // Buscar restaurantes próximos
+                    const nearbyClients = await findNearbyProspectClients(
+                        {
+                            id: fixedClient.id,
+                            restaurantId: fixedClient.restaurantId,
+                            restaurantName: fixedClient.restaurantName,
+                            restaurantAddress: fixedClient.restaurantAddress,
+                            clientAddress: fixedClient.restaurantAddress,
+                            radiusKm: fixedClient.radiusKm,
+                            latitude: fixedClient.latitude,
+                            longitude: fixedClient.longitude
+                        },
+                        sellerId,
+                        7
+                    );
+
+                    // Filtrar apenas os que não são o próprio cliente fixo
+                    const availableNearbyClients = nearbyClients.filter(client => 
+                        client.id !== fixedClient.restaurantId
+                    );
+
+                    if (availableNearbyClients.length === 0) {
+                        // Nenhum restaurante próximo encontrado
+                        suggestionIdCounter++;
+                        // Usar ID baseado em dia e cliente fixo para matching correto
+                        const suggestionId = `suggestion-${day.date}-${fixedClient.id}`;
+                        suggestions.push({
+                            id: suggestionId,
+                            type: 'NO_NEARBY',
+                            day: day.date,
+                            dayName: day.day,
+                            fixedClient: {
+                                id: fixedClient.id,
+                                name: fixedClient.restaurantName,
+                                address: fixedClient.restaurantAddress,
+                                radiusKm: fixedClient.radiusKm
+                            },
+                            restaurants: [],
+                            message: `Não há restaurantes disponíveis para prospecção próximos ao cliente fixo "${fixedClient.restaurantName}" em ${day.day} (raio de ${fixedClient.radiusKm}km).`,
+                            details: `Este slot permanecerá vazio, pois não há restaurantes na carteira dentro do raio de ${fixedClient.radiusKm}km do cliente fixo.`
+                        });
+                    } else {
+                        // Verificar se há restaurantes ALTISSIMO
+                        const hasAltissimo = availableNearbyClients.some(
+                            r => r.salesPotential?.toUpperCase() === 'ALTISSIMO'
+                        );
+
+                        if (!hasAltissimo) {
+                            // Todos os restaurantes próximos são de potencial médio/baixo
+                            suggestionIdCounter++;
+                            // Usar ID baseado em dia e cliente fixo para matching correto
+                            const suggestionId = `suggestion-${day.date}-${fixedClient.id}`;
+                            suggestions.push({
+                                id: suggestionId,
+                                type: 'LOW_POTENTIAL',
+                                day: day.date,
+                                dayName: day.day,
+                                fixedClient: {
+                                    id: fixedClient.id,
+                                    name: fixedClient.restaurantName,
+                                    address: fixedClient.restaurantAddress,
+                                    radiusKm: fixedClient.radiusKm
+                                },
+                                restaurants: availableNearbyClients.map(r => ({
+                                    id: r.id,
+                                    name: r.name,
+                                    distance: r.distanceFromFixed || r.distance || 0,
+                                    durationMinutes: r.durationMinutes,
+                                    potential: r.salesPotential || 'BAIXO',
+                                    status: r.status || 'Novo',
+                                    address: r.address
+                                })),
+                                message: `Encontramos ${availableNearbyClients.length} restaurante(s) próximo(s) ao cliente fixo "${fixedClient.restaurantName}" em ${day.day}, mas nenhum tem potencial ALTISSIMO. Deseja agendar mesmo assim?`,
+                                details: `Os restaurantes encontrados estão dentro do raio de ${fixedClient.radiusKm}km, mas têm potencial médio ou baixo. Você pode selecionar quais deseja agendar.`
+                            });
+                        }
+                        // Se tem ALTISSIMO, não precisa de confirmação - será agendado automaticamente
+                    }
+                }
+            }
+        }
+
+        console.log(`\n✅ Análise concluída: ${suggestions.length} sugestão(ões) que precisam de confirmação`);
+        return suggestions;
+    } catch (error) {
+        console.error('❌ Erro ao analisar preenchimento inteligente:', error);
+        return [];
     }
 }
 
