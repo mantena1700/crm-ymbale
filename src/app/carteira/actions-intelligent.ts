@@ -97,6 +97,8 @@ export async function generateIntelligentWeeklySchedule(
             restaurantName: string;
             restaurantAddress: any;
             radiusKm: number;
+            latitude: number | null;
+            longitude: number | null;
         }> } = {};
         
         try {
@@ -193,31 +195,43 @@ export async function generateIntelligentWeeklySchedule(
             if (fixedClientsToday.length > 0) {
                 // Para cada cliente fixo, buscar clientes próximos
                 for (const fixedClient of fixedClientsToday) {
-                    // Filtrar restaurantes disponíveis (não usados e não são o cliente fixo)
-                    const availableRestaurants = scoredRestaurants
-                        .filter(sr => 
-                            !usedRestaurantIds.has(sr.restaurant.id) &&
-                            sr.restaurant.id !== fixedClient.restaurantId
-                        )
-                        .map(sr => sr.restaurant);
-                    
-                    // Buscar clientes próximos
+                    // Buscar clientes próximos usando distância geográfica real
                     const nearbyClients = await findNearbyProspectClients(
-                        fixedClient.restaurantAddress,
-                        fixedClient.radiusKm,
-                        availableRestaurants,
-                        sellerId
+                        {
+                            id: fixedClient.id,
+                            restaurantId: fixedClient.restaurantId,
+                            restaurantName: fixedClient.restaurantName,
+                            restaurantAddress: fixedClient.restaurantAddress,
+                            clientAddress: fixedClient.restaurantAddress, // Para compatibilidade
+                            radiusKm: fixedClient.radiusKm,
+                            latitude: fixedClient.latitude,
+                            longitude: fixedClient.longitude
+                        },
+                        sellerId,
+                        7 // Máximo 7 clientes próximos (8 slots - 1 cliente fixo)
                     );
                     
                     console.log(`📍 Cliente fixo: ${fixedClient.restaurantName} - ${nearbyClients.length} clientes próximos encontrados`);
                     
+                    // Filtrar apenas os que não estão já usados e não são o cliente fixo
+                    const availableNearbyClients = nearbyClients.filter(client => 
+                        !usedRestaurantIds.has(client.id) &&
+                        client.id !== fixedClient.restaurantId
+                    );
+                    
                     // Preencher slots vazios do dia com clientes próximos
                     let nearbyIndex = 0;
                     for (const slot of day.slots) {
-                        if (!slot.restaurantId && nearbyIndex < nearbyClients.length) {
-                            const nearbyClient = nearbyClients[nearbyIndex];
+                        if (!slot.restaurantId && nearbyIndex < availableNearbyClients.length) {
+                            const nearbyClient = availableNearbyClients[nearbyIndex];
                             slot.restaurantId = nearbyClient.id;
                             slot.restaurantName = nearbyClient.name;
+                            // Adicionar distância do cliente fixo (se disponível)
+                            if (nearbyClient.distanceFromFixed !== undefined) {
+                                (slot as any).distanceFromFixed = nearbyClient.distanceFromFixed;
+                            } else if (nearbyClient.distance !== undefined) {
+                                (slot as any).distanceFromFixed = nearbyClient.distance;
+                            }
                             usedRestaurantIds.add(nearbyClient.id);
                             nearbyIndex++;
                         }
@@ -227,18 +241,34 @@ export async function generateIntelligentWeeklySchedule(
         }
         
         // Segundo: preencher dias restantes com lógica atual (prioridade por score)
+        // IMPORTANTE: Só preencher dias que NÃO têm clientes fixos, para evitar misturar
+        // restaurantes distantes com os agrupados por proximidade
         let restaurantIndex = 0;
         const availableRestaurants = scoredRestaurants.filter(sr => !usedRestaurantIds.has(sr.restaurant.id));
         
+        // Identificar dias que têm clientes fixos (já foram preenchidos com lógica de proximidade)
+        const daysWithFixedClients = new Set<string>();
+        Object.keys(fixedClientsByDay).forEach(date => {
+            if (fixedClientsByDay[date] && fixedClientsByDay[date].length > 0) {
+                daysWithFixedClients.add(date);
+            }
+        });
+        
         console.log(`📆 Total de slots disponíveis: ${weekDays.reduce((sum, day) => sum + day.slots.filter(s => !s.restaurantId).length, 0)}`);
         console.log(`📝 Restaurantes disponíveis para agendar: ${availableRestaurants.length}`);
+        console.log(`📌 Dias com clientes fixos (já otimizados): ${daysWithFixedClients.size}`);
 
         for (const scoredRestaurant of availableRestaurants) {
             const restaurant = scoredRestaurant.restaurant;
             
-            // Encontrar próximo slot vazio em qualquer dia
+            // PRIORIDADE: Preencher primeiro os dias SEM clientes fixos
+            // Depois, se necessário, preencher dias com clientes fixos que ainda têm slots vazios
             let found = false;
+            
+            // 1. Tentar preencher dias SEM clientes fixos primeiro
             for (const day of weekDays) {
+                if (daysWithFixedClients.has(day.date)) continue; // Pular dias com clientes fixos
+                
                 const emptySlot = day.slots.find(slot => !slot.restaurantId);
                 if (emptySlot) {
                     emptySlot.restaurantId = restaurant.id;
@@ -247,6 +277,21 @@ export async function generateIntelligentWeeklySchedule(
                     restaurantIndex++;
                     found = true;
                     break;
+                }
+            }
+            
+            // 2. Se não encontrou em dias sem clientes fixos, preencher dias com clientes fixos que ainda têm espaço
+            if (!found) {
+                for (const day of weekDays) {
+                    const emptySlot = day.slots.find(slot => !slot.restaurantId);
+                    if (emptySlot) {
+                        emptySlot.restaurantId = restaurant.id;
+                        emptySlot.restaurantName = restaurant.name;
+                        usedRestaurantIds.add(restaurant.id);
+                        restaurantIndex++;
+                        found = true;
+                        break;
+                    }
                 }
             }
             

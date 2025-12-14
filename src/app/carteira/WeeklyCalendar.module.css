@@ -912,6 +912,33 @@
     color: #f1f5f9;
     white-space: nowrap;
     overflow: hidden;
+}
+
+.compactDistance {
+    font-size: 9px;
+    color: #60a5fa;
+    font-weight: 600;
+    margin-left: 4px;
+    white-space: nowrap;
+}
+
+.distanceInfo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 10px;
+    color: #94a3b8;
+    margin-top: 4px;
+    padding: 4px 8px;
+    background: rgba(59, 130, 246, 0.1);
+    border-radius: 6px;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.estimatedTime {
+    font-size: 9px;
+    color: #64748b;
+    margin-left: auto;
     letter-spacing: -0.1px;
     text-overflow: ellipsis;
     flex: 1;

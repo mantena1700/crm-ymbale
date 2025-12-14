@@ -3,6 +3,7 @@
 import { prisma } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 import { generateIntelligentWeeklySchedule } from './actions-intelligent';
+import { calculateDistance, getCoordinatesFromAddress } from '@/lib/distance-calculator';
 
 // Agendar visita
 export async function scheduleVisit(
@@ -1187,7 +1188,9 @@ export async function getFixedClients(sellerId: string) {
             recurrenceType: fc.recurrenceType,
             monthlyDays: Array.isArray(fc.monthlyDays) ? fc.monthlyDays : (typeof fc.monthlyDays === 'string' ? JSON.parse(fc.monthlyDays) : []),
             weeklyDays: Array.isArray(fc.weeklyDays) ? fc.weeklyDays : (typeof fc.weeklyDays === 'string' ? JSON.parse(fc.weeklyDays) : []),
-            radiusKm: Number(fc.radiusKm),
+            radiusKm: fc.radiusKm ? Number(fc.radiusKm) : 15.0, // Converter Decimal para number (padrão 15km)
+            latitude: fc.latitude ? Number(fc.latitude) : null,
+            longitude: fc.longitude ? Number(fc.longitude) : null,
             active: fc.active,
             createdAt: fc.createdAt,
             updatedAt: fc.updatedAt
@@ -1363,7 +1366,7 @@ export async function createFixedClient(data: {
             recurrenceType: data.recurrenceType,
             monthlyDays: adjustedMonthlyDays,
             weeklyDays: data.weeklyDays ? data.weeklyDays : [],
-            radiusKm: data.radiusKm || 10.0,
+            radiusKm: data.radiusKm || 15.0, // Padrão aumentado para 15km
             active: true
         };
         
@@ -1393,7 +1396,15 @@ export async function createFixedClient(data: {
             }
         });
         
-        return { success: true, data: fixedClient };
+        // Converter Decimal para number antes de retornar
+        const serializedFixedClient = {
+            ...fixedClient,
+            radiusKm: fixedClient.radiusKm ? Number(fixedClient.radiusKm) : 15.0,
+            latitude: fixedClient.latitude ? Number(fixedClient.latitude) : null,
+            longitude: fixedClient.longitude ? Number(fixedClient.longitude) : null
+        };
+        
+        return { success: true, data: serializedFixedClient };
     } catch (error: any) {
         console.error('Erro ao criar cliente fixo:', error);
         return { success: false, error: error.message || 'Erro ao criar cliente fixo' };
@@ -1460,7 +1471,15 @@ export async function updateFixedClient(
             }
         });
         
-        return { success: true, data: fixedClient };
+        // Converter Decimal para number antes de retornar
+        const serializedFixedClient = {
+            ...fixedClient,
+            radiusKm: fixedClient.radiusKm ? Number(fixedClient.radiusKm) : 15.0,
+            latitude: fixedClient.latitude ? Number(fixedClient.latitude) : null,
+            longitude: fixedClient.longitude ? Number(fixedClient.longitude) : null
+        };
+        
+        return { success: true, data: serializedFixedClient };
     } catch (error: any) {
         console.error('Erro ao atualizar cliente fixo:', error);
         return { success: false, error: error.message || 'Erro ao atualizar cliente fixo' };
@@ -1537,6 +1556,8 @@ export async function getFixedClientsForWeek(sellerId: string, weekStart: string
             restaurantName: string;
             restaurantAddress: any;
             radiusKm: number;
+            latitude: number | null;
+            longitude: number | null;
         }> } = {};
         
         for (let i = 0; i < 7; i++) {
@@ -1572,10 +1593,12 @@ export async function getFixedClientsForWeek(sellerId: string, weekStart: string
                     
                     fixedClientsByDay[dateString].push({
                         id: fc.id,
-                        restaurantId: fc.restaurantId,
+                        restaurantId: fc.restaurantId || '',
                         restaurantName: clientName,
                         restaurantAddress: clientAddress,
-                        radiusKm: Number(fc.radiusKm)
+                        radiusKm: Number(fc.radiusKm),
+                        latitude: fc.latitude ? Number(fc.latitude) : null,
+                        longitude: fc.longitude ? Number(fc.longitude) : null
                     });
                 }
             });
@@ -1588,64 +1611,225 @@ export async function getFixedClientsForWeek(sellerId: string, weekStart: string
     }
 }
 
-// Função auxiliar: Calcular distância entre duas coordenadas (Haversine)
-function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-    const R = 6371; // Raio da Terra em km
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
-        Math.sin(dLat/2) * Math.sin(dLat/2) +
-        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-        Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c;
-}
-
-// Buscar clientes de prospecção próximos a um endereço
+// Buscar clientes de prospecção próximos a um cliente fixo usando distância geográfica real
 // Função auxiliar (não é server action, pode ser chamada de outros server actions)
 export async function findNearbyProspectClients(
-    fixedClientAddress: any,
-    radiusKm: number,
-    prospectClients: any[],
-    sellerId: string
+    fixedClient: any,
+    sellerId: string,
+    maxResults: number = 7
 ): Promise<any[]> {
     try {
-        // Tentar obter coordenadas do endereço do cliente fixo
-        // Por enquanto, vamos usar uma abordagem simplificada baseada em cidade/bairro
-        // Em produção, seria ideal usar geocoding (Google Maps API)
+        // Obter coordenadas do cliente fixo
+        let fixedLat = fixedClient.latitude;
+        let fixedLon = fixedClient.longitude;
+
+        // Se não tiver coordenadas, calcular agora
+        if (!fixedLat || !fixedLon) {
+            const address = fixedClient.restaurantAddress || fixedClient.clientAddress || fixedClient.address;
+            const coords = getCoordinatesFromAddress(address);
+            if (coords) {
+                fixedLat = coords.latitude;
+                fixedLon = coords.longitude;
+                
+                // Atualizar no banco para próximas vezes (se tiver ID)
+                if (fixedClient.id) {
+                    await prisma.fixedClient.update({
+                        where: { id: fixedClient.id },
+                        data: { latitude: fixedLat, longitude: fixedLon }
+                    }).catch(() => {}); // Ignora erro se já foi atualizado
+                }
+            } else {
+                console.warn(`Cliente fixo ${fixedClient.clientName || fixedClient.restaurantName} não tem coordenadas válidas`);
+                return [];
+            }
+        }
+
+        // Buscar todos os restaurantes da carteira do executivo
+        const allRestaurants = await prisma.restaurant.findMany({
+            where: {
+                sellerId: sellerId,
+                status: {
+                    notIn: ['Cliente', 'Perdido', 'Sem interesse', 'Descartado']
+                }
+            }
+        });
+
+        // Calcular distância e score para cada restaurante
+        const restaurantsWithDistance = await Promise.all(
+            allRestaurants.map(async (restaurant) => {
+                let restLat = restaurant.latitude;
+                let restLon = restaurant.longitude;
+
+                // Se não tiver coordenadas, calcular agora
+                if (!restLat || !restLon) {
+                    const coords = getCoordinatesFromAddress(restaurant.address);
+                    if (coords) {
+                        restLat = coords.latitude;
+                        restLon = coords.longitude;
+                        
+                        // Atualizar no banco
+                        await prisma.restaurant.update({
+                            where: { id: restaurant.id },
+                            data: { latitude: restLat, longitude: restLon }
+                        }).catch(() => {}); // Ignora erro se já foi atualizado
+                    } else {
+                        return null; // Pular restaurantes sem coordenadas
+                    }
+                }
+
+                // Calcular distância real em km
+                const distance = calculateDistance(fixedLat!, fixedLon!, restLat, restLon);
+
+                // Calcular score de prioridade
+                let score = 0;
+                
+                // Potencial de vendas
+                if (restaurant.salesPotential === 'ALTISSIMO') score += 100;
+                else if (restaurant.salesPotential === 'ALTO') score += 75;
+                else if (restaurant.salesPotential === 'MEDIO') score += 50;
+                else if (restaurant.salesPotential === 'BAIXO') score += 25;
+                
+                // Rating e avaliações
+                score += (Number(restaurant.rating) || 0) * 10;
+                score += Math.min(Number(restaurant.reviewCount) || 0, 100) * 0.5;
+                score += Math.min((Number(restaurant.projectedDeliveries) || 0) / 100, 50);
+                
+                // Penalizar clientes já em negociação
+                if (restaurant.status === 'Contatado' || restaurant.status === 'Negociação') {
+                    score *= 0.7;
+                }
+
+                // BONUS POR PROXIMIDADE: quanto mais perto, maior o bonus
+                const proximityBonus = Math.max(0, 50 - distance);
+                score += proximityBonus;
+
+                return {
+                    ...restaurant,
+                    distance,
+                    score
+                };
+            })
+        );
+
+        // Filtrar e ordenar restaurantes com algoritmo de clustering
+        const radiusKm = fixedClient.radiusKm || 15.0; // Aumentado padrão de 10km para 15km
         
-        const fixedCity = fixedClientAddress?.city || fixedClientAddress?.cidade || '';
-        const fixedNeighborhood = fixedClientAddress?.neighborhood || fixedClientAddress?.bairro || '';
+        // 1. Filtrar restaurantes dentro do raio
+        const restaurantsInRadius = restaurantsWithDistance
+            .filter((r): r is NonNullable<typeof r> => r !== null)
+            .filter(r => r.distance <= radiusKm);
         
-        if (!fixedCity) {
-            console.warn('Cliente fixo sem cidade definida, não é possível buscar clientes próximos');
+        if (restaurantsInRadius.length === 0) {
+            console.log(`⚠️ Nenhum restaurante encontrado no raio de ${radiusKm}km`);
             return [];
         }
         
-        // Filtrar clientes da mesma cidade
-        const sameCityClients = prospectClients.filter(client => {
-            const clientAddress = typeof client.address === 'string' ? JSON.parse(client.address) : client.address;
-            const clientCity = clientAddress?.city || clientAddress?.cidade || '';
-            return clientCity.toLowerCase() === fixedCity.toLowerCase();
-        });
+        // 2. Criar clusters de restaurantes próximos entre si (algoritmo de clustering simples)
+        // Agrupar restaurantes que estão a menos de 5km uns dos outros
+        const clusters: Array<Array<typeof restaurantsInRadius[0]>> = [];
+        const assigned = new Set<string>();
         
-        // Se tiver bairro definido, priorizar mesmo bairro
-        if (fixedNeighborhood) {
-            const sameNeighborhood = sameCityClients.filter(client => {
-                const clientAddress = typeof client.address === 'string' ? JSON.parse(client.address) : client.address;
-                const clientNeighborhood = clientAddress?.neighborhood || clientAddress?.bairro || '';
-                return clientNeighborhood.toLowerCase() === fixedNeighborhood.toLowerCase();
-            });
+        for (const restaurant of restaurantsInRadius) {
+            if (assigned.has(restaurant.id)) continue;
             
-            if (sameNeighborhood.length > 0) {
-                return sameNeighborhood.slice(0, 7); // Máximo 7 clientes próximos (8 slots - 1 cliente fixo)
+            // Criar novo cluster começando com este restaurante
+            const cluster: Array<typeof restaurantsInRadius[0]> = [restaurant];
+            assigned.add(restaurant.id);
+            
+            // Encontrar todos os restaurantes próximos a este (dentro de 5km)
+            for (const other of restaurantsInRadius) {
+                if (assigned.has(other.id)) continue;
+                
+                const distanceBetween = calculateDistance(
+                    restaurant.latitude!,
+                    restaurant.longitude!,
+                    other.latitude!,
+                    other.longitude!
+                );
+                
+                if (distanceBetween <= 5.0) {
+                    cluster.push(other);
+                    assigned.add(other.id);
+                }
             }
+            
+            clusters.push(cluster);
         }
         
-        // Retornar clientes da mesma cidade (limitado)
-        return sameCityClients.slice(0, 7);
-    } catch (error: any) {
-        console.error('Erro ao buscar clientes próximos:', error);
+        // 3. Ordenar clusters por:
+        //    - Distância média do cluster ao cliente fixo
+        //    - Tamanho do cluster (clusters maiores têm prioridade)
+        clusters.sort((a, b) => {
+            const avgDistA = a.reduce((sum, r) => sum + r.distance, 0) / a.length;
+            const avgDistB = b.reduce((sum, r) => sum + r.distance, 0) / b.length;
+            
+            // Se a diferença de distância média for < 3km, priorizar cluster maior
+            if (Math.abs(avgDistA - avgDistB) < 3.0) {
+                return b.length - a.length; // Cluster maior primeiro
+            }
+            
+            return avgDistA - avgDistB; // Cluster mais próximo primeiro
+        });
+        
+        // 4. Selecionar restaurantes dos melhores clusters
+        const nearbyRestaurants: Array<typeof restaurantsInRadius[0] & { clusterId?: number; distanceFromFixed: number }> = [];
+        let clusterId = 0;
+        
+        for (const cluster of clusters) {
+            // Ordenar restaurantes dentro do cluster por distância + score
+            cluster.sort((a, b) => {
+                const distDiff = a.distance - b.distance;
+                if (Math.abs(distDiff) < 3.0) {
+                    return b.score - a.score;
+                }
+                return distDiff;
+            });
+            
+            // Adicionar restaurantes do cluster com ID do cluster e distância
+            for (const restaurant of cluster) {
+                if (nearbyRestaurants.length >= maxResults) break;
+                nearbyRestaurants.push({ 
+                    ...restaurant, 
+                    clusterId,
+                    distanceFromFixed: restaurant.distance
+                });
+            }
+            
+            if (nearbyRestaurants.length >= maxResults) break;
+            clusterId++;
+        }
+        
+        // Limitar ao máximo solicitado
+        const finalResults = nearbyRestaurants.slice(0, maxResults);
+
+        // Log detalhado para debug
+        console.log('\n=== PREENCHIMENTO INTELIGENTE ===');
+        console.log(`📍 Cliente Fixo: ${fixedClient.clientName || fixedClient.restaurantName}`);
+        const addressStr = fixedClient.restaurantAddress 
+            ? JSON.stringify(fixedClient.restaurantAddress).substring(0, 100)
+            : 'Endereço não disponível';
+        console.log(`   Endereço: ${addressStr}`);
+        console.log(`   Coordenadas: ${fixedLat!.toFixed(4)}, ${fixedLon!.toFixed(4)}`);
+        console.log(`   Raio de busca: ${radiusKm}km`);
+        console.log(`   Restaurantes encontrados no raio: ${restaurantsInRadius.length}`);
+        console.log(`   Clusters criados: ${clusters.length}`);
+        console.log(`   Restaurantes selecionados: ${finalResults.length}`);
+        
+        if (finalResults.length > 0) {
+            console.log('\n   Top 5 mais próximos:');
+            finalResults.slice(0, 5).forEach((r, i) => {
+                const clusterInfo = r.clusterId !== undefined ? ` (Cluster ${r.clusterId})` : '';
+                console.log(`   ${i + 1}. ${r.name}${clusterInfo}`);
+                console.log(`      📏 ${r.distanceFromFixed.toFixed(2)}km do cliente fixo | 📊 Score: ${r.score.toFixed(0)}`);
+            });
+        } else {
+            console.log('   ⚠️ Nenhum restaurante encontrado no raio especificado');
+        }
+        console.log('================================\n');
+
+        return finalResults;
+    } catch (error) {
+        console.error('❌ Erro ao buscar clientes próximos:', error);
         return [];
     }
 }

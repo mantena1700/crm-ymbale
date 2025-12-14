@@ -7,7 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "ensure-fixed-clients": "tsx scripts/ensure-fixed-clients-table.ts"
+    "ensure-fixed-clients": "tsx scripts/ensure-fixed-clients-table.ts",
+    "populate-coords": "tsx src/scripts/populate-coordinates.ts",
+    "debug-coords": "tsx src/scripts/debug-coordinates.ts",
+    "test-distance": "tsx src/scripts/test-distance.ts",
+    "setup-coords": "tsx src/scripts/setup-coordinates.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

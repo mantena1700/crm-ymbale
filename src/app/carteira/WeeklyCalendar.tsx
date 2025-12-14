@@ -744,6 +744,11 @@ export default function WeeklyCalendar({ restaurants, sellerId, weekStart }: Wee
                                                             <>
                                                                 <div className={styles.compactHeader} style={{ borderLeftColor: priority.color }}>
                                                                     <span className={styles.compactName} title={slot.restaurantName}>{shortName}</span>
+                                                                    {(slot as any).distanceFromFixed !== undefined && (
+                                                                        <span className={styles.compactDistance}>
+                                                                            📍 {(slot as any).distanceFromFixed.toFixed(1)}km
+                                                                        </span>
+                                                                    )}
                                                                     <button
                                                                         className={styles.removeBtnCompact}
                                                                         onClick={(e) => {
@@ -775,6 +780,14 @@ export default function WeeklyCalendar({ restaurants, sellerId, weekStart }: Wee
                                                                 ✕
                                                             </button>
                                                         </div>
+                                                        {(slot as any).distanceFromFixed !== undefined && (
+                                                            <div className={styles.distanceInfo}>
+                                                                📍 {(slot as any).distanceFromFixed.toFixed(1)}km do cliente fixo
+                                                                <span className={styles.estimatedTime}>
+                                                                    ⏱️ ~{Math.round((slot as any).distanceFromFixed * 3)} min
+                                                                </span>
+                                                            </div>
+                                                        )}
                                                         {(() => {
                                                             const restaurant = getRestaurantById(slot.restaurantId);
                                                             if (!restaurant) return null;

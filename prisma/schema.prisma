@@ -197,6 +197,8 @@ model Restaurant {
   sellerId            String?   @map("seller_id") @db.Uuid
   assignedAt          DateTime? @map("assigned_at") @db.Timestamptz(6)
   zonaId              String?   @map("zona_id") @db.Uuid
+  latitude            Float?
+  longitude           Float?
 
   seller    Seller?   @relation(fields: [sellerId], references: [id], onDelete: SetNull)
   zona      ZonaCep?  @relation(fields: [zonaId], references: [id], onDelete: SetNull)
@@ -587,7 +589,9 @@ model FixedClient {
   weeklyDays     Json    @default("[]") @map("weekly_days") // [1, 4] - 0=domingo, 1=segunda, etc. (JSON array)
   
   // Configuração de proximidade
-  radiusKm       Decimal  @default(10.0) @map("radius_km") @db.Decimal(5, 2) // Raio em km
+  radiusKm       Decimal  @default(15.0) @map("radius_km") @db.Decimal(5, 2) // Raio em km (padrão 15km)
+  latitude       Float?
+  longitude      Float?
   
   // Status
   active         Boolean  @default(true)

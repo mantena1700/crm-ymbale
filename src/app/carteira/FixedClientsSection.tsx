@@ -75,7 +75,7 @@ export default function FixedClientsSection({ sellerId, restaurants }: FixedClie
         recurrenceType: 'weekly_days' as 'monthly_days' | 'weekly_days',
         monthlyDays: [] as number[],
         weeklyDays: [] as number[],
-        radiusKm: 10
+        radiusKm: 15
     });
 
     // Carregar clientes fixos
@@ -205,7 +205,7 @@ export default function FixedClientsSection({ sellerId, restaurants }: FixedClie
                     recurrenceType: 'weekly_days',
                     monthlyDays: [],
                     weeklyDays: [],
-                    radiusKm: 10
+                    radiusKm: 15
                 });
                 alert('✅ Cliente fixo salvo com sucesso!');
             } else {
@@ -318,7 +318,7 @@ export default function FixedClientsSection({ sellerId, restaurants }: FixedClie
                             recurrenceType: 'weekly_days',
                             monthlyDays: [],
                             weeklyDays: [],
-                            radiusKm: 10
+                            radiusKm: 15
                         });
                     }}
                 >
@@ -358,15 +358,16 @@ export default function FixedClientsSection({ sellerId, restaurants }: FixedClie
 
                         <div className={styles.formField}>
                             <label>Raio de Proximidade (km) *</label>
-                            <input
-                                type="number"
-                                min="1"
-                                max="50"
-                                step="0.5"
+                            <select
                                 value={formData.radiusKm}
-                                onChange={e => setFormData(prev => ({ ...prev, radiusKm: parseFloat(e.target.value) || 10 }))}
-                            />
-                            <small>Clientes dentro deste raio serão agendados no mesmo dia</small>
+                                onChange={e => setFormData(prev => ({ ...prev, radiusKm: parseFloat(e.target.value) }))}
+                            >
+                                <option value={5}>5 km</option>
+                                <option value={10}>10 km</option>
+                                <option value={15}>15 km (recomendado)</option>
+                                <option value={20}>20 km</option>
+                            </select>
+                            <small>Clientes dentro deste raio serão agendados no mesmo dia. Em São Paulo, 15km é ideal.</small>
                         </div>
                     </div>
 
