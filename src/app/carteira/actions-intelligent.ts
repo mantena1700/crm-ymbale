@@ -292,8 +292,11 @@ export async function generateIntelligentWeeklySchedule(
                                 availableNearbyClients = availableNearbyClients.filter(client =>
                                     userDecision.selectedRestaurantIds!.includes(client.id)
                                 );
+                            } else if (userDecision.accepted) {
+                                // Usuário aceitou mas sem seleção específica - aceitar todos os disponíveis
+                                console.log(`      ✅ Usuário aceitou todos os restaurantes disponíveis para este dia`);
+                                // availableNearbyClients já contém todos, não precisa filtrar
                             }
-                            // Se accepted=true mas sem selectedRestaurantIds, aceitar todos
                         } else {
                             // Sem decisão do usuário - se não é ALTISSIMO, não agendar (será perguntado antes)
                             console.log(`      ⚠️ Sem decisão do usuário para restaurantes de baixo potencial - não agendando`);
@@ -427,15 +430,18 @@ export async function generateIntelligentWeeklySchedule(
 export async function analyzeIntelligentFill(
     restaurants: Restaurant[],
     sellerId: string,
-    weekStart: Date
+    weekStart: Date,
+    existingSchedule: any[] = []
 ): Promise<FillSuggestion[]> {
-    try {
-        console.log('🔍 Iniciando análise de preenchimento inteligente...');
-        
-        const suggestions: FillSuggestion[] = [];
-        let suggestionIdCounter = 0;
+        try {
+            console.log('🔍 Iniciando análise de preenchimento inteligente...');
+            console.log(`📊 Total de restaurantes: ${restaurants.length}`);
+            console.log(`📅 Semana iniciando em: ${weekStart.toISOString().split('T')[0]}`);
+            
+            const suggestions: FillSuggestion[] = [];
+            let suggestionIdCounter = 0;
 
-        // Buscar clientes fixos da semana
+            // Buscar clientes fixos da semana
         let fixedClientsByDay: { [date: string]: Array<{
             id: string;
             restaurantId: string;
@@ -469,8 +475,11 @@ export async function analyzeIntelligentFill(
         }
 
         // Analisar cada dia da semana
+        console.log(`\n📅 Analisando ${weekDays.length} dias da semana...`);
         for (const day of weekDays) {
             const fixedClientsToday = fixedClientsByDay[day.date] || [];
+            
+            console.log(`\n🔍 ${day.day} (${day.date}): ${fixedClientsToday.length} cliente(s) fixo(s)`);
             
             if (fixedClientsToday.length > 0) {
                 // Para cada cliente fixo do dia

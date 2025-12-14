@@ -2288,6 +2288,11 @@
     width: 100%;
 }
 
+.potentialFilterDropdown {
+    position: relative;
+    width: 100%;
+}
+
 .dropdownButton {
     width: 100%;
     padding: 0.5rem;

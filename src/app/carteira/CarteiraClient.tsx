@@ -80,7 +80,17 @@ export default function CarteiraClient({ initialData }: Props) {
     const [selectedSellerId, setSelectedSellerId] = useState<string>(sellers[0]?.id || '');
     const [viewMode, setViewMode] = useState<ViewMode>('cards');
     const [filterStatus, setFilterStatus] = useState<string>('all');
-    const [filterPotential, setFilterPotential] = useState<string>('all');
+    // Estado de filtro de potencial - inicializar como função para evitar hydration mismatch
+    // Usar useEffect para garantir que seja definido apenas no cliente
+    const [filterPotential, setFilterPotential] = useState<string[]>([]);
+    const [potentialDropdownOpen, setPotentialDropdownOpen] = useState<boolean>(false);
+    
+    // Inicializar filtro de potencial apenas no cliente para evitar hydration mismatch
+    useEffect(() => {
+        if (filterPotential.length === 0) {
+            setFilterPotential(['ALTISSIMO', 'ALTO', 'MEDIO', 'BAIXO']);
+        }
+    }, []);
     const [filterPeriod, setFilterPeriod] = useState<FilterPeriod>('all');
     const [searchTerm, setSearchTerm] = useState('');
     const [weekPlan, setWeekPlan] = useState<string[]>([]);
@@ -142,7 +152,7 @@ export default function CarteiraClient({ initialData }: Props) {
         loadWeeklySchedule();
     }, [loadWeeklySchedule]);
 
-    // Fechar dropdown de potencial ao clicar fora
+    // Fechar dropdown de potencial ao clicar fora (Checkmob)
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             const target = event.target as HTMLElement;
@@ -158,6 +168,23 @@ export default function CarteiraClient({ initialData }: Props) {
             };
         }
     }, [checkmobPotentialDropdownOpen]);
+
+    // Fechar dropdown de potencial ao clicar fora (Filtro Principal)
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            const target = event.target as HTMLElement;
+            if (!target.closest(`.${styles.potentialFilterDropdown}`)) {
+                setPotentialDropdownOpen(false);
+            }
+        };
+
+        if (potentialDropdownOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+            return () => {
+                document.removeEventListener('mousedown', handleClickOutside);
+            };
+        }
+    }, [potentialDropdownOpen]);
 
     // Executivo selecionado
     const selectedSeller = sellers.find(s => s.id === selectedSellerId);
@@ -193,8 +220,10 @@ export default function CarteiraClient({ initialData }: Props) {
             // Filtro de status
             if (filterStatus !== 'all' && r.status !== filterStatus) return false;
 
-            // Filtro de potencial
-            if (filterPotential !== 'all' && r.salesPotential !== filterPotential) return false;
+            // Filtro de potencial (múltipla escolha)
+            // Se nenhum estiver selecionado OU se o array estiver vazio, mostrar todos (equivalente a "Todos")
+            // Se houver seleções, verificar se o potencial do restaurante está na lista
+            if (filterPotential.length > 0 && filterPotential.length < 4 && !filterPotential.includes(r.salesPotential || '')) return false;
 
             return true;
         });
@@ -395,6 +424,9 @@ export default function CarteiraClient({ initialData }: Props) {
             console.log('🔍 Iniciando análise de preenchimento inteligente...');
             
             // Primeiro, analisar e obter sugestões
+            // Buscar agendamentos existentes para passar para a análise
+            const existingSchedule = await getWeeklySchedule(selectedSellerId, currentWeekStart.toISOString());
+            
             const analyzedSuggestions = await analyzeIntelligentFill(
                 carteiraRestaurants.map(r => ({
                     id: r.id,
@@ -407,7 +439,8 @@ export default function CarteiraClient({ initialData }: Props) {
                     reviewCount: r.reviewCount || 0
                 })),
                 selectedSellerId,
-                currentWeekStart
+                currentWeekStart,
+                existingSchedule // Passar agendamentos existentes
             );
 
             console.log(`📋 Encontradas ${analyzedSuggestions.length} sugestões que precisam de confirmação`);
@@ -475,10 +508,13 @@ export default function CarteiraClient({ initialData }: Props) {
         const currentSuggestion = suggestions[currentSuggestionIndex];
         if (!currentSuggestion) return;
 
+        console.log(`✅ Usuário confirmou sugestão ${currentSuggestion.id} com ${selectedRestaurantIds.length} restaurante(s)`);
+        console.log(`   Restaurantes selecionados:`, selectedRestaurantIds);
+
         const decision: UserDecision = {
             suggestionId: currentSuggestion.id,
             accepted: true,
-            selectedRestaurantIds
+            selectedRestaurantIds: selectedRestaurantIds.length > 0 ? selectedRestaurantIds : undefined
         };
 
         const newDecisions = [...userDecisions, decision];
@@ -489,6 +525,7 @@ export default function CarteiraClient({ initialData }: Props) {
             setCurrentSuggestionIndex(currentSuggestionIndex + 1);
         } else {
             // Todas as confirmações feitas, executar preenchimento
+            console.log(`🚀 Todas as confirmações concluídas. Total de decisões: ${newDecisions.length}`);
             setCurrentSuggestionIndex(-1); // Fechar modal
             executeFillWithDecisions(newDecisions);
         }
@@ -498,6 +535,8 @@ export default function CarteiraClient({ initialData }: Props) {
     const handleModalCancel = () => {
         const currentSuggestion = suggestions[currentSuggestionIndex];
         if (!currentSuggestion) return;
+
+        console.log(`❌ Usuário cancelou sugestão ${currentSuggestion.id}`);
 
         const decision: UserDecision = {
             suggestionId: currentSuggestion.id,
@@ -512,6 +551,7 @@ export default function CarteiraClient({ initialData }: Props) {
             setCurrentSuggestionIndex(currentSuggestionIndex + 1);
         } else {
             // Todas as confirmações feitas, executar preenchimento
+            console.log(`🚀 Todas as confirmações concluídas (com cancelamentos). Total de decisões: ${newDecisions.length}`);
             setCurrentSuggestionIndex(-1); // Fechar modal
             executeFillWithDecisions(newDecisions);
         }
@@ -938,13 +978,103 @@ export default function CarteiraClient({ initialData }: Props) {
                             <option value="Negociação">Negociação</option>
                             <option value="Fechado">Fechado</option>
                         </select>
-                        <select value={filterPotential} onChange={e => setFilterPotential(e.target.value)}>
-                            <option value="all">Todos os Potenciais</option>
-                            <option value="ALTISSIMO">🔥 Altíssimo</option>
-                            <option value="ALTO">⬆️ Alto</option>
-                            <option value="MEDIO">➡️ Médio</option>
-                            <option value="BAIXO">⬇️ Baixo</option>
-                        </select>
+                        <div className={`${styles.dropdownContainer} ${styles.potentialFilterDropdown}`}>
+                            <button
+                                type="button"
+                                className={styles.dropdownButton}
+                                onClick={() => setPotentialDropdownOpen(!potentialDropdownOpen)}
+                            >
+                                <span>
+                                    {filterPotential.length === 0 
+                                        ? 'Nenhum selecionado' 
+                                        : filterPotential.length === 4
+                                        ? 'Todos os Potenciais'
+                                        : filterPotential.length === 1
+                                        ? (filterPotential[0] === 'ALTISSIMO' ? '🔥 Altíssimo' :
+                                           filterPotential[0] === 'ALTO' ? '⬆️ Alto' :
+                                           filterPotential[0] === 'MEDIO' ? '➡️ Médio' :
+                                           filterPotential[0] === 'BAIXO' ? '⬇️ Baixo' : filterPotential[0])
+                                        : `${filterPotential.length} selecionados`}
+                                </span>
+                                <span className={styles.dropdownArrow}>
+                                    {potentialDropdownOpen ? '▲' : '▼'}
+                                </span>
+                            </button>
+                            {potentialDropdownOpen && (
+                                <div className={styles.dropdownMenu}>
+                                    <label className={styles.dropdownOption}>
+                                        <input 
+                                            type="checkbox"
+                                            checked={filterPotential.length === 4}
+                                            onChange={(e) => {
+                                                if (e.target.checked) {
+                                                    setFilterPotential(['ALTISSIMO', 'ALTO', 'MEDIO', 'BAIXO']);
+                                                } else {
+                                                    setFilterPotential([]);
+                                                }
+                                            }}
+                                        />
+                                        <span>Todos</span>
+                                    </label>
+                                    <label className={styles.dropdownOption}>
+                                        <input 
+                                            type="checkbox"
+                                            checked={filterPotential.includes('ALTISSIMO')}
+                                            onChange={(e) => {
+                                                if (e.target.checked) {
+                                                    setFilterPotential([...filterPotential, 'ALTISSIMO']);
+                                                } else {
+                                                    setFilterPotential(filterPotential.filter(p => p !== 'ALTISSIMO'));
+                                                }
+                                            }}
+                                        />
+                                        <span>🔥 Altíssimo</span>
+                                    </label>
+                                    <label className={styles.dropdownOption}>
+                                        <input 
+                                            type="checkbox"
+                                            checked={filterPotential.includes('ALTO')}
+                                            onChange={(e) => {
+                                                if (e.target.checked) {
+                                                    setFilterPotential([...filterPotential, 'ALTO']);
+                                                } else {
+                                                    setFilterPotential(filterPotential.filter(p => p !== 'ALTO'));
+                                                }
+                                            }}
+                                        />
+                                        <span>⬆️ Alto</span>
+                                    </label>
+                                    <label className={styles.dropdownOption}>
+                                        <input 
+                                            type="checkbox"
+                                            checked={filterPotential.includes('MEDIO')}
+                                            onChange={(e) => {
+                                                if (e.target.checked) {
+                                                    setFilterPotential([...filterPotential, 'MEDIO']);
+                                                } else {
+                                                    setFilterPotential(filterPotential.filter(p => p !== 'MEDIO'));
+                                                }
+                                            }}
+                                        />
+                                        <span>➡️ Médio</span>
+                                    </label>
+                                    <label className={styles.dropdownOption}>
+                                        <input 
+                                            type="checkbox"
+                                            checked={filterPotential.includes('BAIXO')}
+                                            onChange={(e) => {
+                                                if (e.target.checked) {
+                                                    setFilterPotential([...filterPotential, 'BAIXO']);
+                                                } else {
+                                                    setFilterPotential(filterPotential.filter(p => p !== 'BAIXO'));
+                                                }
+                                            }}
+                                        />
+                                        <span>⬇️ Baixo</span>
+                                    </label>
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     {/* Carteiras de Todos os Executivos */}
@@ -964,7 +1094,8 @@ export default function CarteiraClient({ initialData }: Props) {
                                 }
                             }
                             if (filterStatus !== 'all' && r.status !== filterStatus) return false;
-                            if (filterPotential !== 'all' && r.salesPotential !== filterPotential) return false;
+                            // Se nenhum estiver selecionado OU se o array estiver vazio, mostrar todos
+                            if (filterPotential.length > 0 && filterPotential.length < 4 && !filterPotential.includes(r.salesPotential || '')) return false;
                             return true;
                         });
 
@@ -1158,13 +1289,103 @@ export default function CarteiraClient({ initialData }: Props) {
                             <option value="Negociação">Negociação</option>
                             <option value="Fechado">Fechado</option>
                         </select>
-                        <select value={filterPotential} onChange={e => setFilterPotential(e.target.value)}>
-                            <option value="all">Todos os Potenciais</option>
-                            <option value="ALTISSIMO">🔥 Altíssimo</option>
-                            <option value="ALTO">⬆️ Alto</option>
-                            <option value="MEDIO">➡️ Médio</option>
-                            <option value="BAIXO">⬇️ Baixo</option>
-                        </select>
+                        <div className={`${styles.dropdownContainer} ${styles.potentialFilterDropdown}`}>
+                            <button
+                                type="button"
+                                className={styles.dropdownButton}
+                                onClick={() => setPotentialDropdownOpen(!potentialDropdownOpen)}
+                            >
+                                <span>
+                                    {filterPotential.length === 0 
+                                        ? 'Nenhum selecionado' 
+                                        : filterPotential.length === 4
+                                        ? 'Todos os Potenciais'
+                                        : filterPotential.length === 1
+                                        ? (filterPotential[0] === 'ALTISSIMO' ? '🔥 Altíssimo' :
+                                           filterPotential[0] === 'ALTO' ? '⬆️ Alto' :
+                                           filterPotential[0] === 'MEDIO' ? '➡️ Médio' :
+                                           filterPotential[0] === 'BAIXO' ? '⬇️ Baixo' : filterPotential[0])
+                                        : `${filterPotential.length} selecionados`}
+                                </span>
+                                <span className={styles.dropdownArrow}>
+                                    {potentialDropdownOpen ? '▲' : '▼'}
+                                </span>
+                            </button>
+                            {potentialDropdownOpen && (
+                                <div className={styles.dropdownMenu}>
+                                    <label className={styles.dropdownOption}>
+                                        <input 
+                                            type="checkbox"
+                                            checked={filterPotential.length === 4}
+                                            onChange={(e) => {
+                                                if (e.target.checked) {
+                                                    setFilterPotential(['ALTISSIMO', 'ALTO', 'MEDIO', 'BAIXO']);
+                                                } else {
+                                                    setFilterPotential([]);
+                                                }
+                                            }}
+                                        />
+                                        <span>Todos</span>
+                                    </label>
+                                    <label className={styles.dropdownOption}>
+                                        <input 
+                                            type="checkbox"
+                                            checked={filterPotential.includes('ALTISSIMO')}
+                                            onChange={(e) => {
+                                                if (e.target.checked) {
+                                                    setFilterPotential([...filterPotential, 'ALTISSIMO']);
+                                                } else {
+                                                    setFilterPotential(filterPotential.filter(p => p !== 'ALTISSIMO'));
+                                                }
+                                            }}
+                                        />
+                                        <span>🔥 Altíssimo</span>
+                                    </label>
+                                    <label className={styles.dropdownOption}>
+                                        <input 
+                                            type="checkbox"
+                                            checked={filterPotential.includes('ALTO')}
+                                            onChange={(e) => {
+                                                if (e.target.checked) {
+                                                    setFilterPotential([...filterPotential, 'ALTO']);
+                                                } else {
+                                                    setFilterPotential(filterPotential.filter(p => p !== 'ALTO'));
+                                                }
+                                            }}
+                                        />
+                                        <span>⬆️ Alto</span>
+                                    </label>
+                                    <label className={styles.dropdownOption}>
+                                        <input 
+                                            type="checkbox"
+                                            checked={filterPotential.includes('MEDIO')}
+                                            onChange={(e) => {
+                                                if (e.target.checked) {
+                                                    setFilterPotential([...filterPotential, 'MEDIO']);
+                                                } else {
+                                                    setFilterPotential(filterPotential.filter(p => p !== 'MEDIO'));
+                                                }
+                                            }}
+                                        />
+                                        <span>➡️ Médio</span>
+                                    </label>
+                                    <label className={styles.dropdownOption}>
+                                        <input 
+                                            type="checkbox"
+                                            checked={filterPotential.includes('BAIXO')}
+                                            onChange={(e) => {
+                                                if (e.target.checked) {
+                                                    setFilterPotential([...filterPotential, 'BAIXO']);
+                                                } else {
+                                                    setFilterPotential(filterPotential.filter(p => p !== 'BAIXO'));
+                                                }
+                                            }}
+                                        />
+                                        <span>⬇️ Baixo</span>
+                                    </label>
+                                </div>
+                            )}
+                        </div>
                         <div className={styles.viewModes}>
                             <button 
                                 className={viewMode === 'cards' ? styles.active : ''}
