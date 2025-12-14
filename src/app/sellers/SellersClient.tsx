@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { createSeller, updateSeller, deleteSeller } from './actions';
 import { syncRestaurantsWithSellers } from '@/app/actions';
 import PhotoUpload from '@/components/PhotoUpload';
@@ -56,17 +56,6 @@ function formatCep(cep: string): string {
 }
 
 export default function SellersClient({ initialSellers, availableZonas }: SellersClientProps) {
-    // Debug: verificar zonas recebidas
-    console.log('🔍 SellersClient - Zonas disponíveis recebidas:', {
-        total: availableZonas?.length || 0,
-        isArray: Array.isArray(availableZonas),
-        zonas: availableZonas?.map(z => ({ id: z.id, nome: z.zonaNome })) || []
-    });
-    
-    if (!availableZonas || availableZonas.length === 0) {
-        console.warn('⚠️ AVISO: SellersClient recebeu array vazio de zonas. Verifique o seed no servidor.');
-    }
-    
     const [sellers, setSellers] = useState<Seller[]>(initialSellers);
     const [showModal, setShowModal] = useState(false);
     const [editingSeller, setEditingSeller] = useState<Seller | null>(null);
@@ -91,10 +80,23 @@ export default function SellersClient({ initialSellers, availableZonas }: Seller
     const [syncing, setSyncing] = useState(false);
 
     const activeSellers = sellers.filter(s => s.active);
+    
+    // Calcular total de áreas configuradas (usar useMemo para evitar hydration errors)
+    const totalAreas = useMemo(() => {
+        try {
+            return sellers.reduce((acc, s) => {
+                if (!s.areasCobertura) return acc;
+                // Garantir que é um array válido
+                const areas = Array.isArray(s.areasCobertura) ? s.areasCobertura.length : 0;
+                return acc + areas;
+            }, 0);
+        } catch (error) {
+            return 0;
+        }
+    }, [sellers]);
 
     const handleOpenModal = (seller?: Seller) => {
         if (seller) {
-            // Garantir que zonasIds é sempre um array
             setEditingSeller(seller);
             const areas = seller.areasCobertura && Array.isArray(seller.areasCobertura) 
                 ? seller.areasCobertura 
@@ -336,12 +338,7 @@ export default function SellersClient({ initialSellers, availableZonas }: Seller
                     </div>
                     <div className={styles.statContent}>
                         <div className={styles.statLabel}>Áreas Configuradas</div>
-                        <div className={styles.statValue}>
-                            {sellers.reduce((acc, s) => {
-                                const areas = s.areasCobertura && Array.isArray(s.areasCobertura) ? s.areasCobertura.length : 0;
-                                return acc + areas;
-                            }, 0)}
-                        </div>
+                        <div className={styles.statValue}>{totalAreas}</div>
                     </div>
                 </div>
             </div>

@@ -209,8 +209,7 @@ async function assignRestaurantsToSellerByNeighborhood(sellerId: string, neighbo
             data: {
                 type: 'assignment',
                 title: 'Clientes Atribuídos Automaticamente',
-                message: `${matchingIds.length} clientes foram atribuídos automaticamente baseado nos bairros: ${neighborhoods.join(', ')}`,
-                severity: 'info'
+                message: `${matchingIds.length} clientes foram atribuídos automaticamente baseado nos bairros: ${neighborhoods.join(', ')}`
             }
         });
         

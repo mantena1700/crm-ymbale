@@ -27,6 +27,21 @@ export default async function SellersPage() {
 
         // Mapear sellers com dados de território
         const sellersWithZonas = sellers.map(s => {
+            // Garantir que areasCobertura seja um array válido ou null
+            let areasCobertura: any = null;
+            if (s.areasCobertura) {
+                try {
+                    // Se for string JSON, fazer parse
+                    if (typeof s.areasCobertura === 'string') {
+                        areasCobertura = JSON.parse(s.areasCobertura);
+                    } else if (Array.isArray(s.areasCobertura)) {
+                        areasCobertura = s.areasCobertura;
+                    }
+                } catch (e) {
+                    areasCobertura = null;
+                }
+            }
+            
             return {
                 id: s.id,
                 name: s.name,
@@ -34,14 +49,14 @@ export default async function SellersPage() {
                 phone: s.phone || '',
                 photoUrl: s.photoUrl || undefined,
                 zonasIds: [], // Não usar mais zonas
-                active: s.active,
+                active: s.active || false,
                 territorioTipo: s.territorioTipo,
                 baseCidade: s.baseCidade,
                 baseLatitude: s.baseLatitude ? Number(s.baseLatitude) : null,
                 baseLongitude: s.baseLongitude ? Number(s.baseLongitude) : null,
                 raioKm: s.raioKm,
-                territorioAtivo: s.territorioAtivo,
-                areasCobertura: s.areasCobertura as any
+                territorioAtivo: s.territorioAtivo !== null && s.territorioAtivo !== undefined ? s.territorioAtivo : true,
+                areasCobertura: areasCobertura
             };
         });
 
