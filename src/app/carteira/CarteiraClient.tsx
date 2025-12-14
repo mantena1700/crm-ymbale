@@ -24,7 +24,7 @@ interface Seller {
     email: string | null;
     phone: string | null;
     photoUrl: string | null;
-    zonas: string[]; // Zonas de atendimento (substitui regions/neighborhoods)
+    zonas: string[]; // Áreas de cobertura (cidades) - substitui zonas CEP
     active: boolean;
 }
 
@@ -876,11 +876,11 @@ export default function CarteiraClient({ initialData }: Props) {
                             <p>{selectedSeller.email}</p>
                             <div className={styles.sellerRegions}>
                                 {selectedSeller.zonas && selectedSeller.zonas.length > 0 ? (
-                                    selectedSeller.zonas.map((zona, i) => (
-                                        <span key={i} className={styles.regionTag}>{zona}</span>
+                                    selectedSeller.zonas.map((area, i) => (
+                                        <span key={i} className={styles.regionTag}>📍 {area}</span>
                                     ))
                                 ) : (
-                                    <span className={styles.noZonaTag}>Sem zonas atribuídas</span>
+                                    <span className={styles.noZonaTag}>Sem áreas de cobertura configuradas</span>
                                 )}
                             </div>
                         </div>

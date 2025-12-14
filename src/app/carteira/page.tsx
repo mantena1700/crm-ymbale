@@ -5,57 +5,24 @@ export const dynamic = 'force-dynamic';
 
 async function getData() {
     try {
-        // Buscar executivos ativos
+        // Buscar executivos ativos com áreas de cobertura
         const sellers = await prisma.seller.findMany({
             where: { active: true },
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                phone: true,
+                photoUrl: true,
+                active: true,
+                areasCobertura: true,
+                baseCidade: true,
+                baseLatitude: true,
+                baseLongitude: true,
+                raioKm: true
+            },
             orderBy: { name: 'asc' }
         });
-
-        // Buscar zonas de cada executivo via SQL direto
-        const sellerZonasMap = new Map<string, string[]>();
-        try {
-            // Verificar se a tabela existe
-            await prisma.$queryRaw`SELECT 1 FROM seller_zonas LIMIT 1`;
-            
-            // Buscar todas as relações seller-zona com nomes das zonas
-            const sellerZonas = await prisma.$queryRaw<Array<{
-                seller_id: string;
-                zona_id: string;
-                zona_nome: string;
-            }>>`
-                SELECT 
-                    sz.seller_id::text,
-                    sz.zona_id::text,
-                    z.zona_nome
-                FROM seller_zonas sz
-                INNER JOIN zonas_cep z ON z.id = sz.zona_id
-                WHERE z.ativo = true
-            `;
-            
-            // Agrupar nomes das zonas por seller
-            sellerZonas.forEach(sz => {
-                const current = sellerZonasMap.get(sz.seller_id) || [];
-                if (!current.includes(sz.zona_nome)) {
-                    sellerZonasMap.set(sz.seller_id, [...current, sz.zona_nome]);
-                }
-            });
-            
-            console.log(`Zonas carregadas para ${sellerZonas.length} relações seller-zona`);
-            sellers.forEach(s => {
-                const zonas = sellerZonasMap.get(s.id) || [];
-                if (zonas.length > 0) {
-                    console.log(`Executivo ${s.name}: ${zonas.length} zonas - ${zonas.join(', ')}`);
-                }
-            });
-        } catch (error: any) {
-            // Se a tabela não existir, usar array vazio
-            if (error.code === '42P01' || error.message?.includes('does not exist') || error.message?.includes('relation')) {
-                console.warn('Tabela seller_zonas não existe ainda. As zonas não serão carregadas.');
-            } else {
-                console.error('Erro ao buscar zonas dos sellers:', error.message);
-                console.error('Stack:', error.stack);
-            }
-        }
 
         // Buscar todos os restaurantes com seus executivos
         const restaurants = await prisma.restaurant.findMany({
@@ -87,14 +54,45 @@ async function getData() {
 
         return {
             sellers: sellers.map(s => {
-                const zonasNomes = sellerZonasMap.get(s.id) || [];
+                // Converter areasCobertura para array de nomes de cidades
+                let areasNomes: string[] = [];
+                if (s.areasCobertura) {
+                    try {
+                        const areas = typeof s.areasCobertura === 'string' 
+                            ? JSON.parse(s.areasCobertura) 
+                            : s.areasCobertura;
+                        
+                        if (Array.isArray(areas)) {
+                            areasNomes = areas.map((area: any) => {
+                                if (typeof area === 'string') {
+                                    try {
+                                        const parsed = JSON.parse(area);
+                                        return parsed.cidade || area;
+                                    } catch {
+                                        return area;
+                                    }
+                                }
+                                return area?.cidade || area?.city || 'Área sem nome';
+                            });
+                        }
+                    } catch (e) {
+                        // Se não conseguir parsear, usar cidade base se existir
+                        if (s.baseCidade) {
+                            areasNomes = [s.baseCidade];
+                        }
+                    }
+                } else if (s.baseCidade) {
+                    // Fallback: usar cidade base se não tiver áreas configuradas
+                    areasNomes = [s.baseCidade];
+                }
+                
                 return {
                     id: s.id,
                     name: s.name,
                     email: s.email,
                     phone: s.phone,
                     photoUrl: s.photoUrl,
-                    zonas: zonasNomes, // Usar zonas ao invés de regions/neighborhoods
+                    zonas: areasNomes, // Agora são áreas de cobertura (cidades)
                     active: s.active ?? true
                 };
             }),

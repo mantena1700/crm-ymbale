@@ -63,22 +63,18 @@ export default function SellerDetailsClient({ seller }: { seller: Seller }) {
                     </span>
                 </div>
 
-                <div style={{ marginTop: '2rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
-                    <div>
-                        <h3 style={{ fontSize: '0.875rem', textTransform: 'uppercase', color: '#6b7280', marginBottom: '0.5rem', fontWeight: '600' }}>Regiões</h3>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                            {(seller.regions as string[] || []).map((r, i) => (
-                                <span key={i} style={{ backgroundColor: '#f3f4f6', padding: '0.25rem 0.75rem', borderRadius: '15px', fontSize: '0.875rem' }}>{r}</span>
-                            ))}
-                        </div>
-                    </div>
-                    <div>
-                        <h3 style={{ fontSize: '0.875rem', textTransform: 'uppercase', color: '#6b7280', marginBottom: '0.5rem', fontWeight: '600' }}>Bairros</h3>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                            {(seller.neighborhoods as string[] || []).map((n, i) => (
-                                <span key={i} style={{ backgroundColor: '#e0f2fe', color: '#0369a1', padding: '0.25rem 0.75rem', borderRadius: '15px', fontSize: '0.875rem' }}>{n}</span>
-                            ))}
-                        </div>
+                <div style={{ marginTop: '2rem' }}>
+                    <h3 style={{ fontSize: '0.875rem', textTransform: 'uppercase', color: '#6b7280', marginBottom: '0.5rem', fontWeight: '600' }}>Áreas de Cobertura</h3>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                        {(seller.regions as string[] || []).length > 0 ? (
+                            (seller.regions as string[]).map((area, i) => (
+                                <span key={i} style={{ backgroundColor: '#eff6ff', color: '#1e40af', padding: '0.5rem 1rem', borderRadius: '15px', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    📍 {area}
+                                </span>
+                            ))
+                        ) : (
+                            <span style={{ color: '#6b7280', fontSize: '0.875rem', fontStyle: 'italic' }}>Sem áreas de cobertura configuradas</span>
+                        )}
                     </div>
                 </div>
             </header>
