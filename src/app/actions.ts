@@ -1689,125 +1689,137 @@ export async function allocateRestaurantsToZones() {
     }
 }
 
-// Função para sincronizar todos os restaurantes com executivos baseado nas zonas
+// Função para sincronizar todos os restaurantes com executivos baseado nas áreas geográficas
 export async function syncRestaurantsWithSellers() {
     'use server';
     
     try {
         const { prisma } = await import('@/lib/db');
+        const { atribuirExecutivoAutomatico } = await import('@/lib/geographic-attribution');
         
-        // Verificar se a coluna zona_id existe
-        let columnExists = false;
-        try {
-            const columnCheck = await prisma.$queryRaw<Array<{ column_name: string }>>`
-                SELECT column_name 
-                FROM information_schema.columns 
-                WHERE table_name = 'restaurants' AND column_name = 'zona_id'
-            `;
-            columnExists = columnCheck.length > 0;
-        } catch (e) {
-            return {
-                success: false,
-                message: 'Coluna zona_id não existe. Execute a alocação de zonas primeiro.'
-            };
-        }
-
-        if (!columnExists) {
-            return {
-                success: false,
-                message: 'Coluna zona_id não existe. Execute a alocação de zonas primeiro.'
-            };
-        }
-
-        // Buscar todos os executivos ativos com suas zonas
-        let sellersWithZonas: Array<{ seller_id: string; zona_id: string }> = [];
-        try {
-            sellersWithZonas = await prisma.$queryRaw<Array<{ seller_id: string; zona_id: string }>>`
-                SELECT sz.seller_id, sz.zona_id
-                FROM seller_zonas sz
-                INNER JOIN sellers s ON s.id = sz.seller_id
-                WHERE s.active = true
-            `;
-        } catch (e: any) {
-            return {
-                success: false,
-                message: `Erro ao buscar executivos: ${e.message}`
-            };
-        }
-
-        if (sellersWithZonas.length === 0) {
-            return {
-                success: true,
-                message: 'Nenhum executivo com zonas encontrado. Configure as zonas dos executivos primeiro.'
-            };
-        }
-
-        // Criar mapa de zona -> executivo (pegar o primeiro executivo ativo para cada zona)
-        const zonaToSellerMap = new Map<string, string>();
-        sellersWithZonas.forEach(sz => {
-            if (!zonaToSellerMap.has(sz.zona_id)) {
-                zonaToSellerMap.set(sz.zona_id, sz.seller_id);
+        // Buscar todos os executivos ativos com áreas de cobertura configuradas
+        const sellers = await prisma.seller.findMany({
+            where: {
+                active: true,
+                territorioAtivo: true,
+                OR: [
+                    { areasCobertura: { not: null } },
+                    { AND: [
+                        { baseLatitude: { not: null } },
+                        { baseLongitude: { not: null } },
+                        { raioKm: { not: null } }
+                    ]}
+                ]
+            },
+            select: {
+                id: true,
+                name: true,
+                areasCobertura: true,
+                baseLatitude: true,
+                baseLongitude: true,
+                raioKm: true
             }
         });
 
-        // Buscar todos os restaurantes com zona mas sem executivo ou com executivo diferente
-        let restaurantsToUpdate: Array<{ id: string; zona_id: string; seller_id: string | null }> = [];
-        try {
-            restaurantsToUpdate = await prisma.$queryRaw<Array<{ id: string; zona_id: string; seller_id: string | null }>>`
-                SELECT id, zona_id, seller_id
-                FROM restaurants
-                WHERE zona_id IS NOT NULL
-            `;
-        } catch (e: any) {
+        if (sellers.length === 0) {
             return {
                 success: false,
-                message: `Erro ao buscar restaurantes: ${e.message}`
+                message: 'Nenhum executivo com áreas de cobertura configuradas encontrado. Configure as áreas no mapa primeiro.'
             };
         }
 
-        console.log(`\n📊 Total de restaurantes a verificar: ${restaurantsToUpdate.length}`);
-        console.log(`📊 Total de zonas mapeadas: ${zonaToSellerMap.size}`);
+        console.log(`\n📊 Total de executivos com áreas configuradas: ${sellers.length}`);
+
+        // Buscar todos os restaurantes
+        const restaurants = await prisma.restaurant.findMany({
+            select: {
+                id: true,
+                name: true,
+                address: true,
+                latitude: true,
+                longitude: true,
+                sellerId: true
+            }
+        });
+
+        console.log(`📊 Total de restaurantes a verificar: ${restaurants.length}`);
         
         let updated = 0;
         let skipped = 0;
-        let noZona = 0;
+        let noCoordinates = 0;
+        let noMatch = 0;
 
-        // Atualizar cada restaurante
-        for (const restaurant of restaurantsToUpdate) {
-            const expectedSellerId = zonaToSellerMap.get(restaurant.zona_id);
-            
-            if (expectedSellerId) {
-                // Se o restaurante não tem executivo ou tem um executivo diferente, atualizar
-                if (!restaurant.seller_id || restaurant.seller_id !== expectedSellerId) {
-                    try {
-                        await prisma.$executeRaw`
-                            UPDATE restaurants 
-                            SET seller_id = ${expectedSellerId}::uuid,
-                                assigned_at = NOW()
-                            WHERE id = ${restaurant.id}::uuid
-                        `;
-                        updated++;
-                        if (updated <= 10) { // Log apenas os primeiros 10 para não poluir
-                            console.log(`   ✅ Restaurante ${restaurant.id} atualizado: zona ${restaurant.zona_id} -> executivo ${expectedSellerId}`);
+        // Atualizar cada restaurante usando atribuição geográfica
+        for (const restaurant of restaurants) {
+            try {
+                // Se não tem coordenadas, tentar obter via geocoding
+                if (!restaurant.latitude || !restaurant.longitude) {
+                    const result = await atribuirExecutivoAutomatico({
+                        id: restaurant.id,
+                        name: restaurant.name,
+                        address: restaurant.address
+                    });
+
+                    if (result.sucesso && result.executivo_id) {
+                        // Verificar se precisa atualizar
+                        if (restaurant.sellerId !== result.executivo_id) {
+                            await prisma.restaurant.update({
+                                where: { id: restaurant.id },
+                                data: { sellerId: result.executivo_id }
+                            });
+                            updated++;
+                            if (updated <= 10) {
+                                console.log(`   ✅ ${restaurant.name}: atribuído a ${result.executivo_nome}`);
+                            }
+                        } else {
+                            skipped++;
                         }
-                    } catch (e: any) {
-                        console.warn(`   ❌ Erro ao atualizar restaurante ${restaurant.id}:`, e.message);
+                    } else {
+                        noCoordinates++;
+                        if (noCoordinates <= 5) {
+                            console.log(`   ⚠️ ${restaurant.name}: sem coordenadas e não foi possível geocodificar`);
+                        }
                     }
                 } else {
-                    skipped++;
+                    // Já tem coordenadas, verificar atribuição
+                    const result = await atribuirExecutivoAutomatico({
+                        id: restaurant.id,
+                        name: restaurant.name,
+                        latitude: restaurant.latitude,
+                        longitude: restaurant.longitude
+                    });
+
+                    if (result.sucesso && result.executivo_id) {
+                        // Verificar se precisa atualizar
+                        if (restaurant.sellerId !== result.executivo_id) {
+                            await prisma.restaurant.update({
+                                where: { id: restaurant.id },
+                                data: { sellerId: result.executivo_id }
+                            });
+                            updated++;
+                            if (updated <= 10) {
+                                console.log(`   ✅ ${restaurant.name}: atribuído a ${result.executivo_nome}`);
+                            }
+                        } else {
+                            skipped++;
+                        }
+                    } else {
+                        noMatch++;
+                        if (noMatch <= 5) {
+                            console.log(`   ⚠️ ${restaurant.name}: não está dentro de nenhuma área de cobertura`);
+                        }
+                    }
                 }
-            } else {
-                noZona++;
-                if (noZona <= 5) { // Log apenas os primeiros 5
-                    console.log(`   ⚠️ Restaurante ${restaurant.id} com zona ${restaurant.zona_id} sem executivo mapeado`);
-                }
+            } catch (e: any) {
+                console.error(`   ❌ Erro ao processar restaurante ${restaurant.id}:`, e.message);
             }
         }
         
         console.log(`\n📊 Resumo:`);
         console.log(`   ✅ Atualizados: ${updated}`);
         console.log(`   ⏭️ Já corretos: ${skipped}`);
-        console.log(`   ⚠️ Sem executivo mapeado: ${noZona}`);
+        console.log(`   ⚠️ Sem coordenadas: ${noCoordinates}`);
+        console.log(`   ⚠️ Fora de todas as áreas: ${noMatch}`);
 
         revalidatePath('/clients');
         revalidatePath('/carteira');
@@ -1815,7 +1827,7 @@ export async function syncRestaurantsWithSellers() {
 
         return {
             success: true,
-            message: `${updated} restaurantes sincronizados com executivos, ${skipped} já estavam corretos`
+            message: `${updated} restaurantes sincronizados com executivos, ${skipped} já estavam corretos. ${noMatch > 0 ? `${noMatch} restaurantes fora de todas as áreas.` : ''}`
         };
     } catch (error: any) {
         console.error('Erro ao sincronizar restaurantes:', error);
