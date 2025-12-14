@@ -61,7 +61,6 @@ export default async function SellersPage() {
 
         return <SellersClient 
             initialSellers={sellersWithZonas}
-            availableZonas={[]}
         />;
     } catch (error: any) {
         console.error('Erro ao carregar executivos:', error);

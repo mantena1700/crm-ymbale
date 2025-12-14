@@ -8,13 +8,6 @@ import TerritoryMapConfig from '@/components/TerritoryMapConfig';
 import MultiTerritoryMapConfig from '@/components/MultiTerritoryMapConfig';
 import styles from './page.module.css';
 
-interface Zona {
-    id: string;
-    zonaNome: string;
-    cepInicial: string;
-    cepFinal: string;
-    regiao?: string;
-}
 
 interface Area {
     id: string;
