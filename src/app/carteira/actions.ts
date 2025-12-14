@@ -1800,29 +1800,40 @@ export async function findNearbyProspectClients(
         
         console.log(`   🔍 Filtrando restaurantes no raio de ${radiusKm}km...`);
         
-        // 1. Filtrar restaurantes dentro do raio
+        // 1. Filtrar restaurantes dentro do raio (CRÍTICO: esta é a validação de proximidade)
+        // Usar distância real da API se disponível, senão usar Haversine
         const restaurantsInRadius = restaurantsWithDistance
             .filter((r): r is NonNullable<typeof r> => r !== null)
-            .filter(r => r.distance <= radiusKm);
+            .filter(r => {
+                const dist = r.distance;
+                const isWithinRadius = dist <= radiusKm;
+                if (!isWithinRadius) {
+                    console.log(`   ❌ ${r.name} está FORA do raio: ${dist.toFixed(2)}km > ${radiusKm}km`);
+                }
+                return isWithinRadius;
+            });
         
-        console.log(`   📍 Restaurantes dentro do raio: ${restaurantsInRadius.length}`);
+        console.log(`   📍 Restaurantes dentro do raio de ${radiusKm}km: ${restaurantsInRadius.length}`);
         
         if (restaurantsInRadius.length === 0) {
-            console.log(`   ⚠️ Nenhum restaurante encontrado no raio de ${radiusKm}km`);
-            console.log(`   💡 Verifique se há restaurantes com coordenadas próximas`);
+            console.log(`   ⚠️ NENHUM restaurante encontrado no raio de ${radiusKm}km do cliente fixo!`);
+            console.log(`   💡 Isso significa que não há restaurantes próximos suficientes para preencher este dia`);
             // Log dos restaurantes mais próximos (mesmo fora do raio)
             const sortedByDistance = restaurantsWithDistance
                 .filter((r): r is NonNullable<typeof r> => r !== null)
                 .sort((a, b) => a.distance - b.distance)
                 .slice(0, 5);
             if (sortedByDistance.length > 0) {
-                console.log(`   📊 5 restaurantes mais próximos (fora do raio):`);
+                console.log(`   📊 5 restaurantes mais próximos (mas FORA do raio de ${radiusKm}km):`);
                 sortedByDistance.forEach((r, idx) => {
-                    console.log(`      ${idx + 1}. ${r.name}: ${r.distance.toFixed(2)}km`);
+                    console.log(`      ${idx + 1}. ${r.name}: ${r.distance.toFixed(2)}km (${r.distance > radiusKm ? 'FORA' : 'DENTRO'} do raio)`);
                 });
             }
+            console.log(`   ✅ Retornando array vazio - este dia NÃO será preenchido com restaurantes distantes`);
             return [];
         }
+        
+        console.log(`   ✅ ${restaurantsInRadius.length} restaurantes VALIDADOS como próximos (dentro de ${radiusKm}km)`);
         
         // 2. Criar clusters de restaurantes próximos entre si (algoritmo de clustering simples)
         // Agrupar restaurantes que estão a menos de 5km uns dos outros
@@ -1903,6 +1914,15 @@ export async function findNearbyProspectClients(
         // Limitar ao máximo solicitado
         const finalResults = nearbyRestaurants.slice(0, maxResults);
 
+        // VALIDAÇÃO FINAL: Garantir que TODOS os restaurantes retornados estão dentro do raio
+        const validatedResults = finalResults.filter(r => {
+            const isValid = r.distanceFromFixed <= radiusKm;
+            if (!isValid) {
+                console.error(`   ❌ ERRO: ${r.name} está FORA do raio! ${r.distanceFromFixed.toFixed(2)}km > ${radiusKm}km`);
+            }
+            return isValid;
+        });
+
         // Log detalhado para debug
         console.log('\n=== PREENCHIMENTO INTELIGENTE ===');
         console.log(`📍 Cliente Fixo: ${fixedClient.clientName || fixedClient.restaurantName}`);
@@ -1914,22 +1934,23 @@ export async function findNearbyProspectClients(
         console.log(`   Raio de busca: ${radiusKm}km`);
         console.log(`   Restaurantes encontrados no raio: ${restaurantsInRadius.length}`);
         console.log(`   Clusters criados: ${clusters.length}`);
-        console.log(`   Restaurantes selecionados: ${finalResults.length}`);
+        console.log(`   Restaurantes selecionados: ${validatedResults.length}`);
         
-        if (finalResults.length > 0) {
-            console.log('\n   Top 5 mais próximos:');
-            finalResults.slice(0, 5).forEach((r, i) => {
+        if (validatedResults.length > 0) {
+            console.log('\n   ✅ Restaurantes VALIDADOS como próximos:');
+            validatedResults.slice(0, 5).forEach((r, i) => {
                 const clusterInfo = r.clusterId !== undefined ? ` (Cluster ${r.clusterId})` : '';
                 const timeInfo = r.durationMinutes ? ` | ⏱️ ${r.durationMinutes}min` : '';
+                const distanceStatus = r.distanceFromFixed <= radiusKm ? '✅ DENTRO' : '❌ FORA';
                 console.log(`   ${i + 1}. ${r.name}${clusterInfo}`);
-                console.log(`      📏 ${r.distanceFromFixed.toFixed(2)}km do cliente fixo${timeInfo} | 📊 Score: ${r.score.toFixed(0)}`);
+                console.log(`      📏 ${r.distanceFromFixed.toFixed(2)}km do cliente fixo ${distanceStatus}${timeInfo} | 📊 Score: ${r.score.toFixed(0)}`);
             });
         } else {
             console.log('   ⚠️ Nenhum restaurante encontrado no raio especificado');
         }
         console.log('================================\n');
 
-        return finalResults;
+        return validatedResults;
     } catch (error) {
         console.error('❌ Erro ao buscar clientes próximos:', error);
         return [];

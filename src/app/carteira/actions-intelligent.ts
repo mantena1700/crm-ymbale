@@ -307,9 +307,10 @@ export async function generateIntelligentWeeklySchedule(
         
         console.log('\n✨ Preenchimento inteligente concluído!\n');
         
-        // Segundo: preencher dias restantes com lógica atual (prioridade por score)
-        // IMPORTANTE: Só preencher dias que NÃO têm clientes fixos, para evitar misturar
-        // restaurantes distantes com os agrupados por proximidade
+        // Segundo: preencher APENAS dias SEM clientes fixos com lógica de score
+        // IMPORTANTE: NUNCA preencher dias com clientes fixos usando restaurantes que não foram
+        // validados como próximos. Se um dia tem cliente fixo mas slots vazios, significa que
+        // não há restaurantes próximos suficientes, e isso é OK - não devemos forçar preenchimento.
         let restaurantIndex = 0;
         const availableRestaurants = scoredRestaurants.filter(sr => !usedRestaurantIds.has(sr.restaurant.id));
         
@@ -324,17 +325,21 @@ export async function generateIntelligentWeeklySchedule(
         console.log(`📆 Total de slots disponíveis: ${weekDays.reduce((sum, day) => sum + day.slots.filter(s => !s.restaurantId).length, 0)}`);
         console.log(`📝 Restaurantes disponíveis para agendar: ${availableRestaurants.length}`);
         console.log(`📌 Dias com clientes fixos (já otimizados): ${daysWithFixedClients.size}`);
+        console.log(`⚠️ IMPORTANTE: Dias com clientes fixos NÃO serão preenchidos com restaurantes distantes`);
 
+        // Preencher APENAS dias SEM clientes fixos
         for (const scoredRestaurant of availableRestaurants) {
             const restaurant = scoredRestaurant.restaurant;
             
-            // PRIORIDADE: Preencher primeiro os dias SEM clientes fixos
-            // Depois, se necessário, preencher dias com clientes fixos que ainda têm slots vazios
             let found = false;
             
-            // 1. Tentar preencher dias SEM clientes fixos primeiro
+            // Preencher APENAS dias SEM clientes fixos
             for (const day of weekDays) {
-                if (daysWithFixedClients.has(day.date)) continue; // Pular dias com clientes fixos
+                // CRÍTICO: Pular dias com clientes fixos - eles já foram preenchidos com lógica de proximidade
+                // Se ainda têm slots vazios, é porque não há restaurantes próximos suficientes
+                if (daysWithFixedClients.has(day.date)) {
+                    continue; // NUNCA preencher dias com clientes fixos com restaurantes não validados
+                }
                 
                 const emptySlot = day.slots.find(slot => !slot.restaurantId);
                 if (emptySlot) {
@@ -343,26 +348,22 @@ export async function generateIntelligentWeeklySchedule(
                     usedRestaurantIds.add(restaurant.id);
                     restaurantIndex++;
                     found = true;
+                    console.log(`   ✅ Preenchido slot em ${day.day} (sem cliente fixo): ${restaurant.name}`);
                     break;
                 }
             }
             
-            // 2. Se não encontrou em dias sem clientes fixos, preencher dias com clientes fixos que ainda têm espaço
-            if (!found) {
-                for (const day of weekDays) {
-                    const emptySlot = day.slots.find(slot => !slot.restaurantId);
-                    if (emptySlot) {
-                        emptySlot.restaurantId = restaurant.id;
-                        emptySlot.restaurantName = restaurant.name;
-                        usedRestaurantIds.add(restaurant.id);
-                        restaurantIndex++;
-                        found = true;
-                        break;
-                    }
+            if (!found) break; // Não há mais slots disponíveis em dias sem clientes fixos
+        }
+        
+        // Log final sobre dias com clientes fixos que ficaram com slots vazios
+        for (const day of weekDays) {
+            if (daysWithFixedClients.has(day.date)) {
+                const emptySlots = day.slots.filter(s => !s.restaurantId).length;
+                if (emptySlots > 0) {
+                    console.log(`   ℹ️ ${day.day} tem ${emptySlots} slots vazios (sem restaurantes próximos suficientes)`);
                 }
             }
-            
-            if (!found) break; // Não há mais slots disponíveis
         }
 
         const totalScheduled = weekDays.reduce((sum, day) => sum + day.slots.filter(s => s.restaurantId).length, 0);
