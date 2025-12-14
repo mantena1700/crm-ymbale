@@ -2,31 +2,7 @@
 
 import { prisma } from '@/lib/db';
 import { getFixedClientsForWeek, findNearbyProspectClients } from './actions';
-
-// Importar tipos do modal
-export interface FillSuggestion {
-    id: string;
-    type: 'LOW_POTENTIAL' | 'FAR_DISTANCE' | 'NO_NEARBY';
-    day: string;
-    dayName: string;
-    fixedClient: {
-        id: string;
-        name: string;
-        address: any;
-        radiusKm: number;
-    };
-    restaurants: Array<{
-        id: string;
-        name: string;
-        distance: number;
-        durationMinutes?: number;
-        potential: string;
-        status: string;
-        address?: any;
-    }>;
-    message: string;
-    details: string;
-}
+import type { FillSuggestion } from './ConfirmationModal';
 
 export interface UserDecision {
     suggestionId: string;
