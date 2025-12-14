@@ -11,7 +11,12 @@
     "populate-coords": "tsx src/scripts/populate-coordinates.ts",
     "debug-coords": "tsx src/scripts/debug-coordinates.ts",
     "test-distance": "tsx src/scripts/test-distance.ts",
-    "setup-coords": "tsx src/scripts/setup-coordinates.ts"
+    "setup-coords": "tsx src/scripts/setup-coordinates.ts",
+    "populate-territories": "tsx src/scripts/populate-executive-territories.ts",
+    "test-attribution": "tsx src/scripts/test-geographic-attribution.ts",
+    "setup-geographic": "tsx src/scripts/execute-migration-sql.ts",
+    "diagnostico": "tsx src/scripts/diagnostico-sistema.ts",
+    "reatribuir": "tsx src/scripts/reatribuir-restaurantes.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

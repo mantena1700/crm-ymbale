@@ -780,15 +780,31 @@ export async function importExcelFile(formData: FormData) {
                             }
                         }
 
-                        // Buscar zona por CEP
-                        let zonaId: string | null = null;
+                        // Atribuição geográfica automática usando Google Maps API (SEM ZONAS)
                         let sellerId: string | null = null;
 
-                        if (cep && cep.replace(/[^0-9]/g, '').length === 8) {
-                            zonaId = await findZonaByCep(cep);
-                            if (zonaId) {
-                                sellerId = await findSellerByZona(zonaId);
+                        try {
+                            const { atribuirExecutivoAutomatico } = await import('@/lib/geographic-attribution');
+                            const atribuicao = await atribuirExecutivoAutomatico({
+                                name: name,
+                                address: {
+                                    street: getColumnValue(row, ['Endereço (Rua)', 'EndereÃ§o (Rua)', 'Rua', 'Endereço', 'Street']) || '',
+                                    neighborhood: neighborhood,
+                                    city: city,
+                                    state: getColumnValue(row, ['Estado', 'State', 'state', 'UF']) || '',
+                                    zip: cep,
+                                },
+                                cep: cep
+                            });
+
+                            if (atribuicao.sucesso && atribuicao.executivo_id) {
+                                sellerId = atribuicao.executivo_id;
+                                console.log(`   ✅ Atribuído geograficamente (Google Maps): ${atribuicao.executivo_nome} (${atribuicao.distancia_km}km)`);
+                            } else {
+                                console.warn(`   ⚠️ Não foi possível atribuir: ${atribuicao.erro || 'Erro desconhecido'}`);
                             }
+                        } catch (geoError: any) {
+                            console.warn(`   ⚠️ Erro na atribuição geográfica: ${geoError.message}`);
                         }
 
                         // Gerar código de cliente único
@@ -823,7 +839,6 @@ export async function importExcelFile(formData: FormData) {
                                     state: getColumnValue(row, ['Estado', 'State', 'state', 'UF']) || '',
                                     zip: cep,
                                 },
-                                zonaId: zonaId || undefined,
                                 sellerId: sellerId || undefined,
                                 assignedAt: sellerId ? new Date() : undefined,
                                 lastCollectionDate: (() => {

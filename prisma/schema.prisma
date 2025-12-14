@@ -170,6 +170,16 @@ model Seller {
   createdAt     DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime? @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
+  // Campos de território geográfico
+  territorioTipo    String?   @default("cep_legado") @map("territorio_tipo") @db.VarChar(20) // 'raio', 'poligono', 'cep_legado'
+  baseCidade        String?   @map("base_cidade") @db.VarChar(200)
+  baseLatitude      Decimal?  @map("base_latitude") @db.Decimal(10, 8)
+  baseLongitude     Decimal?  @map("base_longitude") @db.Decimal(11, 8)
+  raioKm            Int?      @map("raio_km")
+  poligonoPontos    Json?     @map("poligono_pontos")
+  territorioAtivo   Boolean   @default(true) @map("territorio_ativo")
+  areasCobertura    Json?     @map("areas_cobertura") // Array de áreas: [{ cidade, lat, lng, raio }]
+
   restaurants Restaurant[]
   visits      Visit[]
   zonas       SellerZona[]
@@ -199,6 +209,8 @@ model Restaurant {
   zonaId              String?   @map("zona_id") @db.Uuid
   latitude            Float?
   longitude           Float?
+  geocodingData       Json?     @map("geocoding_data")
+  geocodingAtualizadoEm DateTime? @map("geocoding_atualizado_em") @db.Timestamptz(6)
 
   seller    Seller?   @relation(fields: [sellerId], references: [id], onDelete: SetNull)
   zona      ZonaCep?  @relation(fields: [zonaId], references: [id], onDelete: SetNull)
@@ -219,6 +231,7 @@ model Restaurant {
   @@index([status], map: "idx_restaurants_status")
   @@index([zonaId], map: "idx_restaurants_zona_id")
   @@index([codigoCliente], map: "idx_restaurants_codigo_cliente")
+  @@index([latitude, longitude], map: "idx_restaurants_coords")
   @@map("restaurants")
 }
 

@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { createSeller, updateSeller, deleteSeller } from './actions';
 import { syncRestaurantsWithSellers } from '@/app/actions';
 import PhotoUpload from '@/components/PhotoUpload';
+import TerritoryMapConfig from '@/components/TerritoryMapConfig';
+import MultiTerritoryMapConfig from '@/components/MultiTerritoryMapConfig';
 import styles from './page.module.css';
 
 interface Zona {
@@ -14,6 +16,14 @@ interface Zona {
     regiao?: string;
 }
 
+interface Area {
+    id: string;
+    cidade: string;
+    latitude: number;
+    longitude: number;
+    raioKm: number;
+}
+
 interface Seller {
     id: string;
     name: string;
@@ -22,6 +32,13 @@ interface Seller {
     photoUrl?: string;
     zonasIds: string[];
     active: boolean;
+    territorioTipo?: string | null;
+    baseCidade?: string | null;
+    baseLatitude?: number | null;
+    baseLongitude?: number | null;
+    raioKm?: number | null;
+    territorioAtivo?: boolean;
+    areasCobertura?: Area[] | null;
 }
 
 interface SellersClientProps {
@@ -58,29 +75,51 @@ export default function SellersClient({ initialSellers, availableZonas }: Seller
         email: '',
         phone: '',
         zonasIds: [] as string[],
-        active: true
+        active: true,
+        territorioTipo: 'raio' as string,
+        baseCidade: null as string | null,
+        baseLatitude: null as number | null,
+        baseLongitude: null as number | null,
+        raioKm: 50 as number,
+        territorioAtivo: true,
+        areasCobertura: [] as Area[]
     });
+    const [showTerritoryMap, setShowTerritoryMap] = useState(false);
     const [photoFile, setPhotoFile] = useState<File | null>(null);
     const [photoPreview, setPhotoPreview] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [syncing, setSyncing] = useState(false);
 
     const activeSellers = sellers.filter(s => s.active);
-    const totalZonas = new Set(sellers.flatMap(s => s.zonasIds)).size;
 
     const handleOpenModal = (seller?: Seller) => {
         if (seller) {
             // Garantir que zonasIds é sempre um array
-            const zonasIds = Array.isArray(seller.zonasIds) ? seller.zonasIds : [];
-            console.log('Editando executivo:', seller.name, 'Zonas IDs:', zonasIds);
-            
             setEditingSeller(seller);
+            const areas = seller.areasCobertura && Array.isArray(seller.areasCobertura) 
+                ? seller.areasCobertura 
+                : (seller.baseCidade && seller.baseLatitude && seller.baseLongitude
+                    ? [{
+                        id: '1',
+                        cidade: seller.baseCidade,
+                        latitude: seller.baseLatitude,
+                        longitude: seller.baseLongitude,
+                        raioKm: seller.raioKm || 50
+                    }]
+                    : []);
             setFormData({
                 name: seller.name,
                 email: seller.email,
                 phone: seller.phone,
-                zonasIds: zonasIds,
-                active: seller.active
+                zonasIds: [], // Não usar mais zonas
+                active: seller.active,
+                territorioTipo: seller.territorioTipo || 'raio',
+                baseCidade: seller.baseCidade || null,
+                baseLatitude: seller.baseLatitude || null,
+                baseLongitude: seller.baseLongitude || null,
+                raioKm: seller.raioKm || 50,
+                territorioAtivo: seller.territorioAtivo !== undefined ? seller.territorioAtivo : true,
+                areasCobertura: areas
             });
             setPhotoPreview(seller.photoUrl || null);
             setPhotoFile(null);
@@ -91,7 +130,14 @@ export default function SellersClient({ initialSellers, availableZonas }: Seller
                 email: '',
                 phone: '',
                 zonasIds: [],
-                active: true
+                active: true,
+                territorioTipo: 'raio',
+                baseCidade: null,
+                baseLatitude: null,
+                baseLongitude: null,
+                raioKm: 50,
+                territorioAtivo: true,
+                areasCobertura: []
             });
             setPhotoPreview(null);
             setPhotoFile(null);
@@ -107,20 +153,18 @@ export default function SellersClient({ initialSellers, availableZonas }: Seller
             email: '',
             phone: '',
             zonasIds: [],
-            active: true
+            active: true,
+            territorioTipo: 'raio',
+            baseCidade: null,
+            baseLatitude: null,
+            baseLongitude: null,
+            raioKm: 50,
+            territorioAtivo: true
         });
         setPhotoPreview(null);
         setPhotoFile(null);
     };
 
-    const handleToggleZona = (zonaId: string) => {
-        setFormData(prev => ({
-            ...prev,
-            zonasIds: prev.zonasIds.includes(zonaId)
-                ? prev.zonasIds.filter(id => id !== zonaId)
-                : [...prev.zonasIds, zonaId]
-        }));
-    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -144,20 +188,40 @@ export default function SellersClient({ initialSellers, availableZonas }: Seller
                 }
             }
 
+            // Se usar múltiplas áreas, usar a primeira como base (compatibilidade)
+            const firstArea = formData.areasCobertura && formData.areasCobertura.length > 0 
+                ? formData.areasCobertura[0] 
+                : null;
+
             const sellerData = {
                 name: formData.name,
                 email: formData.email,
                 phone: formData.phone,
-                zonasIds: formData.zonasIds,
+                zonasIds: [], // Não usar mais zonas
                 active: formData.active,
-                photoUrl
+                photoUrl,
+                territorioTipo: formData.territorioTipo,
+                baseCidade: firstArea?.cidade || formData.baseCidade || undefined,
+                baseLatitude: firstArea?.latitude || formData.baseLatitude || undefined,
+                baseLongitude: firstArea?.longitude || formData.baseLongitude || undefined,
+                raioKm: firstArea?.raioKm || formData.raioKm,
+                territorioAtivo: formData.territorioAtivo,
+                areasCobertura: formData.areasCobertura.length > 0 ? formData.areasCobertura : undefined
             };
 
             if (editingSeller) {
                 const updated = await updateSeller(editingSeller.id, sellerData);
                 setSellers(prev => prev.map(s => s.id === updated.id ? {
+                    ...s,
                     ...updated,
-                    zonasIds: formData.zonasIds
+                    zonasIds: [], // Não usar mais zonas
+                    active: updated.active || false,
+                    territorioTipo: updated.territorioTipo || 'raio',
+                    baseCidade: updated.baseCidade,
+                    baseLatitude: updated.baseLatitude,
+                    baseLongitude: updated.baseLongitude,
+                    raioKm: updated.raioKm,
+                    territorioAtivo: updated.territorioAtivo
                 } : s));
                 // Recarregar a página para garantir que os dados estão atualizados
                 setTimeout(() => {
@@ -167,7 +231,14 @@ export default function SellersClient({ initialSellers, availableZonas }: Seller
                 const created = await createSeller(sellerData);
                 setSellers(prev => [{
                     ...created,
-                    zonasIds: formData.zonasIds
+                    zonasIds: [], // Não usar mais zonas
+                    active: created.active || false,
+                    territorioTipo: created.territorioTipo || 'raio',
+                    baseCidade: created.baseCidade,
+                    baseLatitude: created.baseLatitude,
+                    baseLongitude: created.baseLongitude,
+                    raioKm: created.raioKm,
+                    territorioAtivo: created.territorioAtivo
                 }, ...prev]);
             }
 
@@ -193,7 +264,7 @@ export default function SellersClient({ initialSellers, availableZonas }: Seller
     };
 
     const handleSyncRestaurants = async () => {
-        if (!confirm('Deseja sincronizar todos os restaurantes com os executivos baseado nas zonas?\n\nIsso irá atribuir automaticamente os restaurantes aos executivos que cobrem suas zonas.')) {
+        if (!confirm('Deseja sincronizar todos os restaurantes com os executivos baseado nas áreas de cobertura?\n\nIsso irá atribuir automaticamente os restaurantes aos executivos que cobrem suas áreas geográficas.')) {
             return;
         }
 
@@ -214,20 +285,6 @@ export default function SellersClient({ initialSellers, availableZonas }: Seller
         }
     };
 
-    const getZonaById = (zonaId: string): Zona | undefined => {
-        return availableZonas.find(z => z.id === zonaId);
-    };
-
-    // Calcular ID numérico para cada zona (baseado na ordem: região -> nome)
-    const getZonaNumericId = (zonaId: string): number => {
-        const sortedZonas = [...availableZonas].sort((a, b) => {
-            if (a.regiao !== b.regiao) {
-                return (a.regiao || '').localeCompare(b.regiao || '');
-            }
-            return a.zonaNome.localeCompare(b.zonaNome);
-        });
-        return sortedZonas.findIndex(z => z.id === zonaId) + 1;
-    };
 
     return (
         <div className={styles.container}>
@@ -278,8 +335,13 @@ export default function SellersClient({ initialSellers, availableZonas }: Seller
                         <span>🗺️</span>
                     </div>
                     <div className={styles.statContent}>
-                        <div className={styles.statLabel}>Zonas Atendidas</div>
-                        <div className={styles.statValue}>{totalZonas}</div>
+                        <div className={styles.statLabel}>Áreas Configuradas</div>
+                        <div className={styles.statValue}>
+                            {sellers.reduce((acc, s) => {
+                                const areas = s.areasCobertura && Array.isArray(s.areasCobertura) ? s.areasCobertura.length : 0;
+                                return acc + areas;
+                            }, 0)}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -287,7 +349,6 @@ export default function SellersClient({ initialSellers, availableZonas }: Seller
             {/* Lista de Executivos */}
             <div className={styles.grid}>
                 {sellers.map(seller => {
-                    const sellerZonas = seller.zonasIds.map(id => getZonaById(id)).filter(Boolean) as Zona[];
                     return (
                         <div key={seller.id} className={styles.card}>
                             <div className={styles.cardHeader}>
@@ -329,26 +390,21 @@ export default function SellersClient({ initialSellers, availableZonas }: Seller
                                     </div>
                                 </div>
                                 
-                                <div className={styles.regions}>
-                                    <div className={styles.regionsLabel}>Zonas de Atendimento:</div>
-                                    <div className={styles.regionTags}>
-                                        {sellerZonas.slice(0, 3).map((zona) => {
-                                            const zonaId = getZonaNumericId(zona.id);
-                                            return (
-                                                <span key={zona.id} className={styles.regionTag}>
-                                                    <strong style={{ color: 'var(--primary)', marginRight: '4px' }}>#{zonaId}</strong>
-                                                    {zona.zonaNome}
+                                {seller.areasCobertura && Array.isArray(seller.areasCobertura) && seller.areasCobertura.length > 0 && (
+                                    <div className={styles.regions}>
+                                        <div className={styles.regionsLabel}>Áreas de Cobertura:</div>
+                                        <div className={styles.regionTags}>
+                                            {seller.areasCobertura.slice(0, 3).map((area: any, index: number) => (
+                                                <span key={area.id || index} className={styles.regionTag}>
+                                                    📍 {area.cidade} ({area.raioKm}km)
                                                 </span>
-                                            );
-                                        })}
-                                        {sellerZonas.length > 3 && (
-                                            <span className={styles.tagMore}>+{sellerZonas.length - 3}</span>
-                                        )}
-                                        {sellerZonas.length === 0 && (
-                                            <span className={styles.tagMore}>Nenhuma zona</span>
-                                        )}
+                                            ))}
+                                            {seller.areasCobertura.length > 3 && (
+                                                <span className={styles.tagMore}>+{seller.areasCobertura.length - 3} áreas</span>
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
+                                )}
                             </div>
                             
                             <div className={styles.cardFooter}>
@@ -418,45 +474,86 @@ export default function SellersClient({ initialSellers, availableZonas }: Seller
                                 </div>
                             </div>
 
+                            {/* Configuração de Território Geográfico */}
                             <div className={styles.formGroup}>
-                                <label>Zonas de Atendimento *</label>
-                                <div className={styles.zonasList}>
-                                    {availableZonas.length === 0 ? (
-                                        <p className={styles.noZonas}>
-                                            Nenhuma zona cadastrada. <a href="/admin/zonas" target="_blank">Cadastrar zonas</a>
-                                        </p>
-                                    ) : (
-                                        <>
-                                            {formData.zonasIds.length === 0 && availableZonas.length > 0 && (
-                                                <p style={{ color: '#f59e0b', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
-                                                    ⚠️ Selecione pelo menos uma zona de atendimento
-                                                </p>
-                                            )}
-                                            {availableZonas.map(zona => {
-                                                const zonaId = getZonaNumericId(zona.id);
-                                                return (
-                                                    <label key={zona.id} className={styles.zonaCheckbox}>
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={formData.zonasIds.includes(zona.id)}
-                                                            onChange={() => handleToggleZona(zona.id)}
-                                                        />
-                                                        <span>
-                                                            <strong style={{ color: 'var(--primary)', marginRight: '6px' }}>#{zonaId}</strong>
-                                                            {zona.zonaNome} (CEP: {formatCep(zona.cepInicial)} até {formatCep(zona.cepFinal)})
-                                                            {zona.regiao && (
-                                                                <span style={{ marginLeft: '8px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                                                                    [{zona.regiao}]
-                                                                </span>
-                                                            )}
-                                                        </span>
-                                                    </label>
-                                                );
-                                            })}
-                                        </>
-                                    )}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                    <label style={{ fontWeight: '600', fontSize: '1rem' }}>🗺️ Áreas de Cobertura</label>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowTerritoryMap(!showTerritoryMap)}
+                                        style={{
+                                            padding: '0.5rem 1rem',
+                                            background: showTerritoryMap ? '#3498db' : '#e5e7eb',
+                                            color: showTerritoryMap ? 'white' : '#374151',
+                                            border: 'none',
+                                            borderRadius: '6px',
+                                            cursor: 'pointer',
+                                            fontSize: '0.875rem',
+                                            fontWeight: '500'
+                                        }}
+                                    >
+                                        {showTerritoryMap ? '👁️ Ocultar Mapa' : '🗺️ Configurar no Mapa'}
+                                    </button>
                                 </div>
+                                <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem' }}>
+                                    Configure múltiplas áreas de cobertura no mapa. Adicione quantas cidades quiser (ex: Sorocaba, Campinas, etc.)
+                                </p>
+                                
+                                {showTerritoryMap && (
+                                    <MultiTerritoryMapConfig
+                                        areas={formData.areasCobertura}
+                                        onAreasChange={(areas) => {
+                                            setFormData({
+                                                ...formData,
+                                                areasCobertura: areas,
+                                                // Atualizar campos de compatibilidade com a primeira área
+                                                baseCidade: areas.length > 0 ? areas[0].cidade : null,
+                                                baseLatitude: areas.length > 0 ? areas[0].latitude : null,
+                                                baseLongitude: areas.length > 0 ? areas[0].longitude : null,
+                                                raioKm: areas.length > 0 ? areas[0].raioKm : 50
+                                            });
+                                        }}
+                                    />
+                                )}
+
+                                {!showTerritoryMap && formData.areasCobertura && formData.areasCobertura.length > 0 && (
+                                    <div style={{
+                                        padding: '1rem',
+                                        background: '#f0f9ff',
+                                        borderRadius: '8px',
+                                        border: '1px solid #bae6fd'
+                                    }}>
+                                        <p style={{ margin: 0, fontWeight: '500', marginBottom: '0.5rem' }}>
+                                            📍 {formData.areasCobertura.length} Área(s) Configurada(s):
+                                        </p>
+                                        {formData.areasCobertura.map((area, index) => (
+                                            <p key={area.id} style={{ margin: '0.25rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
+                                                {index + 1}. {area.cidade} - Raio: {area.raioKm}km
+                                            </p>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {!showTerritoryMap && (!formData.areasCobertura || formData.areasCobertura.length === 0) && formData.baseCidade && (
+                                    <div style={{
+                                        padding: '1rem',
+                                        background: '#f0f9ff',
+                                        borderRadius: '8px',
+                                        border: '1px solid #bae6fd'
+                                    }}>
+                                        <p style={{ margin: 0, fontWeight: '500' }}>
+                                            📍 Base: {formData.baseCidade}
+                                        </p>
+                                        <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
+                                            Raio: {formData.raioKm}km
+                                            {formData.baseLatitude && formData.baseLongitude && (
+                                                <> • Coordenadas: {formData.baseLatitude.toFixed(4)}, {formData.baseLongitude.toFixed(4)}</>
+                                            )}
+                                        </p>
+                                    </div>
+                                )}
                             </div>
+
 
                             <div className={styles.formGroup}>
                                 <label className={styles.checkbox}>

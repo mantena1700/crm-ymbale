@@ -228,6 +228,13 @@ export async function createSeller(data: {
     photoUrl?: string;
     zonasIds: string[];
     active: boolean;
+    territorioTipo?: string;
+    baseCidade?: string;
+    baseLatitude?: number;
+    baseLongitude?: number;
+    raioKm?: number;
+    territorioAtivo?: boolean;
+    areasCobertura?: any;
 }) {
     const seller = await prisma.seller.create({
         data: {
@@ -237,7 +244,14 @@ export async function createSeller(data: {
             photoUrl: data.photoUrl || null,
             regions: [], // Mantido para compatibilidade
             neighborhoods: [], // Mantido para compatibilidade
-            active: data.active
+            active: data.active,
+            territorioTipo: data.territorioTipo || 'raio',
+            baseCidade: data.baseCidade || null,
+            baseLatitude: data.baseLatitude ? data.baseLatitude : null,
+            baseLongitude: data.baseLongitude ? data.baseLongitude : null,
+            raioKm: data.raioKm || null,
+            territorioAtivo: data.territorioAtivo !== undefined ? data.territorioAtivo : true,
+            areasCobertura: data.areasCobertura ? data.areasCobertura : null
         }
     });
 
@@ -290,15 +304,42 @@ export async function createSeller(data: {
     revalidatePath('/pipeline');
     revalidatePath('/clients');
 
+    const createdSeller = await prisma.seller.findUnique({
+        where: { id: seller.id },
+        select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            photoUrl: true,
+            active: true,
+            territorioTipo: true,
+            baseCidade: true,
+            baseLatitude: true,
+            baseLongitude: true,
+            raioKm: true,
+            territorioAtivo: true,
+            areasCobertura: true
+        }
+    });
+
     return {
-        id: seller.id,
-        name: seller.name,
-        email: seller.email || '',
-        phone: seller.phone || '',
-        photoUrl: seller.photoUrl || undefined,
+        id: createdSeller!.id,
+        name: createdSeller!.name,
+        email: createdSeller!.email || '',
+        phone: createdSeller!.phone || '',
+        photoUrl: createdSeller!.photoUrl || undefined,
         regions: [],
         neighborhoods: [],
-        active: seller.active
+        active: createdSeller!.active || false,
+        zonasIds: [],
+        territorioTipo: createdSeller!.territorioTipo,
+        baseCidade: createdSeller!.baseCidade,
+        baseLatitude: createdSeller!.baseLatitude ? Number(createdSeller!.baseLatitude) : null,
+        baseLongitude: createdSeller!.baseLongitude ? Number(createdSeller!.baseLongitude) : null,
+        raioKm: createdSeller!.raioKm,
+        territorioAtivo: createdSeller!.territorioAtivo,
+        areasCobertura: createdSeller!.areasCobertura as any
     };
 }
 
@@ -309,6 +350,13 @@ export async function updateSeller(id: string, data: {
     photoUrl?: string;
     zonasIds: string[];
     active: boolean;
+    territorioTipo?: string;
+    baseCidade?: string;
+    baseLatitude?: number;
+    baseLongitude?: number;
+    raioKm?: number;
+    territorioAtivo?: boolean;
+    areasCobertura?: any;
 }) {
     const seller = await prisma.seller.update({
         where: { id },
@@ -317,7 +365,14 @@ export async function updateSeller(id: string, data: {
             email: data.email || null,
             phone: data.phone || null,
             photoUrl: data.photoUrl || null,
-            active: data.active
+            active: data.active,
+            territorioTipo: data.territorioTipo || 'raio',
+            baseCidade: data.baseCidade || null,
+            baseLatitude: data.baseLatitude ? data.baseLatitude : null,
+            baseLongitude: data.baseLongitude ? data.baseLongitude : null,
+            raioKm: data.raioKm || null,
+            territorioAtivo: data.territorioAtivo !== undefined ? data.territorioAtivo : true,
+            areasCobertura: data.areasCobertura ? data.areasCobertura : null
         }
     });
 
@@ -402,15 +457,40 @@ export async function updateSeller(id: string, data: {
     revalidatePath('/pipeline');
     revalidatePath('/clients');
 
+    const updatedSeller = await prisma.seller.findUnique({
+        where: { id: seller.id },
+        select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            photoUrl: true,
+            active: true,
+            territorioTipo: true,
+            baseCidade: true,
+            baseLatitude: true,
+            baseLongitude: true,
+            raioKm: true,
+            territorioAtivo: true
+        }
+    });
+
     return {
-        id: seller.id,
-        name: seller.name,
-        email: seller.email || '',
-        phone: seller.phone || '',
-        photoUrl: seller.photoUrl || undefined,
+        id: updatedSeller!.id,
+        name: updatedSeller!.name,
+        email: updatedSeller!.email || '',
+        phone: updatedSeller!.phone || '',
+        photoUrl: updatedSeller!.photoUrl || undefined,
         regions: [],
         neighborhoods: [],
-        active: seller.active
+        active: updatedSeller!.active || false,
+        zonasIds: [],
+        territorioTipo: updatedSeller!.territorioTipo,
+        baseCidade: updatedSeller!.baseCidade,
+        baseLatitude: updatedSeller!.baseLatitude ? Number(updatedSeller!.baseLatitude) : null,
+        baseLongitude: updatedSeller!.baseLongitude ? Number(updatedSeller!.baseLongitude) : null,
+        raioKm: updatedSeller!.raioKm,
+        territorioAtivo: updatedSeller!.territorioAtivo
     };
 }
 

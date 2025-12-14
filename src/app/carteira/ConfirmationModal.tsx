@@ -15,6 +15,19 @@ export interface RestaurantSuggestion {
     address?: any;
 }
 
+// Tipos exportados para uso em outros arquivos
+export type SuggestionType = 'LOW_POTENTIAL' | 'FAR_DISTANCE' | 'NO_NEARBY';
+
+export interface RestaurantSuggestion {
+    id: string;
+    name: string;
+    distance: number;
+    durationMinutes?: number;
+    potential: string;
+    status: string;
+    address?: any;
+}
+
 export interface FillSuggestion {
     id: string;
     type: SuggestionType;
