@@ -24,6 +24,8 @@ interface Restaurant {
     status?: string;
     projectedDeliveries?: number;
     reviewCount?: number;
+    latitude?: number;
+    longitude?: number;
 }
 
 interface WeeklySchedule {
@@ -48,7 +50,7 @@ export async function generateIntelligentWeeklySchedule(
     try {
         console.log('📅 Iniciando geração de agenda inteligente...');
         console.log(`📊 Total de restaurantes recebidos: ${restaurants.length}`);
-        
+
         // Filtrar restaurantes válidos (menos restritivo)
         const validRestaurants = restaurants.filter(r => {
             // Apenas verificar se tem ID e nome
@@ -68,7 +70,7 @@ export async function generateIntelligentWeeklySchedule(
         // Ordenar por prioridade (score combinado)
         const scoredRestaurants = validRestaurants.map(r => {
             let score = 0;
-            
+
             // Prioridade por potencial de vendas
             const potential = r.salesPotential || '';
             if (potential === 'ALTISSIMO') score += 100;
@@ -76,48 +78,50 @@ export async function generateIntelligentWeeklySchedule(
             else if (potential === 'MEDIO') score += 50;
             else if (potential === 'BAIXO') score += 25;
             else score += 10; // Score base para restaurantes sem potencial definido
-            
+
             // Prioridade por avaliação
             const rating = typeof r.rating === 'number' ? r.rating : 0;
             score += rating * 10;
-            
+
             // Prioridade por número de avaliações (mais popular)
             const reviewCount = typeof r.reviewCount === 'number' ? r.reviewCount : 0;
             score += Math.min(reviewCount, 100) * 0.5;
-            
+
             // Prioridade por projeção de entregas
             const projectedDeliveries = typeof r.projectedDeliveries === 'number' ? r.projectedDeliveries : 0;
             score += Math.min(projectedDeliveries / 100, 50);
-            
+
             // Penalizar se já foi contatado recentemente
             const status = r.status || '';
             if (status === 'Contatado' || status === 'Negociação') {
                 score *= 0.7;
             }
-            
+
             return { restaurant: r, score };
         });
-        
+
         console.log(`🎯 Restaurantes ordenados por score`);
 
         // Ordenar por score (maior primeiro)
         scoredRestaurants.sort((a, b) => b.score - a.score);
 
         // Buscar clientes fixos da semana (com tratamento de erro)
-        let fixedClientsByDay: { [date: string]: Array<{
-            id: string;
-            restaurantId: string;
-            restaurantName: string;
-            restaurantAddress: any;
-            radiusKm: number;
-            latitude: number | null;
-            longitude: number | null;
-        }> } = {};
-        
+        let fixedClientsByDay: {
+            [date: string]: Array<{
+                id: string;
+                restaurantId: string;
+                restaurantName: string;
+                restaurantAddress: any;
+                radiusKm: number;
+                latitude: number | null;
+                longitude: number | null;
+            }>
+        } = {};
+
         try {
             fixedClientsByDay = await getFixedClientsForWeek(sellerId, weekStart.toISOString()) || {};
             console.log(`\n📌 Clientes fixos encontrados para a semana:`, Object.keys(fixedClientsByDay).length, 'dias');
-            
+
             // Log detalhado de quais dias têm clientes fixos
             Object.keys(fixedClientsByDay).forEach(date => {
                 const clients = fixedClientsByDay[date];
@@ -136,7 +140,7 @@ export async function generateIntelligentWeeklySchedule(
         // Gerar dias da semana (segunda a sexta)
         const weekDays: WeeklySchedule[] = [];
         const daysOfWeek = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta'];
-        
+
         // Separar restaurantes já usados (clientes fixos e agendamentos existentes)
         const usedRestaurantIds = new Set<string>();
         existingSchedule.forEach(existing => {
@@ -144,27 +148,27 @@ export async function generateIntelligentWeeklySchedule(
                 usedRestaurantIds.add(existing.restaurantId);
             }
         });
-        
+
         // Adicionar IDs dos clientes fixos
         Object.values(fixedClientsByDay).forEach(fixedClients => {
             fixedClients.forEach(fc => {
                 usedRestaurantIds.add(fc.restaurantId);
             });
         });
-        
+
         for (let i = 0; i < 5; i++) {
             const date = new Date(weekStart);
             date.setDate(weekStart.getDate() + i);
             const dateString = date.toISOString().split('T')[0];
-            
+
             // Criar slots (6 slots por dia, sem horários específicos)
             const slots = [];
             const visitSlots = Array.from({ length: MAX_VISITS_PER_DAY }, (_, i) => i + 1);
-            
+
             // Verificar se há clientes fixos neste dia
             const fixedClientsToday = fixedClientsByDay[dateString] || [];
             let fixedClientIndex = 0;
-            
+
             for (const visitIndex of visitSlots) {
                 // Verificar se já existe um agendamento neste slot
                 const existingAtThisSlot = existingSchedule.find(existing => {
@@ -203,7 +207,7 @@ export async function generateIntelligentWeeklySchedule(
                     });
                 }
             }
-            
+
             weekDays.push({
                 day: daysOfWeek[i],
                 date: dateString,
@@ -225,7 +229,7 @@ export async function generateIntelligentWeeklySchedule(
         console.log(`📆 Total de dias da semana: ${weekDays.length}`);
         console.log(`📊 Decisões do usuário: ${userDecisions.length}`);
         console.log(`📋 Mapa de decisões criado com ${decisionsMap.size} entradas`);
-        
+
         // Estrutura para armazenar restaurantes próximos (SEM associar a um dia específico)
         interface RestaurantCandidate {
             restaurant: any;
@@ -236,7 +240,7 @@ export async function generateIntelligentWeeklySchedule(
             distance: number;
             durationMinutes?: number;
         }
-        
+
         // Identificar quais dias têm clientes fixos
         const daysWithFixedClients = new Set<string>();
         Object.keys(fixedClientsByDay).forEach(date => {
@@ -244,24 +248,24 @@ export async function generateIntelligentWeeklySchedule(
                 daysWithFixedClients.add(date);
             }
         });
-        
+
         console.log(`📌 Dias com clientes fixos: ${Array.from(daysWithFixedClients).join(', ')}`);
-        
+
         // FASE 1: Coletar TODOS os restaurantes próximos de TODOS os clientes fixos
         console.log(`\n📋 FASE 1: Coletando restaurantes próximos de todos os clientes fixos...`);
         const allRestaurantCandidates: RestaurantCandidate[] = [];
         const globalUsedRestaurantIds = new Set<string>(); // Evitar duplicatas globais
-        
+
         for (const day of weekDays) {
             const fixedClientsToday = fixedClientsByDay[day.date] || [];
-            
+
             console.log(`\n🔍 ${day.day} (${day.date}): ${fixedClientsToday.length} cliente(s) fixo(s)`);
-            
+
             if (fixedClientsToday.length > 0) {
                 // Para cada cliente fixo, buscar clientes próximos
                 for (const fixedClient of fixedClientsToday) {
                     console.log(`   📍 Cliente fixo: ${fixedClient.restaurantName}`);
-                    
+
                     // Buscar clientes próximos usando distância geográfica real
                     const nearbyClients = await findNearbyProspectClients(
                         {
@@ -277,30 +281,30 @@ export async function generateIntelligentWeeklySchedule(
                         sellerId,
                         MAX_VISITS_PER_DAY - 1 // Máximo de clientes próximos (6 slots - 1 cliente fixo = 5)
                     );
-                    
+
                     console.log(`      Encontrados: ${nearbyClients.length} restaurantes próximos`);
-                    
+
                     if (nearbyClients.length === 0) {
                         console.log(`      ⚠️ NENHUM restaurante encontrado no raio de ${fixedClient.radiusKm}km!`);
                         continue;
                     }
-                    
+
                     // Filtrar apenas os que não são o próprio cliente fixo e não foram usados ainda
-                    let availableNearbyClients = nearbyClients.filter(client => 
+                    let availableNearbyClients = nearbyClients.filter(client =>
                         client.id !== fixedClient.restaurantId &&
                         !globalUsedRestaurantIds.has(client.id)
                     );
-                    
+
                     // Verificar se há ALTISSIMO
                     const hasAltissimo = availableNearbyClients.some(
                         r => r.salesPotential?.toUpperCase() === 'ALTISSIMO'
                     );
-                    
+
                     // Se não há ALTISSIMO, verificar decisão do usuário
                     if (!hasAltissimo && availableNearbyClients.length > 0) {
                         const suggestionId = `suggestion-${day.date}-${fixedClient.id}`;
                         const userDecision = decisionsMap.get(suggestionId);
-                        
+
                         if (userDecision) {
                             if (!userDecision.accepted) {
                                 console.log(`      ⏭️ Usuário rejeitou restaurantes de baixo potencial`);
@@ -318,7 +322,7 @@ export async function generateIntelligentWeeklySchedule(
                             availableNearbyClients = [];
                         }
                     }
-                    
+
                     // Adicionar restaurantes à lista global (SEM associar a um dia específico)
                     availableNearbyClients.forEach(client => {
                         allRestaurantCandidates.push({
@@ -332,19 +336,19 @@ export async function generateIntelligentWeeklySchedule(
                         });
                         globalUsedRestaurantIds.add(client.id);
                     });
-                    
+
                     console.log(`      ✅ ${availableNearbyClients.length} restaurante(s) adicionado(s) para distribuição`);
                 }
             }
         }
-        
+
         console.log(`\n📊 Total de restaurantes coletados para distribuição: ${allRestaurantCandidates.length}`);
-        
+
         // ==========================================================
         // 🧲 NOVA LÓGICA: GRAVIDADE GEOGRÁFICA (CENTROIDS)
         // ==========================================================
         console.log(`\n🧲 FASE 2: Calculando centros de gravidade (centroids) de cada dia...`);
-        
+
         // Calcular centro de gravidade de cada dia baseado nos clientes fixos
         interface DayWithGravity {
             day: string;
@@ -353,13 +357,13 @@ export async function generateIntelligentWeeklySchedule(
             center: { lat: number; lng: number } | null; // Centro de gravidade do dia
             bucket: Array<{ restaurant: any; distToCenter: number; score: number }>; // Restaurantes atraídos para este dia
         }
-        
+
         const daysWithGravity: DayWithGravity[] = weekDays.map(day => {
             const fixedClientsToday = fixedClientsByDay[day.date] || [];
-            
+
             // Calcular centro de gravidade (média das coordenadas dos clientes fixos)
             let sumLat = 0, sumLng = 0, countGPS = 0;
-            
+
             fixedClientsToday.forEach(fc => {
                 if (fc.latitude && fc.longitude) {
                     sumLat += Number(fc.latitude);
@@ -367,15 +371,15 @@ export async function generateIntelligentWeeklySchedule(
                     countGPS++;
                 }
             });
-            
+
             const center = countGPS > 0 ? { lat: sumLat / countGPS, lng: sumLng / countGPS } : null;
-            
+
             if (center) {
                 console.log(`   📍 ${day.day} (${day.date}): Centro em (${center.lat.toFixed(4)}, ${center.lng.toFixed(4)}) - ${countGPS} cliente(s) fixo(s)`);
             } else {
                 console.log(`   ⚠️ ${day.day} (${day.date}): Sem centro (nenhum cliente fixo com GPS)`);
             }
-            
+
             return {
                 day: day.day,
                 date: day.date,
@@ -384,35 +388,35 @@ export async function generateIntelligentWeeklySchedule(
                 bucket: []
             };
         });
-        
+
         // ==========================================================
         // FASE 2.1: ATRAIR TODOS OS RESTAURANTES PARA O DIA MAIS PRÓXIMO (GRAVIDADE)
         // ==========================================================
         console.log(`\n🧲 FASE 2.1: Atraindo TODOS os restaurantes para o dia mais próximo (gravidade geográfica)...`);
-        
+
         // Lista para restaurantes que não foram atraídos (para repescagem na FASE 3)
         const notAttractedRestaurants: Array<{ restaurant: any; score: number; lat?: number; lng?: number; bestDay?: string; minDistance?: number }> = [];
-        
+
         // Coletar TODOS os restaurantes da carteira que não foram usados
         const allAvailableRestaurants: Array<{ restaurant: any; score: number; preferredDate?: string }> = [];
-        
+
         // 1. PRIMEIRO: Processar restaurantes coletados na FASE 1 (já têm dia preferido)
         console.log(`   🎯 FASE 2.1.1: Processando ${allRestaurantCandidates.length} restaurante(s) coletados na FASE 1...`);
         let fase1Processed = 0;
         let fase1ToBucket = 0;
         let fase1ToGeneral = 0;
         let fase1Skipped = 0;
-        
+
         for (const candidate of allRestaurantCandidates) {
             if (usedRestaurantIds.has(candidate.restaurant.id)) {
                 fase1Skipped++;
                 console.log(`      ⏭️ ${candidate.restaurant.name} já usado, pulando`);
                 continue;
             }
-            
+
             fase1Processed++;
             const score = scoredRestaurants.find(sr => sr.restaurant.id === candidate.restaurant.id)?.score || 50;
-            
+
             // Encontrar o dia correspondente ao fixedClientDate
             const targetDay = daysWithGravity.find(d => d.date === candidate.fixedClientDate);
             if (!targetDay) {
@@ -425,11 +429,11 @@ export async function generateIntelligentWeeklySchedule(
                 fase1ToGeneral++;
                 continue;
             }
-            
+
             // Buscar coordenadas do restaurante
             const lat = candidate.restaurant.latitude || candidate.restaurant.lat || 0;
             const lng = candidate.restaurant.longitude || candidate.restaurant.lng || 0;
-            
+
             if (lat !== 0 && lng !== 0 && targetDay.center) {
                 // Calcular distância ao centro do dia
                 const dist = calculateDistance(targetDay.center.lat, targetDay.center.lng, lat, lng);
@@ -452,9 +456,9 @@ export async function generateIntelligentWeeklySchedule(
                 fase1ToGeneral++;
             }
         }
-        
+
         console.log(`   📊 FASE 2.1.1 Resumo: ${fase1Processed} processados, ${fase1ToBucket} para baldes, ${fase1ToGeneral} para lista geral, ${fase1Skipped} pulados`);
-        
+
         // 2. Adicionar TODOS os outros restaurantes da carteira que não foram usados
         for (const sr of scoredRestaurants) {
             if (!usedRestaurantIds.has(sr.restaurant.id)) {
@@ -467,13 +471,13 @@ export async function generateIntelligentWeeklySchedule(
                 }
             }
         }
-        
+
         console.log(`   📊 Total de restaurantes restantes para atrair: ${allAvailableRestaurants.length}`);
-        
+
         // Buscar coordenadas de todos os restaurantes do banco se necessário
         const restaurantCoordsMap = new Map<string, { lat: number; lng: number }>();
         const restaurantIdsToFetch = new Set<string>();
-        
+
         for (const item of allAvailableRestaurants) {
             const restaurant = item.restaurant;
             const lat = restaurant.latitude || restaurant.lat || 0;
@@ -484,7 +488,7 @@ export async function generateIntelligentWeeklySchedule(
                 restaurantCoordsMap.set(restaurant.id, { lat, lng });
             }
         }
-        
+
         // Buscar coordenadas do banco se necessário
         if (restaurantIdsToFetch.size > 0) {
             try {
@@ -493,12 +497,12 @@ export async function generateIntelligentWeeklySchedule(
                     where: { id: { in: Array.from(restaurantIdsToFetch) } },
                     select: { id: true, latitude: true, longitude: true }
                 });
-                
+
                 restaurantsFromDb.forEach(r => {
                     if (r.latitude && r.longitude) {
-                        restaurantCoordsMap.set(r.id, { 
-                            lat: Number(r.latitude), 
-                            lng: Number(r.longitude) 
+                        restaurantCoordsMap.set(r.id, {
+                            lat: Number(r.latitude),
+                            lng: Number(r.longitude)
                         });
                     }
                 });
@@ -507,16 +511,16 @@ export async function generateIntelligentWeeklySchedule(
                 console.warn('   ⚠️ Erro ao buscar coordenadas do banco:', error);
             }
         }
-        
+
         // Processar TODOS os restaurantes e atrair para o dia mais próximo
         let attractedCount = 0;
         let skippedNoGPS = 0;
         let skippedTooFar = 0;
-        
+
         for (const item of allAvailableRestaurants) {
             const restaurant = item.restaurant;
             const coords = restaurantCoordsMap.get(restaurant.id);
-            
+
             if (!coords) {
                 skippedNoGPS++;
                 // Adicionar à lista de repescagem mesmo sem GPS
@@ -526,9 +530,9 @@ export async function generateIntelligentWeeklySchedule(
                 });
                 continue;
             }
-            
+
             const { lat, lng } = coords;
-            
+
             // Se o restaurante tem um dia preferido (da FASE 1), SEMPRE priorizar esse dia
             if (item.preferredDate) {
                 const preferredDay = daysWithGravity.find(d => d.date === item.preferredDate);
@@ -551,11 +555,11 @@ export async function generateIntelligentWeeklySchedule(
                     console.warn(`      ⚠️ Dia preferido ${item.preferredDate} não encontrado para ${restaurant.name}`);
                 }
             }
-            
+
             // Caso contrário, encontrar o dia com centro mais próximo
             let bestDayIdx = -1;
             let minDistance = Infinity;
-            
+
             // Excluir dias que já têm clientes fixos (eles já receberam seus restaurantes na FASE 2.1.1)
             // MAS apenas se o restaurante NÃO tiver preferredDate (já processado acima)
             for (let i = 0; i < daysWithGravity.length; i++) {
@@ -565,7 +569,7 @@ export async function generateIntelligentWeeklySchedule(
                 if (daysWithFixedClients.has(day.date)) {
                     continue;
                 }
-                
+
                 if (day.center) {
                     const dist = calculateDistance(day.center.lat, day.center.lng, lat, lng);
                     if (dist < minDistance) {
@@ -574,7 +578,7 @@ export async function generateIntelligentWeeklySchedule(
                     }
                 }
             }
-            
+
             // Se encontrou um dia próximo (dentro do raio de gravidade), adicionar ao balde
             if (bestDayIdx !== -1 && minDistance < GRAVITY_MAX_DISTANCE_KM) {
                 daysWithGravity[bestDayIdx].bucket.push({
@@ -597,16 +601,16 @@ export async function generateIntelligentWeeklySchedule(
                 });
             }
         }
-        
+
         console.log(`   ✅ ${attractedCount} restaurante(s) atraído(s) para os baldes`);
         console.log(`   ⚠️ ${skippedNoGPS} sem GPS, ${skippedTooFar} fora do raio de ${GRAVITY_MAX_DISTANCE_KM}km`);
         console.log(`   📋 ${notAttractedRestaurants.length} restaurante(s) serão processados na repescagem`);
-        
+
         // ==========================================================
         // FASE 2.2: ORDENAR BALDES E DISTRIBUIR EQUILIBRADAMENTE (ROUND-ROBIN)
         // ==========================================================
         console.log(`\n🔄 FASE 2.2: Ordenando baldes e distribuindo equilibradamente entre os dias...`);
-        
+
         // Primeiro, ordenar cada balde: primeiro por distância ao centro, depois por score
         let totalInBuckets = 0;
         console.log(`\n   📊 ESTADO DOS BALDES ANTES DA DISTRIBUIÇÃO:`);
@@ -617,13 +621,13 @@ export async function generateIntelligentWeeklySchedule(
                 if (Math.abs(distDiff) < 2) return b.score - a.score;
                 return distDiff;
             });
-            
+
             totalInBuckets += day.bucket.length;
             const slotsFilled = day.slots.filter((s: any) => s.restaurantId).length;
             const slotsEmpty = day.slots.filter((s: any) => !s.restaurantId).length;
             const hasFixed = daysWithFixedClients.has(day.date);
             console.log(`   📦 ${day.day} (${day.date}): ${day.bucket.length} no balde | ${slotsFilled}/${MAX_VISITS_PER_DAY} preenchidos | ${slotsEmpty} vazios | ${hasFixed ? '📌 Tem fixo' : '📋 Sem fixo'}`);
-            
+
             // Listar primeiros 3 restaurantes do balde para debug
             if (day.bucket.length > 0) {
                 day.bucket.slice(0, 3).forEach((c, idx) => {
@@ -634,29 +638,29 @@ export async function generateIntelligentWeeklySchedule(
                 }
             }
         }
-        
+
         console.log(`   📊 Total de restaurantes nos baldes: ${totalInBuckets}`);
-        
+
         // Distribuir equilibradamente usando round-robin entre os dias que têm restaurantes no balde
         let daysWithBuckets = daysWithGravity.filter(d => d.bucket.length > 0 && d.slots.some((s: any) => !s.restaurantId));
         let roundRobinBucketIndex = 0;
         let totalDistributed = 0;
         let maxIterations = totalInBuckets * 2; // Limite de segurança para evitar loop infinito
         let iterations = 0;
-        
+
         console.log(`\n🔄 Distribuindo restaurantes entre ${daysWithBuckets.length} dias usando round-robin...`);
         console.log(`   📋 Dias com baldes: ${daysWithBuckets.map(d => `${d.day}(${d.bucket.length})`).join(', ')}`);
-        
+
         while (daysWithBuckets.length > 0 && iterations < maxIterations) {
             iterations++;
-            
+
             // Ajustar índice se necessário
             if (roundRobinBucketIndex >= daysWithBuckets.length) {
                 roundRobinBucketIndex = 0;
             }
-            
+
             const targetDay = daysWithBuckets[roundRobinBucketIndex];
-            
+
             // Verificar se o dia ainda tem espaço
             const currentFilled = targetDay.slots.filter((s: any) => s.restaurantId).length;
             if (currentFilled >= MAX_VISITS_PER_DAY) {
@@ -667,7 +671,7 @@ export async function generateIntelligentWeeklySchedule(
                 roundRobinBucketIndex = 0;
                 continue;
             }
-            
+
             // Pegar próximo restaurante do balde deste dia
             if (targetDay.bucket.length === 0) {
                 console.log(`   ⚠️ ${targetDay.day} balde vazio, removendo da lista`);
@@ -677,22 +681,22 @@ export async function generateIntelligentWeeklySchedule(
                 roundRobinBucketIndex = 0;
                 continue;
             }
-            
+
             const candidate = targetDay.bucket.shift()!; // Remove do início do array
             const emptySlot = targetDay.slots.find((s: any) => !s.restaurantId);
-            
+
             if (emptySlot) {
                 emptySlot.restaurantId = candidate.restaurant.id;
                 emptySlot.restaurantName = candidate.restaurant.name;
-                
+
                 // Adicionar informações de distância
                 (emptySlot as any).distanceFromFixed = candidate.distToCenter;
                 (emptySlot as any).details = `📏 ~${candidate.distToCenter.toFixed(1)}km do centro`;
-                
+
                 const newFilled = currentFilled + 1;
                 totalDistributed++;
                 console.log(`   ✅ [${iterations}] ${targetDay.day} (${targetDay.date}): ${candidate.restaurant.name} (${newFilled}/${MAX_VISITS_PER_DAY}) - ${candidate.distToCenter.toFixed(1)}km | Balde restante: ${targetDay.bucket.length}`);
-                
+
                 // Se este dia atingiu o limite, remover da lista
                 if (newFilled >= MAX_VISITS_PER_DAY) {
                     console.log(`   🎯 ${targetDay.day} CHEIO! Removendo da lista`);
@@ -711,13 +715,13 @@ export async function generateIntelligentWeeklySchedule(
                 roundRobinBucketIndex = 0;
             }
         }
-        
+
         if (iterations >= maxIterations) {
             console.warn(`   ⚠️ Limite de iterações atingido (${maxIterations})`);
         }
-        
+
         console.log(`   ✅ Total distribuído: ${totalDistributed} restaurante(s)`);
-        
+
         // Coletar restaurantes que sobraram nos baldes para repescagem
         const remainingInBuckets: Array<{ restaurant: any; score: number; preferredDay: string; distToCenter: number }> = [];
         for (const day of daysWithGravity) {
@@ -734,23 +738,23 @@ export async function generateIntelligentWeeklySchedule(
                 day.bucket = []; // Limpar balde
             }
         }
-        
+
         // ==========================================================
         // FASE 3: REPESCAGEM INTELIGENTE (Restaurantes que não couberam ou sem GPS)
         // ==========================================================
         console.log(`\n📊 FASE 3: Repescagem inteligente de restaurantes restantes...`);
-        
+
         // FASE 3.1: Tentar realocar restaurantes que sobraram dos baldes para outros dias próximos
         if (remainingInBuckets.length > 0) {
             console.log(`\n🔄 FASE 3.1: Tentando realocar ${remainingInBuckets.length} restaurante(s) que não couberam no dia preferido...`);
-            
+
             for (const item of remainingInBuckets) {
                 if (usedRestaurantIds.has(item.restaurant.id)) continue;
-                
+
                 // Buscar coordenadas se necessário
                 let lat = item.restaurant.latitude || item.restaurant.lat || 0;
                 let lng = item.restaurant.longitude || item.restaurant.lng || 0;
-                
+
                 if (lat === 0 || lng === 0) {
                     // Tentar buscar do banco
                     try {
@@ -766,7 +770,7 @@ export async function generateIntelligentWeeklySchedule(
                         // Ignorar erro
                     }
                 }
-                
+
                 // Se tem GPS, tentar encontrar outro dia próximo
                 if (lat !== 0 && lng !== 0) {
                     // Encontrar dias com vagas, ordenados por proximidade ao restaurante
@@ -780,7 +784,7 @@ export async function generateIntelligentWeeklySchedule(
                             return { day, dist: Infinity };
                         })
                         .sort((a, b) => a.dist - b.dist);
-                    
+
                     // Tentar o dia mais próximo que tenha vaga
                     for (const { day } of daysWithSlots) {
                         const emptySlot = day.slots.find((s: any) => !s.restaurantId);
@@ -789,7 +793,7 @@ export async function generateIntelligentWeeklySchedule(
                             emptySlot.restaurantName = item.restaurant.name;
                             (emptySlot as any).details = `Encaixe (${day.day} cheio)`;
                             usedRestaurantIds.add(item.restaurant.id);
-                            
+
                             const filled = day.slots.filter((s: any) => s.restaurantId).length;
                             console.log(`   ✅ ${day.day}: ${item.restaurant.name} (${filled}/${MAX_VISITS_PER_DAY}) - realocado`);
                             break;
@@ -798,28 +802,28 @@ export async function generateIntelligentWeeklySchedule(
                 }
             }
         }
-        
+
         // FASE 3.2: Processar restaurantes sem GPS ou que não foram atraídos
         console.log(`\n🔄 FASE 3.2: Processando restaurantes sem GPS ou não atraídos...`);
-        
+
         // Usar a lista de restaurantes não atraídos da FASE 2.1
         const remainingRestaurants: Array<{ restaurant: any; score: number; lat?: number; lng?: number; bestDay?: string; minDistance?: number }> = [...notAttractedRestaurants];
-        
+
         // Adicionar também qualquer restaurante que ainda não foi usado (caso tenha sido perdido)
         const remainingIdsToFetch = new Set<string>();
         for (const sr of scoredRestaurants) {
             if (usedRestaurantIds.has(sr.restaurant.id)) continue;
-            
+
             // Verificar se já está na lista
             if (remainingRestaurants.find(r => r.restaurant.id === sr.restaurant.id)) continue;
-            
+
             const lat = (sr.restaurant as any).latitude || (sr.restaurant as any).lat || 0;
             const lng = (sr.restaurant as any).longitude || (sr.restaurant as any).lng || 0;
-            
+
             if (lat === 0 || lng === 0) {
                 remainingIdsToFetch.add(sr.restaurant.id);
             }
-            
+
             remainingRestaurants.push({
                 restaurant: sr.restaurant,
                 score: sr.score,
@@ -827,7 +831,7 @@ export async function generateIntelligentWeeklySchedule(
                 lng: lng !== 0 ? lng : undefined
             });
         }
-        
+
         // Buscar coordenadas do banco para os que faltam
         if (remainingIdsToFetch.size > 0) {
             try {
@@ -835,7 +839,7 @@ export async function generateIntelligentWeeklySchedule(
                     where: { id: { in: Array.from(remainingIdsToFetch) } },
                     select: { id: true, latitude: true, longitude: true }
                 });
-                
+
                 restaurantsFromDb.forEach(r => {
                     const item = remainingRestaurants.find(rem => rem.restaurant.id === r.id);
                     if (item && r.latitude && r.longitude) {
@@ -847,7 +851,7 @@ export async function generateIntelligentWeeklySchedule(
                 console.warn('   ⚠️ Erro ao buscar coordenadas do banco (repescagem):', error);
             }
         }
-        
+
         // Ordenar: primeiro por distância (se tiver), depois por score
         remainingRestaurants.sort((a, b) => {
             // Se ambos têm distância, priorizar o mais próximo
@@ -860,21 +864,21 @@ export async function generateIntelligentWeeklySchedule(
             // Se nenhum tem distância, ordenar por score
             return b.score - a.score;
         });
-        
+
         console.log(`   📝 ${remainingRestaurants.length} restaurante(s) disponível(is) para repescagem final`);
-        
+
         // Preencher slots vazios restantes
         // Se o restaurante tem GPS e um dia preferido, tentar esse dia primeiro
         // Caso contrário, usar round-robin
         let roundRobinIndex = 0;
         let daysWithSlots = daysWithGravity.filter(d => d.slots.some((s: any) => !s.restaurantId));
-        
+
         for (const item of remainingRestaurants) {
             if (daysWithSlots.length === 0) break;
             if (usedRestaurantIds.has(item.restaurant.id)) continue;
-            
+
             let targetDay: typeof daysWithGravity[0] | undefined;
-            
+
             // Se tem GPS e um dia preferido, tentar esse dia primeiro
             if (item.lat && item.lng && item.bestDay) {
                 const preferredDay = daysWithGravity.find(d => d.date === item.bestDay);
@@ -882,18 +886,18 @@ export async function generateIntelligentWeeklySchedule(
                     targetDay = preferredDay;
                 }
             }
-            
+
             // Se não encontrou dia preferido ou não tem GPS, usar round-robin
             if (!targetDay) {
                 roundRobinIndex = roundRobinIndex % daysWithSlots.length;
                 targetDay = daysWithSlots[roundRobinIndex];
             }
-            
+
             const emptySlot = targetDay.slots.find((s: any) => !s.restaurantId);
             if (emptySlot) {
                 emptySlot.restaurantId = item.restaurant.id;
                 emptySlot.restaurantName = item.restaurant.name;
-                
+
                 // Detalhes mais informativos
                 if (item.lat && item.lng) {
                     if (item.minDistance !== undefined) {
@@ -904,12 +908,12 @@ export async function generateIntelligentWeeklySchedule(
                 } else {
                     (emptySlot as any).details = 'Sem GPS';
                 }
-                
+
                 usedRestaurantIds.add(item.restaurant.id);
-                
+
                 const filled = targetDay.slots.filter((s: any) => s.restaurantId).length;
                 console.log(`   ✅ ${targetDay.day}: ${item.restaurant.name} (${filled}/${MAX_VISITS_PER_DAY})`);
-                
+
                 if (filled >= MAX_VISITS_PER_DAY) {
                     daysWithSlots = daysWithSlots.filter(d => d.date !== targetDay.date);
                     if (daysWithSlots.length === 0) break;
@@ -923,21 +927,21 @@ export async function generateIntelligentWeeklySchedule(
                 roundRobinIndex = 0;
             }
         }
-        
+
         // Atualizar weekDays com os slots preenchidos
         weekDays.forEach((day, idx) => {
             day.slots = daysWithGravity[idx].slots;
         });
-        
+
         // Log de resumo por dia
         console.log(`\n📊 Resumo da distribuição:`);
         weekDays.forEach(day => {
             const filled = day.slots.filter(s => s.restaurantId).length;
             console.log(`   ${day.day} (${day.date}): ${filled}/${MAX_VISITS_PER_DAY} preenchidos`);
         });
-        
+
         console.log('\n✨ Preenchimento com lógica de gravidade geográfica concluído!\n');
-        
+
         // Log final detalhado sobre distribuição
         console.log('\n📊 RESUMO FINAL DA DISTRIBUIÇÃO:');
         console.log('================================');
@@ -946,7 +950,7 @@ export async function generateIntelligentWeeklySchedule(
         console.log(`✅ Total distribuído na FASE 2.2: ${totalDistributed}`);
         console.log(`🔄 Total processado na repescagem: ${remainingRestaurants.length}`);
         console.log('');
-        
+
         for (const day of weekDays) {
             const dayWithGravity = daysWithGravity.find(d => d.date === day.date);
             const filled = day.slots.filter(s => s.restaurantId).length;
@@ -954,10 +958,10 @@ export async function generateIntelligentWeeklySchedule(
             const hasFixed = daysWithFixedClients.has(day.date);
             const bucketSize = dayWithGravity?.bucket.length || 0;
             const status = filled >= MAX_VISITS_PER_DAY ? '✅ CHEIO' : filled > 0 ? '🟡 PARCIAL' : '⚪ VAZIO';
-            
+
             console.log(`   ${day.day} (${day.date}):`);
             console.log(`      📊 ${filled}/${MAX_VISITS_PER_DAY} preenchidos | ${empty} vazios | ${bucketSize} no balde | ${hasFixed ? '📌 Tem cliente fixo' : '📋 Sem cliente fixo'} | ${status}`);
-            
+
             if (filled > 0) {
                 const restaurants = day.slots
                     .filter(s => s.restaurantId)
@@ -968,22 +972,22 @@ export async function generateIntelligentWeeklySchedule(
                     .join('\n         ');
                 console.log(`      Restaurantes agendados:\n         ${restaurants}`);
             }
-            
+
             if (bucketSize > 0) {
                 console.log(`      ⚠️ ATENÇÃO: ${bucketSize} restaurante(s) ainda no balde (não foram distribuídos!)`);
             }
         }
-        
+
         const totalScheduled = weekDays.reduce((sum, day) => sum + day.slots.filter(s => s.restaurantId).length, 0);
         const totalSlots = weekDays.length * MAX_VISITS_PER_DAY;
         const utilizationPercent = ((totalScheduled / totalSlots) * 100).toFixed(1);
-        
+
         console.log(`\n✅ Agenda gerada:`);
         console.log(`   Total de restaurantes agendados: ${totalScheduled}`);
         console.log(`   Total de slots disponíveis: ${totalSlots}`);
         console.log(`   Taxa de utilização: ${utilizationPercent}%`);
         console.log('================================\n');
-        
+
         return weekDays;
     } catch (error) {
         console.error('❌ Erro ao gerar agenda inteligente:', error);
@@ -998,25 +1002,27 @@ export async function analyzeIntelligentFill(
     weekStart: Date,
     existingSchedule: any[] = []
 ): Promise<FillSuggestion[]> {
-        try {
-            console.log('🔍 Iniciando análise de preenchimento inteligente...');
-            console.log(`📊 Total de restaurantes: ${restaurants.length}`);
-            console.log(`📅 Semana iniciando em: ${weekStart.toISOString().split('T')[0]}`);
-            
-            const suggestions: FillSuggestion[] = [];
-            let suggestionIdCounter = 0;
+    try {
+        console.log('🔍 Iniciando análise de preenchimento inteligente...');
+        console.log(`📊 Total de restaurantes: ${restaurants.length}`);
+        console.log(`📅 Semana iniciando em: ${weekStart.toISOString().split('T')[0]}`);
 
-            // Buscar clientes fixos da semana
-        let fixedClientsByDay: { [date: string]: Array<{
-            id: string;
-            restaurantId: string;
-            restaurantName: string;
-            restaurantAddress: any;
-            radiusKm: number;
-            latitude: number | null;
-            longitude: number | null;
-        }> } = {};
-        
+        const suggestions: FillSuggestion[] = [];
+        let suggestionIdCounter = 0;
+
+        // Buscar clientes fixos da semana
+        let fixedClientsByDay: {
+            [date: string]: Array<{
+                id: string;
+                restaurantId: string;
+                restaurantName: string;
+                restaurantAddress: any;
+                radiusKm: number;
+                latitude: number | null;
+                longitude: number | null;
+            }>
+        } = {};
+
         try {
             fixedClientsByDay = await getFixedClientsForWeek(sellerId, weekStart.toISOString()) || {};
             console.log(`📌 Clientes fixos encontrados para a semana:`, Object.keys(fixedClientsByDay).length, 'dias');
@@ -1028,7 +1034,7 @@ export async function analyzeIntelligentFill(
         // Gerar dias da semana (segunda a sexta)
         const daysOfWeek = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta'];
         const weekDays: Array<{ day: string; date: string }> = [];
-        
+
         for (let i = 0; i < 5; i++) {
             const date = new Date(weekStart);
             date.setDate(weekStart.getDate() + i);
@@ -1043,14 +1049,14 @@ export async function analyzeIntelligentFill(
         console.log(`\n📅 Analisando ${weekDays.length} dias da semana...`);
         for (const day of weekDays) {
             const fixedClientsToday = fixedClientsByDay[day.date] || [];
-            
+
             console.log(`\n🔍 ${day.day} (${day.date}): ${fixedClientsToday.length} cliente(s) fixo(s)`);
-            
+
             if (fixedClientsToday.length > 0) {
                 // Para cada cliente fixo do dia
                 for (const fixedClient of fixedClientsToday) {
                     console.log(`\n🔍 Analisando ${day.day} (${day.date}) - Cliente fixo: ${fixedClient.restaurantName}`);
-                    
+
                     // Buscar restaurantes próximos
                     const nearbyClients = await findNearbyProspectClients(
                         {
@@ -1068,7 +1074,7 @@ export async function analyzeIntelligentFill(
                     );
 
                     // Filtrar apenas os que não são o próprio cliente fixo
-                    const availableNearbyClients = nearbyClients.filter(client => 
+                    const availableNearbyClients = nearbyClients.filter(client =>
                         client.id !== fixedClient.restaurantId
                     );
 
@@ -1158,7 +1164,7 @@ export async function optimizeRouteWithAI(
 }> {
     try {
         // Se tiver localização atual, começar por ela
-        const validRestaurants = restaurants.filter(r => 
+        const validRestaurants = restaurants.filter(r =>
             r.address && r.address.city
         );
 
@@ -1189,12 +1195,26 @@ export async function optimizeRouteWithAI(
             remaining.forEach((restaurant, index) => {
                 // Calcular distância (simplificado - em produção usar API de distância)
                 const address = `${restaurant.address.street || ''} ${restaurant.address.neighborhood || ''} ${restaurant.address.city || ''}`.trim();
-                
+
                 // Por enquanto, usar ordem de prioridade
                 let distance = 0;
                 if (currentPoint) {
-                    // Distância estimada (seria calculada com API real)
-                    distance = Math.random() * 10; // Placeholder
+                    // Distância real usando Haversine
+                    // Tentar obter coordenadas do endereço ou usar propriedades diretas
+                    const lat = restaurant.latitude || (restaurant.address as any)?.lat || 0;
+                    const lng = restaurant.longitude || (restaurant.address as any)?.lng || 0;
+
+                    if (lat && lng) {
+                        distance = calculateDistance(
+                            currentPoint.lat,
+                            currentPoint.lng,
+                            Number(lat),
+                            Number(lng)
+                        );
+                    } else {
+                        // Sem coordenadas, usar distância arbitrária grande para colocar no final
+                        distance = 9999;
+                    }
                 }
 
                 if (distance < nearestDistance) {
@@ -1206,7 +1226,7 @@ export async function optimizeRouteWithAI(
             if (nearestIndex !== -1) {
                 const restaurant = remaining[nearestIndex];
                 const address = `${restaurant.address.street || ''} ${restaurant.address.neighborhood || ''} ${restaurant.address.city || ''}`.trim();
-                
+
                 route.push({
                     restaurantId: restaurant.id,
                     restaurantName: restaurant.name,

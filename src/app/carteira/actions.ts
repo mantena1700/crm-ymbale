@@ -8,9 +8,9 @@ import { getCoordinatesFromAddressWithGoogle, calculateBatchDistances, geocodeAd
 
 // Agendar visita
 export async function scheduleVisit(
-    restaurantId: string, 
-    sellerId: string, 
-    date: string, 
+    restaurantId: string,
+    sellerId: string,
+    date: string,
     notes?: string
 ) {
     try {
@@ -41,7 +41,7 @@ export async function scheduleVisit(
 
         revalidatePath('/carteira');
         revalidatePath('/agenda');
-        
+
         return { success: true };
     } catch (error) {
         console.error('Erro ao agendar visita:', error);
@@ -115,7 +115,7 @@ export async function assignClientToSeller(restaurantId: string, sellerId: strin
     try {
         await prisma.restaurant.update({
             where: { id: restaurantId },
-            data: { 
+            data: {
                 sellerId,
                 assignedAt: new Date()
             }
@@ -123,7 +123,7 @@ export async function assignClientToSeller(restaurantId: string, sellerId: strin
 
         revalidatePath('/carteira');
         revalidatePath('/sellers');
-        
+
         return { success: true };
     } catch (error) {
         console.error('Erro ao atribuir cliente:', error);
@@ -179,6 +179,9 @@ export async function completeVisit(followUpId: string, feedback: string, outcom
                 completed: true,
                 completedDate: new Date(),
                 notes: feedback
+            },
+            include: {
+                restaurant: true
             }
         });
 
@@ -187,19 +190,19 @@ export async function completeVisit(followUpId: string, feedback: string, outcom
             await prisma.visit.create({
                 data: {
                     restaurantId: followUp.restaurantId,
-                    sellerId: '', // Seria preenchido com o vendedor logado
+                    sellerId: followUp.restaurant.sellerId || '',
                     visitDate: new Date(),
                     feedback,
                     outcome
                 }
             });
         } catch (e) {
-            console.log('Tabela visits não existe');
+            console.log('Erro ao criar registro de visita:', e);
         }
 
         revalidatePath('/carteira');
         revalidatePath('/agenda');
-        
+
         return { success: true };
     } catch (error) {
         console.error('Erro ao completar visita:', error);
@@ -297,7 +300,7 @@ export async function saveWeeklySchedule(
 // Deletar múltiplos agendamentos da semana
 export async function deleteMultipleScheduleSlots(followUpIds: string[]) {
     'use server';
-    
+
     try {
         if (!followUpIds || followUpIds.length === 0) {
             return { success: false, error: 'Nenhum agendamento selecionado' };
@@ -312,8 +315,8 @@ export async function deleteMultipleScheduleSlots(followUpIds: string[]) {
         });
 
         revalidatePath('/carteira');
-        return { 
-            success: true, 
+        return {
+            success: true,
             deleted: followUpIds.length,
             message: `${followUpIds.length} agendamento(s) removido(s) com sucesso`
         };
@@ -347,16 +350,16 @@ export async function autoFillWeeklySchedule(
         }
 
         const weekStartDate = new Date(weekStart);
-        
+
         // Garantir que a data é válida
         if (isNaN(weekStartDate.getTime())) {
             return { success: false, error: 'Data de início da semana inválida' };
         }
-        
+
         // Buscar agendamentos existentes para a semana
         const weekEnd = new Date(weekStartDate);
         weekEnd.setDate(weekEnd.getDate() + 7);
-        
+
         const existingSchedule = await prisma.followUp.findMany({
             where: {
                 scheduledDate: {
@@ -374,7 +377,7 @@ export async function autoFillWeeklySchedule(
         });
 
         console.log(`📌 Agendamentos existentes encontrados: ${existingSchedule.length}`);
-        
+
         const schedule = await generateIntelligentWeeklySchedule(
             restaurants,
             sellerId,
@@ -392,7 +395,7 @@ export async function autoFillWeeklySchedule(
         // Salvar no banco usando FollowUp
         const savedSlots = [];
         let errors = 0;
-        
+
         for (const day of schedule) {
             for (const slot of day.slots) {
                 if (slot.restaurantId) {
@@ -402,14 +405,14 @@ export async function autoFillWeeklySchedule(
                         // Usar hora padrão 12:00 para todos os agendamentos
                         const scheduledDateTime = new Date(day.date);
                         scheduledDateTime.setHours(12, 0, 0, 0); // Hora padrão (meio-dia)
-                        
+
                         // Verificar se já existe follow-up neste dia para este restaurante
                         // (comparar por dia completo, não por horário específico)
                         const dayStart = new Date(scheduledDateTime);
                         dayStart.setHours(0, 0, 0, 0);
                         const dayEnd = new Date(scheduledDateTime);
                         dayEnd.setHours(23, 59, 59, 999);
-                        
+
                         const existing = await prisma.followUp.findFirst({
                             where: {
                                 restaurantId: slot.restaurantId,
@@ -431,11 +434,11 @@ export async function autoFillWeeklySchedule(
                                     notes: 'Agendamento automático inteligente - Prospecção',
                                 },
                             });
-                            savedSlots.push({ 
-                                date: day.date, 
-                                time: slot.time, 
+                            savedSlots.push({
+                                date: day.date,
+                                time: slot.time,
                                 restaurantId: slot.restaurantId,
-                                restaurantName: slot.restaurantName 
+                                restaurantName: slot.restaurantName
                             });
                             console.log(`✅ Salvo: ${slot.restaurantName} em ${day.date} (visita ${slot.time})`);
                         } else {
@@ -451,14 +454,14 @@ export async function autoFillWeeklySchedule(
 
         revalidatePath('/carteira');
         revalidatePath('/agenda');
-        
+
         if (savedSlots.length === 0) {
             if (errors > 0) {
                 return { success: false, error: `Erro ao salvar agendamentos. ${errors} falhas.` };
             }
             return { success: false, error: 'Todos os horários já estavam preenchidos ou houve erro.' };
         }
-        
+
         console.log(`✅ Total salvo: ${savedSlots.length} agendamentos`);
         return { success: true, schedule: savedSlots, total: savedSlots.length };
     } catch (error: any) {
@@ -505,7 +508,7 @@ export async function getWeeklySchedule(sellerId: string, weekStart: string) {
             if (!visitsByDate[date]) visitsByDate[date] = [];
             visitsByDate[date].push(f);
         });
-        
+
         // Converter para slots com índices de visita
         const slots: Array<{ id: string; restaurantId: string; restaurantName: string; time: string; date: string; visitIndex?: number }> = [];
         Object.keys(visitsByDate).forEach(date => {
@@ -521,7 +524,7 @@ export async function getWeeklySchedule(sellerId: string, weekStart: string) {
                 });
             });
         });
-        
+
         return slots;
     } catch (error) {
         console.error('Erro ao buscar agendamentos semanais:', error);
@@ -542,14 +545,14 @@ export async function applyScheduleReorganization(
 ) {
     try {
         const results = [];
-        
+
         for (const reorg of reorganizations) {
             // Encontrar o follow-up existente
             const fromDateStart = new Date(reorg.fromDate);
             fromDateStart.setHours(0, 0, 0, 0);
             const fromDateEnd = new Date(reorg.fromDate);
             fromDateEnd.setHours(23, 59, 59, 999);
-            
+
             const existingFollowUp = await prisma.followUp.findFirst({
                 where: {
                     restaurantId: reorg.restaurantId,
@@ -560,28 +563,28 @@ export async function applyScheduleReorganization(
                     completed: false
                 }
             });
-            
+
             if (!existingFollowUp) {
                 console.warn(`Follow-up não encontrado para ${reorg.restaurantId} em ${reorg.fromDate}`);
                 results.push({ restaurantId: reorg.restaurantId, success: false, error: 'Follow-up não encontrado' });
                 continue;
             }
-            
+
             // Criar nova data mantendo o horário ou usando o novo
             const newDate = new Date(reorg.toDate);
             const timeToUse = reorg.toTime || reorg.fromTime;
             const [hours, minutes] = timeToUse.split(':').map(Number);
             newDate.setHours(hours, minutes, 0, 0);
-            
+
             // Atualizar o follow-up
             await prisma.followUp.update({
                 where: { id: existingFollowUp.id },
                 data: { scheduledDate: newDate }
             });
-            
+
             results.push({ restaurantId: reorg.restaurantId, success: true });
         }
-        
+
         // Criar notificação
         await prisma.notification.create({
             data: {
@@ -591,12 +594,12 @@ export async function applyScheduleReorganization(
                 metadata: { sellerId, reorganizations: results }
             }
         });
-        
+
         revalidatePath('/carteira');
         revalidatePath('/agenda');
-        
-        return { 
-            success: true, 
+
+        return {
+            success: true,
             results,
             message: `${results.filter(r => r.success).length} de ${reorganizations.length} reorganizações aplicadas com sucesso!`
         };
@@ -615,30 +618,30 @@ export async function autoOptimizeWeekSchedule(
     try {
         // Buscar todos os agendamentos da semana
         const schedule = await getWeeklySchedule(sellerId, weekStart);
-        
+
         if (schedule.length < 2) {
             return { success: false, error: 'Não há agendamentos suficientes para otimizar' };
         }
-        
+
         // Agrupar por dia
         const byDay: Record<string, typeof schedule> = {};
         schedule.forEach(slot => {
             if (!byDay[slot.date]) byDay[slot.date] = [];
             byDay[slot.date].push(slot);
         });
-        
+
         // Função para calcular distância
         const calculateDistance = (loc1: { lat: number; lng: number }, loc2: { lat: number; lng: number }): number => {
             const R = 6371;
             const dLat = (loc2.lat - loc1.lat) * Math.PI / 180;
             const dLon = (loc2.lng - loc1.lng) * Math.PI / 180;
-            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                      Math.cos(loc1.lat * Math.PI / 180) * Math.cos(loc2.lat * Math.PI / 180) *
-                      Math.sin(dLon/2) * Math.sin(dLon/2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(loc1.lat * Math.PI / 180) * Math.cos(loc2.lat * Math.PI / 180) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
             return R * c;
         };
-        
+
         // Encontrar o melhor dia para cada restaurante baseado em proximidade
         const reorganizations: Array<{
             restaurantId: string;
@@ -646,44 +649,44 @@ export async function autoOptimizeWeekSchedule(
             toDate: string;
             fromTime: string;
         }> = [];
-        
+
         const days = Object.keys(byDay).sort();
-        
+
         for (const day of days) {
             const daySlots = byDay[day];
             if (daySlots.length < 2) continue;
-            
+
             // Calcular distância total do dia
             let problemFound = false;
-            
+
             for (let i = 0; i < daySlots.length - 1; i++) {
                 const loc1 = restaurantLocations[daySlots[i].restaurantId];
                 const loc2 = restaurantLocations[daySlots[i + 1].restaurantId];
-                
+
                 if (!loc1 || !loc2) continue;
-                
+
                 const distance = calculateDistance(loc1, loc2);
-                
+
                 // Se distância > 10km, procurar melhor dia
                 if (distance > 10) {
                     problemFound = true;
                     const problematicSlot = daySlots[i + 1];
                     const problematicLoc = loc2;
-                    
+
                     // Procurar melhor dia para este restaurante
                     let bestDay = day;
                     let bestDistance = distance;
-                    
+
                     for (const otherDay of days) {
                         if (otherDay === day) continue;
-                        
+
                         const otherSlots = byDay[otherDay];
                         if (!otherSlots || otherSlots.length === 0) continue;
-                        
+
                         // Calcular distância média para restaurantes deste dia
                         let totalDist = 0;
                         let count = 0;
-                        
+
                         for (const otherSlot of otherSlots) {
                             const otherLoc = restaurantLocations[otherSlot.restaurantId];
                             if (otherLoc) {
@@ -691,7 +694,7 @@ export async function autoOptimizeWeekSchedule(
                                 count++;
                             }
                         }
-                        
+
                         if (count > 0) {
                             const avgDist = totalDist / count;
                             if (avgDist < bestDistance) {
@@ -700,7 +703,7 @@ export async function autoOptimizeWeekSchedule(
                             }
                         }
                     }
-                    
+
                     // Se encontrou um dia melhor, adicionar à lista de reorganizações
                     if (bestDay !== day) {
                         reorganizations.push({
@@ -713,18 +716,18 @@ export async function autoOptimizeWeekSchedule(
                 }
             }
         }
-        
+
         if (reorganizations.length === 0) {
-            return { 
-                success: true, 
+            return {
+                success: true,
                 message: 'Sua agenda já está otimizada! Nenhuma mudança necessária.',
                 reorganizations: []
             };
         }
-        
+
         // Aplicar as reorganizações
         const result = await applyScheduleReorganization(sellerId, reorganizations);
-        
+
         return result;
     } catch (error) {
         console.error('Erro na otimização automática:', error);
@@ -738,10 +741,10 @@ export async function exportWeeklyScheduleToExcel(
     weekStart: string
 ) {
     'use server';
-    
+
     try {
         console.log('Iniciando exportação Excel...', { sellerId, weekStart });
-        
+
         const weekStartDate = new Date(weekStart);
         const weekEndDate = new Date(weekStartDate);
         weekEndDate.setDate(weekEndDate.getDate() + 7);
@@ -892,13 +895,13 @@ export async function exportWeeklyScheduleToAgendamentoTemplate(
     weekStart: string
 ): Promise<{ success: boolean; data?: string; filename?: string; error?: string; count?: number }> {
     'use server';
-    
+
     try {
         const ExcelJS = await import('exceljs');
         const fs = await import('fs');
         const path = await import('path');
         const { prisma } = await import('@/lib/db');
-        
+
         // Caminhos possíveis do template
         const possiblePaths = [
             path.resolve(process.cwd(), 'template_agendamento.xlsx'),
@@ -906,10 +909,10 @@ export async function exportWeeklyScheduleToAgendamentoTemplate(
             path.join(process.cwd(), 'template_agendamento.xlsx'),
             'C:\\Users\\Bel\\Documents\\CRM_Ymbale\\crm-ymbale\\template_agendamento.xlsx',
         ];
-        
+
         let finalTemplatePath = '';
         let triedPaths: string[] = [];
-        
+
         for (const templatePath of possiblePaths) {
             triedPaths.push(templatePath);
             try {
@@ -923,25 +926,25 @@ export async function exportWeeklyScheduleToAgendamentoTemplate(
                 continue;
             }
         }
-        
+
         if (!finalTemplatePath || !fs.existsSync(finalTemplatePath)) {
             const errorMsg = `Template não encontrado.\n\nCaminhos tentados:\n${triedPaths.map((p, i) => `${i + 1}. ${p}`).join('\n')}`;
             console.error('❌ Erro:', errorMsg);
             throw new Error(errorMsg);
         }
-        
+
         // Buscar dados da agenda semanal
         const startDate = new Date(weekStart);
         startDate.setHours(0, 0, 0, 0);
         const endDate = new Date(startDate);
         endDate.setDate(startDate.getDate() + 7);
         endDate.setHours(23, 59, 59, 999);
-        
+
         console.log(`\n📅 Buscando agendamentos da semana:`);
         console.log(`   Seller ID: ${sellerId}`);
         console.log(`   Data início: ${startDate.toISOString()}`);
         console.log(`   Data fim: ${endDate.toISOString()}`);
-        
+
         // Buscar follow-ups da semana
         const followUps = await prisma.followUp.findMany({
             where: {
@@ -971,32 +974,32 @@ export async function exportWeeklyScheduleToAgendamentoTemplate(
                 scheduledDate: 'asc'
             }
         });
-        
+
         console.log(`📊 Encontrados ${followUps.length} agendamentos para exportar`);
-        
+
         // Carregar template
         const workbook = new ExcelJS.Workbook();
         await workbook.xlsx.readFile(finalTemplatePath);
-        
+
         // Obter planilha "Registros"
         let worksheet = workbook.getWorksheet('Registros');
         if (!worksheet) {
             // Se não encontrar, usar primeira planilha
             worksheet = workbook.getWorksheet(1);
         }
-        
+
         if (!worksheet) {
             throw new Error('Planilha não encontrada no template');
         }
-        
+
         // Encontrar linha de cabeçalho
         let headerRow = 1;
         const firstRow = worksheet.getRow(1);
         const firstRowValues = firstRow.values as any[];
-        
+
         console.log(`\n📋 Mapeando colunas do template de agendamento...`);
         console.log(`   Valores do cabeçalho:`, firstRowValues.map((v, i) => `[${i}]: "${v}"`).join(', '));
-        
+
         // Mapear colunas
         const columnMap: { [key: string]: number } = {};
         firstRowValues.forEach((value, index) => {
@@ -1031,35 +1034,35 @@ export async function exportWeeklyScheduleToAgendamentoTemplate(
                 }
             }
         });
-        
+
         console.log(`\n📊 Colunas mapeadas:`, Object.keys(columnMap).map(k => `${k}: coluna ${columnMap[k]}`).join(', '));
-        
+
         // Remover dados de exemplo (linhas 2 em diante)
         const lastRow = worksheet.rowCount;
         if (lastRow > headerRow) {
             const rowsToDelete = lastRow - headerRow;
             worksheet.spliceRows(headerRow + 1, rowsToDelete);
         }
-        
+
         // Preencher com dados reais
         console.log(`\n📝 Preenchendo ${followUps.length} agendamentos...`);
         followUps.forEach((followUp, index) => {
             const targetRowNumber = headerRow + 1 + index;
             const newRow = worksheet.getRow(targetRowNumber);
-            
+
             const scheduledDate = new Date(followUp.scheduledDate);
-            
+
             // Criar data apenas (sem horário) para exportação
             // Usar meio-dia como hora padrão para evitar problemas de timezone
             const dateOnly = new Date(scheduledDate);
             dateOnly.setHours(12, 0, 0, 0); // Meio-dia para garantir que a data seja preservada
-            
+
             // Preencher campos
             if (columnMap['Código Cliente'] !== undefined) {
                 // Tentar acessar codigoCliente de diferentes formas
-                const codigoCliente = (followUp.restaurant as any).codigoCliente || 
-                                     (followUp.restaurant as any).codigo_cliente || 
-                                     '';
+                const codigoCliente = (followUp.restaurant as any).codigoCliente ||
+                    (followUp.restaurant as any).codigo_cliente ||
+                    '';
                 newRow.getCell(columnMap['Código Cliente']).value = codigoCliente ? String(codigoCliente) : '';
                 if (index < 5) {
                     console.log(`   [${index + 1}] Código Cliente: ${codigoCliente || 'N/A'}`);
@@ -1105,20 +1108,20 @@ export async function exportWeeklyScheduleToAgendamentoTemplate(
             if (columnMap['Ativo'] !== undefined) {
                 newRow.getCell(columnMap['Ativo']).value = 'Sim';
             }
-            
+
             if (index < 5) {
                 console.log(`   [${index + 1}] ${followUp.restaurant.name} - ${scheduledDate.toLocaleString('pt-BR')}`);
             }
         });
-        
+
         // Converter para buffer
         const buffer = await workbook.xlsx.writeBuffer();
-        
+
         // Converter para base64
         const base64 = Buffer.from(buffer).toString('base64');
-        
+
         const weekStartFormatted = new Date(weekStart).toLocaleDateString('pt-BR').replace(/\//g, '-');
-        
+
         return {
             success: true,
             data: base64,
@@ -1141,7 +1144,7 @@ export async function exportWeeklyScheduleToAgendamentoTemplate(
 // Buscar clientes fixos do executivo
 export async function getFixedClients(sellerId: string) {
     'use server';
-    
+
     try {
         // Verificar se a tabela existe usando query do catálogo PostgreSQL
         try {
@@ -1152,7 +1155,7 @@ export async function getFixedClients(sellerId: string) {
                     AND table_name = 'fixed_clients'
                 ) as exists
             `;
-            
+
             if (!tableExists[0]?.exists) {
                 console.log('Tabela fixed_clients ainda não existe, retornando vazio');
                 return [];
@@ -1181,7 +1184,7 @@ export async function getFixedClients(sellerId: string) {
                 createdAt: 'desc'
             }
         });
-        
+
         return fixedClients.map(fc => ({
             id: fc.id,
             sellerId: fc.sellerId,
@@ -1208,11 +1211,11 @@ export async function getFixedClients(sellerId: string) {
 // Função auxiliar: Ajustar dias do mês que caem em finais de semana para o próximo dia útil
 function adjustMonthlyDaysToWeekdays(monthlyDays: number[], year: number, month: number): number[] {
     const adjustedDays: number[] = [];
-    
+
     monthlyDays.forEach(day => {
         const date = new Date(year, month - 1, day);
         const dayOfWeek = date.getDay(); // 0 = domingo, 6 = sábado
-        
+
         // Se for sábado (6) ou domingo (0), mover para segunda-feira
         if (dayOfWeek === 0 || dayOfWeek === 6) {
             // Calcular quantos dias adicionar para chegar na segunda-feira
@@ -1224,7 +1227,7 @@ function adjustMonthlyDaysToWeekdays(monthlyDays: number[], year: number, month:
             adjustedDays.push(day);
         }
     });
-    
+
     // Remover duplicatas e ordenar
     return [...new Set(adjustedDays)].sort((a, b) => a - b);
 }
@@ -1247,7 +1250,7 @@ export async function createFixedClient(data: {
     radiusKm?: number;
 }) {
     'use server';
-    
+
     try {
         // Verificar e criar tabela se não existir
         try {
@@ -1258,10 +1261,10 @@ export async function createFixedClient(data: {
                     AND table_name = 'fixed_clients'
                 ) as exists
             `;
-            
+
             if (!tableExists[0]?.exists) {
                 console.log('📄 Tabela fixed_clients não encontrada. Criando automaticamente...');
-                
+
                 // Criar tabela
                 await prisma.$executeRaw`
                     CREATE TABLE IF NOT EXISTS fixed_clients (
@@ -1279,7 +1282,7 @@ export async function createFixedClient(data: {
                         updated_at TIMESTAMPTZ(6) DEFAULT NOW()
                     )
                 `;
-                
+
                 // Criar índices
                 await prisma.$executeRaw`
                     CREATE INDEX IF NOT EXISTS idx_fixed_clients_seller_id ON fixed_clients(seller_id)
@@ -1290,7 +1293,7 @@ export async function createFixedClient(data: {
                 await prisma.$executeRaw`
                     CREATE INDEX IF NOT EXISTS idx_fixed_clients_active ON fixed_clients(active) WHERE active = true
                 `;
-                
+
                 // Criar função e trigger para updated_at
                 await prisma.$executeRaw`
                     CREATE OR REPLACE FUNCTION update_fixed_clients_updated_at()
@@ -1301,18 +1304,18 @@ export async function createFixedClient(data: {
                     END;
                     $$ LANGUAGE plpgsql
                 `;
-                
+
                 await prisma.$executeRaw`
                     DROP TRIGGER IF EXISTS update_fixed_clients_updated_at ON fixed_clients
                 `;
-                
+
                 await prisma.$executeRaw`
                     CREATE TRIGGER update_fixed_clients_updated_at
                         BEFORE UPDATE ON fixed_clients
                         FOR EACH ROW
                         EXECUTE FUNCTION update_fixed_clients_updated_at()
                 `;
-                
+
                 console.log('✅ Tabela fixed_clients criada com sucesso!');
             }
         } catch (error: any) {
@@ -1324,15 +1327,15 @@ export async function createFixedClient(data: {
         if (!data.sellerId) {
             return { success: false, error: 'Executivo é obrigatório' };
         }
-        
+
         // Deve ter restaurantId OU clientName (não vazio)
         const hasRestaurantId = data.restaurantId && data.restaurantId.trim() !== '';
         const hasClientName = data.clientName && data.clientName.trim() !== '';
-        
+
         if (!hasRestaurantId && !hasClientName) {
             return { success: false, error: 'Selecione um restaurante da base OU cadastre um cliente manualmente' };
         }
-        
+
         // Se for cliente manual, validar endereço
         if (hasClientName && !hasRestaurantId) {
             if (!data.clientAddress?.street || data.clientAddress.street.trim() === '') {
@@ -1348,22 +1351,22 @@ export async function createFixedClient(data: {
                 return { success: false, error: 'Estado é obrigatório para cliente manual' };
             }
         }
-        
+
         if (data.recurrenceType === 'monthly_days' && (!data.monthlyDays || data.monthlyDays.length === 0)) {
             return { success: false, error: 'Dias do mês são obrigatórios para recorrência mensal' };
         }
-        
+
         if (data.recurrenceType === 'weekly_days' && (!data.weeklyDays || data.weeklyDays.length === 0)) {
             return { success: false, error: 'Dias da semana são obrigatórios para recorrência semanal' };
         }
-        
+
         // Ajustar dias do mês que caem em finais de semana
         let adjustedMonthlyDays = data.monthlyDays || [];
         if (data.recurrenceType === 'monthly_days' && adjustedMonthlyDays.length > 0) {
             const now = new Date();
             adjustedMonthlyDays = adjustMonthlyDaysToWeekdays(adjustedMonthlyDays, now.getFullYear(), now.getMonth() + 1);
         }
-        
+
         // Construir objeto de dados dinamicamente (não enviar null explicitamente)
         const createData: any = {
             sellerId: data.sellerId,
@@ -1373,12 +1376,12 @@ export async function createFixedClient(data: {
             radiusKm: data.radiusKm || 15.0, // Padrão aumentado para 15km
             active: true
         };
-        
+
         // Adicionar restaurantId apenas se fornecido
         if (hasRestaurantId && data.restaurantId) {
             createData.restaurantId = data.restaurantId;
         }
-        
+
         // Adicionar clientName e clientAddress apenas se for cliente manual
         if (hasClientName && !hasRestaurantId) {
             createData.clientName = data.clientName.trim();
@@ -1386,7 +1389,7 @@ export async function createFixedClient(data: {
                 createData.clientAddress = data.clientAddress;
             }
         }
-        
+
         const fixedClient = await prisma.fixedClient.create({
             data: createData,
             include: {
@@ -1399,7 +1402,7 @@ export async function createFixedClient(data: {
                 }
             }
         });
-        
+
         // Converter Decimal para number antes de retornar
         const serializedFixedClient = {
             ...fixedClient,
@@ -1407,7 +1410,7 @@ export async function createFixedClient(data: {
             latitude: fixedClient.latitude ? Number(fixedClient.latitude) : null,
             longitude: fixedClient.longitude ? Number(fixedClient.longitude) : null
         };
-        
+
         return { success: true, data: serializedFixedClient };
     } catch (error: any) {
         console.error('Erro ao criar cliente fixo:', error);
@@ -1427,7 +1430,7 @@ export async function updateFixedClient(
     }
 ) {
     'use server';
-    
+
     try {
         // Verificar se a tabela existe usando query do catálogo PostgreSQL
         try {
@@ -1438,7 +1441,7 @@ export async function updateFixedClient(
                     AND table_name = 'fixed_clients'
                 ) as exists
             `;
-            
+
             if (!tableExists[0]?.exists) {
                 console.error('Tabela fixed_clients não encontrada no banco de dados');
                 return { success: false, error: 'Tabela de clientes fixos ainda não foi criada. Execute o SQL: docker exec -i crm-postgres psql -U crm_user -d crm_ymbale < scripts/create-fixed-clients-table.sql' };
@@ -1474,7 +1477,7 @@ export async function updateFixedClient(
                 }
             }
         });
-        
+
         // Converter Decimal para number antes de retornar
         const serializedFixedClient = {
             ...fixedClient,
@@ -1482,7 +1485,7 @@ export async function updateFixedClient(
             latitude: fixedClient.latitude ? Number(fixedClient.latitude) : null,
             longitude: fixedClient.longitude ? Number(fixedClient.longitude) : null
         };
-        
+
         return { success: true, data: serializedFixedClient };
     } catch (error: any) {
         console.error('Erro ao atualizar cliente fixo:', error);
@@ -1493,12 +1496,12 @@ export async function updateFixedClient(
 // Deletar cliente fixo
 export async function deleteFixedClient(id: string) {
     'use server';
-    
+
     try {
         await prisma.fixedClient.delete({
             where: { id }
         });
-        
+
         return { success: true };
     } catch (error: any) {
         console.error('Erro ao deletar cliente fixo:', error);
@@ -1509,7 +1512,7 @@ export async function deleteFixedClient(id: string) {
 // Obter clientes fixos agendados para a semana
 export async function getFixedClientsForWeek(sellerId: string, weekStart: string) {
     'use server';
-    
+
     try {
         // Verificar se a tabela existe usando query do catálogo PostgreSQL
         try {
@@ -1520,7 +1523,7 @@ export async function getFixedClientsForWeek(sellerId: string, weekStart: string
                     AND table_name = 'fixed_clients'
                 ) as exists
             `;
-            
+
             if (!tableExists[0]?.exists) {
                 console.log('Tabela fixed_clients ainda não existe, retornando vazio');
                 return {};
@@ -1535,7 +1538,7 @@ export async function getFixedClientsForWeek(sellerId: string, weekStart: string
         startDate.setHours(0, 0, 0, 0);
         const endDate = new Date(startDate);
         endDate.setDate(startDate.getDate() + 7);
-        
+
         // Buscar todos os clientes fixos do executivo
         const fixedClients = await prisma.fixedClient.findMany({
             where: {
@@ -1552,21 +1555,23 @@ export async function getFixedClientsForWeek(sellerId: string, weekStart: string
                 }
             }
         });
-        
+
         // Calcular quais dias da semana têm clientes fixos
-        const fixedClientsByDay: { [date: string]: Array<{
-            id: string;
-            restaurantId: string | null;
-            restaurantName: string;
-            restaurantAddress: any;
-            radiusKm: number;
-            latitude: number | null;
-            longitude: number | null;
-        }> } = {};
-        
+        const fixedClientsByDay: {
+            [date: string]: Array<{
+                id: string;
+                restaurantId: string | null;
+                restaurantName: string;
+                restaurantAddress: any;
+                radiusKm: number;
+                latitude: number | null;
+                longitude: number | null;
+            }>
+        } = {};
+
         console.log(`\n🔍 Buscando clientes fixos para a semana começando em ${startDate.toISOString().split('T')[0]}`);
         console.log(`📋 Total de clientes fixos ativos: ${fixedClients.length}`);
-        
+
         for (let i = 0; i < 7; i++) {
             const date = new Date(startDate);
             date.setDate(startDate.getDate() + i);
@@ -1574,12 +1579,12 @@ export async function getFixedClientsForWeek(sellerId: string, weekStart: string
             const dayOfWeek = date.getDay(); // 0 = domingo, 1 = segunda, etc.
             const dayOfMonth = date.getDate();
             const dayName = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'][dayOfWeek];
-            
+
             fixedClientsByDay[dateString] = [];
-            
+
             fixedClients.forEach(fc => {
                 let shouldInclude = false;
-                
+
                 if (fc.recurrenceType === 'weekly_days') {
                     const weeklyDays = Array.isArray(fc.weeklyDays) ? fc.weeklyDays : (typeof fc.weeklyDays === 'string' ? JSON.parse(fc.weeklyDays) : []);
                     if (weeklyDays.includes(dayOfWeek)) {
@@ -1595,12 +1600,12 @@ export async function getFixedClientsForWeek(sellerId: string, weekStart: string
                         console.log(`   ✅ ${dayName} (${dateString}): Cliente fixo "${fc.restaurant?.name || fc.clientName}" corresponde (dias mensais: ${JSON.stringify(monthlyDays)})`);
                     }
                 }
-                
+
                 if (shouldInclude) {
                     // Usar dados do restaurante se existir, senão usar dados manuais
                     const clientName = fc.restaurant?.name || fc.clientName || 'Cliente Fixo';
                     const clientAddress = fc.restaurant?.address || fc.clientAddress || {};
-                    
+
                     fixedClientsByDay[dateString].push({
                         id: fc.id,
                         restaurantId: fc.restaurantId || '',
@@ -1613,7 +1618,7 @@ export async function getFixedClientsForWeek(sellerId: string, weekStart: string
                 }
             });
         }
-        
+
         // Log final resumido
         console.log(`\n📊 Resumo de clientes fixos por dia:`);
         Object.keys(fixedClientsByDay).forEach(date => {
@@ -1622,7 +1627,7 @@ export async function getFixedClientsForWeek(sellerId: string, weekStart: string
                 console.log(`   ${date}: ${count} cliente(s) fixo(s)`);
             }
         });
-        
+
         return fixedClientsByDay;
     } catch (error: any) {
         console.error('Erro ao buscar clientes fixos da semana:', error);
@@ -1643,7 +1648,7 @@ export async function findNearbyProspectClients(
         console.log(`   Cliente fixo: ${fixedClient.restaurantName || fixedClient.clientName}`);
         console.log(`   Seller ID: ${sellerId}`);
         console.log(`   Max results: ${maxResults}`);
-        
+
         // Obter coordenadas do cliente fixo
         let fixedLat = fixedClient.latitude;
         let fixedLon = fixedClient.longitude;
@@ -1655,24 +1660,24 @@ export async function findNearbyProspectClients(
             console.log(`   ⚠️ Coordenadas não encontradas, calculando com Google Maps API...`);
             const address = fixedClient.restaurantAddress || fixedClient.clientAddress || fixedClient.address;
             console.log(`   Endereço usado: ${JSON.stringify(address)}`);
-            
+
             // Usar Google Maps API para obter coordenadas precisas
             const coords = await getCoordinatesFromAddressWithGoogle(
                 address,
                 { latitude: fixedLat, longitude: fixedLon }
             );
-            
+
             if (coords) {
                 fixedLat = coords.latitude;
                 fixedLon = coords.longitude;
                 console.log(`   ✅ Coordenadas obtidas (Google Maps): ${fixedLat}, ${fixedLon}`);
-                
+
                 // Atualizar no banco para próximas vezes (se tiver ID)
                 if (fixedClient.id) {
                     await prisma.fixedClient.update({
                         where: { id: fixedClient.id },
                         data: { latitude: fixedLat, longitude: fixedLon }
-                    }).catch(() => {}); // Ignora erro se já foi atualizado
+                    }).catch(() => { }); // Ignora erro se já foi atualizado
                 }
             } else {
                 console.warn(`   ❌ Cliente fixo ${fixedClient.clientName || fixedClient.restaurantName} não tem coordenadas válidas`);
@@ -1689,7 +1694,7 @@ export async function findNearbyProspectClients(
                 }
             }
         });
-        
+
         console.log(`   📊 Total de restaurantes na carteira: ${allRestaurants.length}`);
 
         // Primeiro, garantir que todos os restaurantes têm coordenadas
@@ -1708,12 +1713,12 @@ export async function findNearbyProspectClients(
                     if (coords) {
                         restLat = coords.latitude;
                         restLon = coords.longitude;
-                        
+
                         // Atualizar no banco
                         await prisma.restaurant.update({
                             where: { id: restaurant.id },
                             data: { latitude: restLat, longitude: restLon }
-                        }).catch(() => {}); // Ignora erro se já foi atualizado
+                        }).catch(() => { }); // Ignora erro se já foi atualizado
                     } else {
                         return null; // Pular restaurantes sem coordenadas
                     }
@@ -1768,18 +1773,18 @@ export async function findNearbyProspectClients(
 
             // Calcular score de prioridade
             let score = 0;
-            
+
             // Potencial de vendas
             if (restaurant.salesPotential === 'ALTISSIMO') score += 100;
             else if (restaurant.salesPotential === 'ALTO') score += 75;
             else if (restaurant.salesPotential === 'MEDIO') score += 50;
             else if (restaurant.salesPotential === 'BAIXO') score += 25;
-            
+
             // Rating e avaliações
             score += (Number(restaurant.rating) || 0) * 10;
             score += Math.min(Number(restaurant.reviewCount) || 0, 100) * 0.5;
             score += Math.min((Number(restaurant.projectedDeliveries) || 0) / 100, 50);
-            
+
             // Penalizar clientes já em negociação
             if (restaurant.status === 'Contatado' || restaurant.status === 'Negociação') {
                 score *= 0.7;
@@ -1801,9 +1806,9 @@ export async function findNearbyProspectClients(
 
         // Filtrar e ordenar restaurantes com algoritmo de clustering
         const radiusKm = fixedClient.radiusKm || 15.0; // Aumentado padrão de 10km para 15km
-        
+
         console.log(`   🔍 Filtrando restaurantes no raio de ${radiusKm}km...`);
-        
+
         // 1. Filtrar restaurantes dentro do raio (CRÍTICO: esta é a validação de proximidade)
         // Usar distância real da API se disponível, senão usar Haversine
         const restaurantsInRadius = restaurantsWithDistance
@@ -1816,9 +1821,9 @@ export async function findNearbyProspectClients(
                 }
                 return isWithinRadius;
             });
-        
+
         console.log(`   📍 Restaurantes dentro do raio de ${radiusKm}km: ${restaurantsInRadius.length}`);
-        
+
         if (restaurantsInRadius.length === 0) {
             console.log(`   ⚠️ NENHUM restaurante encontrado no raio de ${radiusKm}km do cliente fixo!`);
             console.log(`   💡 Isso significa que não há restaurantes próximos suficientes para preencher este dia`);
@@ -1836,71 +1841,71 @@ export async function findNearbyProspectClients(
             console.log(`   ✅ Retornando array vazio - este dia NÃO será preenchido com restaurantes distantes`);
             return [];
         }
-        
+
         console.log(`   ✅ ${restaurantsInRadius.length} restaurantes VALIDADOS como próximos (dentro de ${radiusKm}km)`);
-        
+
         // 2. Criar clusters de restaurantes próximos entre si usando Google Maps API
         // Calcular distâncias reais entre todos os pares de restaurantes para clustering preciso
         console.log(`   🔄 Calculando distâncias entre restaurantes para clustering otimizado...`);
         const clusters: Array<Array<typeof restaurantsInRadius[0]>> = [];
         const assigned = new Set<string>();
-        
+
         // Limitar número de restaurantes para clustering (máximo 20 para evitar muitas chamadas à API)
         const restaurantsForClustering = restaurantsInRadius.slice(0, 20);
         const restaurantDistanceMap = new Map<string, Map<string, number>>();
-        
+
         // Calcular distâncias entre pares usando Google Maps API (em batches)
         for (let i = 0; i < restaurantsForClustering.length; i++) {
             const restaurant = restaurantsForClustering[i];
             const distancesToOthers: Array<{ id: string; distanceKm: number }> = [];
-            
+
             // Calcular distâncias deste restaurante para os próximos (evitar duplicatas)
             const otherRestaurants = restaurantsForClustering.slice(i + 1).map(r => ({
                 id: r.id,
                 latitude: r.latitude!,
                 longitude: r.longitude!
             }));
-            
+
             if (otherRestaurants.length > 0) {
                 const batchDistances = await calculateBatchDistances(
                     { latitude: restaurant.latitude!, longitude: restaurant.longitude! },
                     otherRestaurants,
                     'driving'
                 );
-                
+
                 batchDistances.forEach(d => {
                     if (d.distanceKm !== Infinity) {
                         distancesToOthers.push({ id: d.id, distanceKm: d.distanceKm });
                     }
                 });
             }
-            
+
             // Armazenar distâncias
             const distMap = new Map<string, number>();
             distancesToOthers.forEach(d => distMap.set(d.id, d.distanceKm));
             restaurantDistanceMap.set(restaurant.id, distMap);
         }
-        
+
         console.log(`   ✅ Distâncias entre restaurantes calculadas para clustering`);
-        
+
         // Agrupar restaurantes que estão a menos de 5km uns dos outros (usando distâncias reais)
         const CLUSTER_RADIUS_KM = 5.0; // Raio máximo entre restaurantes no mesmo cluster
-        
+
         for (const restaurant of restaurantsForClustering) {
             if (assigned.has(restaurant.id)) continue;
-            
+
             // Criar novo cluster começando com este restaurante
             const cluster: Array<typeof restaurantsInRadius[0]> = [restaurant];
             assigned.add(restaurant.id);
-            
+
             // Encontrar todos os restaurantes próximos a este usando distâncias reais
             const distancesFromThis = restaurantDistanceMap.get(restaurant.id);
-            
+
             for (const other of restaurantsForClustering) {
                 if (assigned.has(other.id)) continue;
-                
+
                 let distanceBetween: number;
-                
+
                 // Tentar obter distância real calculada
                 if (distancesFromThis && distancesFromThis.has(other.id)) {
                     distanceBetween = distancesFromThis.get(other.id)!;
@@ -1913,13 +1918,13 @@ export async function findNearbyProspectClients(
                         other.longitude!
                     );
                 }
-                
+
                 if (distanceBetween <= CLUSTER_RADIUS_KM) {
                     cluster.push(other);
                     assigned.add(other.id);
                 }
             }
-            
+
             // Limitar tamanho do cluster para garantir que caiba no limite de visitas
             const maxClusterSize = maxResults;
             if (cluster.length > maxClusterSize) {
@@ -1927,38 +1932,38 @@ export async function findNearbyProspectClients(
                 cluster.sort((a, b) => b.score - a.score);
                 cluster.splice(maxClusterSize);
             }
-            
+
             clusters.push(cluster);
         }
-        
+
         // Adicionar restaurantes que não foram agrupados em clusters próprios
         for (const restaurant of restaurantsInRadius) {
             if (!assigned.has(restaurant.id)) {
                 clusters.push([restaurant]);
             }
         }
-        
+
         console.log(`   📊 ${clusters.length} clusters criados (raio de clustering: ${CLUSTER_RADIUS_KM}km)`);
-        
+
         // 3. Ordenar clusters por:
         //    - Distância média do cluster ao cliente fixo
         //    - Tamanho do cluster (clusters maiores têm prioridade)
         clusters.sort((a, b) => {
             const avgDistA = a.reduce((sum, r) => sum + r.distance, 0) / a.length;
             const avgDistB = b.reduce((sum, r) => sum + r.distance, 0) / b.length;
-            
+
             // Se a diferença de distância média for < 3km, priorizar cluster maior
             if (Math.abs(avgDistA - avgDistB) < 3.0) {
                 return b.length - a.length; // Cluster maior primeiro
             }
-            
+
             return avgDistA - avgDistB; // Cluster mais próximo primeiro
         });
-        
+
         // 4. Selecionar restaurantes dos melhores clusters
         const nearbyRestaurants: Array<typeof restaurantsInRadius[0] & { clusterId?: number; distanceFromFixed: number }> = [];
         let clusterId = 0;
-        
+
         for (const cluster of clusters) {
             // Ordenar restaurantes dentro do cluster por distância + score
             cluster.sort((a, b) => {
@@ -1968,22 +1973,22 @@ export async function findNearbyProspectClients(
                 }
                 return distDiff;
             });
-            
+
             // Adicionar restaurantes do cluster com ID do cluster e distância
             for (const restaurant of cluster) {
                 if (nearbyRestaurants.length >= maxResults) break;
-                nearbyRestaurants.push({ 
-                    ...restaurant, 
+                nearbyRestaurants.push({
+                    ...restaurant,
                     clusterId,
                     distanceFromFixed: restaurant.distance,
                     durationMinutes: restaurant.durationMinutes
                 });
             }
-            
+
             if (nearbyRestaurants.length >= maxResults) break;
             clusterId++;
         }
-        
+
         // Limitar ao máximo solicitado
         const finalResults = nearbyRestaurants.slice(0, maxResults);
 
@@ -1999,7 +2004,7 @@ export async function findNearbyProspectClients(
         // Log detalhado para debug
         console.log('\n=== PREENCHIMENTO INTELIGENTE ===');
         console.log(`📍 Cliente Fixo: ${fixedClient.clientName || fixedClient.restaurantName}`);
-        const addressStr = fixedClient.restaurantAddress 
+        const addressStr = fixedClient.restaurantAddress
             ? JSON.stringify(fixedClient.restaurantAddress).substring(0, 100)
             : 'Endereço não disponível';
         console.log(`   Endereço: ${addressStr}`);
@@ -2008,7 +2013,7 @@ export async function findNearbyProspectClients(
         console.log(`   Restaurantes encontrados no raio: ${restaurantsInRadius.length}`);
         console.log(`   Clusters criados: ${clusters.length}`);
         console.log(`   Restaurantes selecionados: ${validatedResults.length}`);
-        
+
         if (validatedResults.length > 0) {
             console.log('\n   ✅ Restaurantes VALIDADOS como próximos:');
             validatedResults.slice(0, 5).forEach((r, i) => {
