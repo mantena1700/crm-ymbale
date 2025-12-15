@@ -512,11 +512,15 @@ export async function generateIntelligentWeeklySchedule(
             
             const { lat, lng } = coords;
             
-            // Se o restaurante tem um dia preferido (da FASE 1), priorizar esse dia
+            // Se o restaurante tem um dia preferido (da FASE 1), SEMPRE priorizar esse dia
             if (item.preferredDate) {
                 const preferredDay = daysWithGravity.find(d => d.date === item.preferredDate);
-                if (preferredDay && preferredDay.center) {
-                    const dist = calculateDistance(preferredDay.center.lat, preferredDay.center.lng, lat, lng);
+                if (preferredDay) {
+                    // Calcular distância se tiver centro, senão usar 0
+                    let dist = 0;
+                    if (preferredDay.center) {
+                        dist = calculateDistance(preferredDay.center.lat, preferredDay.center.lng, lat, lng);
+                    }
                     preferredDay.bucket.push({
                         restaurant,
                         distToCenter: dist,
@@ -524,8 +528,10 @@ export async function generateIntelligentWeeklySchedule(
                     });
                     usedRestaurantIds.add(restaurant.id);
                     attractedCount++;
-                    console.log(`      ✅ ${restaurant.name} → ${preferredDay.day} (preferido, ${dist.toFixed(1)}km)`);
+                    console.log(`      ✅ ${restaurant.name} → ${preferredDay.day} (preferido da FASE 1, ${dist > 0 ? dist.toFixed(1) + 'km' : 'sem centro'})`);
                     continue;
+                } else {
+                    console.warn(`      ⚠️ Dia preferido ${item.preferredDate} não encontrado para ${restaurant.name}`);
                 }
             }
             
@@ -534,9 +540,11 @@ export async function generateIntelligentWeeklySchedule(
             let minDistance = Infinity;
             
             // Excluir dias que já têm clientes fixos (eles já receberam seus restaurantes na FASE 2.1.1)
+            // MAS apenas se o restaurante NÃO tiver preferredDate (já processado acima)
             for (let i = 0; i < daysWithGravity.length; i++) {
                 const day = daysWithGravity[i];
                 // Se o dia tem cliente fixo, não adicionar mais restaurantes aqui (já foram adicionados na FASE 2.1.1)
+                // EXCETO se o restaurante tiver preferredDate para esse dia (já processado acima)
                 if (daysWithFixedClients.has(day.date)) {
                     continue;
                 }
