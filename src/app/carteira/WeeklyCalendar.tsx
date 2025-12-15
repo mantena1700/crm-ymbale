@@ -31,9 +31,9 @@ interface WeeklyCalendarProps {
     onAutoFill?: (schedule: any[]) => void;
 }
 
-// 8 visitas por dia (sem horários específicos)
-// Usar índices de 1 a 8 para identificar as visitas
-const VISIT_SLOTS = Array.from({ length: 8 }, (_, i) => i + 1);
+// 6 visitas por dia (sem horários específicos)
+// Usar índices de 1 a 6 para identificar as visitas
+const VISIT_SLOTS = Array.from({ length: 6 }, (_, i) => i + 1);
 
 // Função para normalizar salesPotential
 const normalizePotential = (potential: string | null | undefined): string => {
@@ -645,7 +645,7 @@ export default function WeeklyCalendar({ restaurants, sellerId, weekStart }: Wee
                                         return !!slot;
                                     });
                                     const progress = daySlots.length;
-                                    const maxSlots = 8;
+                                    const maxSlots = 6;
                                     const progressPercent = (progress / maxSlots) * 100;
                                     return (
                                         <div className={styles.dayProgress}>

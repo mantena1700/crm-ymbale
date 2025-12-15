@@ -1839,37 +1839,106 @@ export async function findNearbyProspectClients(
         
         console.log(`   ✅ ${restaurantsInRadius.length} restaurantes VALIDADOS como próximos (dentro de ${radiusKm}km)`);
         
-        // 2. Criar clusters de restaurantes próximos entre si (algoritmo de clustering simples)
-        // Agrupar restaurantes que estão a menos de 5km uns dos outros
+        // 2. Criar clusters de restaurantes próximos entre si usando Google Maps API
+        // Calcular distâncias reais entre todos os pares de restaurantes para clustering preciso
+        console.log(`   🔄 Calculando distâncias entre restaurantes para clustering otimizado...`);
         const clusters: Array<Array<typeof restaurantsInRadius[0]>> = [];
         const assigned = new Set<string>();
         
-        for (const restaurant of restaurantsInRadius) {
+        // Limitar número de restaurantes para clustering (máximo 20 para evitar muitas chamadas à API)
+        const restaurantsForClustering = restaurantsInRadius.slice(0, 20);
+        const restaurantDistanceMap = new Map<string, Map<string, number>>();
+        
+        // Calcular distâncias entre pares usando Google Maps API (em batches)
+        for (let i = 0; i < restaurantsForClustering.length; i++) {
+            const restaurant = restaurantsForClustering[i];
+            const distancesToOthers: Array<{ id: string; distanceKm: number }> = [];
+            
+            // Calcular distâncias deste restaurante para os próximos (evitar duplicatas)
+            const otherRestaurants = restaurantsForClustering.slice(i + 1).map(r => ({
+                id: r.id,
+                latitude: r.latitude!,
+                longitude: r.longitude!
+            }));
+            
+            if (otherRestaurants.length > 0) {
+                const batchDistances = await calculateBatchDistances(
+                    { latitude: restaurant.latitude!, longitude: restaurant.longitude! },
+                    otherRestaurants,
+                    'driving'
+                );
+                
+                batchDistances.forEach(d => {
+                    if (d.distanceKm !== Infinity) {
+                        distancesToOthers.push({ id: d.id, distanceKm: d.distanceKm });
+                    }
+                });
+            }
+            
+            // Armazenar distâncias
+            const distMap = new Map<string, number>();
+            distancesToOthers.forEach(d => distMap.set(d.id, d.distanceKm));
+            restaurantDistanceMap.set(restaurant.id, distMap);
+        }
+        
+        console.log(`   ✅ Distâncias entre restaurantes calculadas para clustering`);
+        
+        // Agrupar restaurantes que estão a menos de 5km uns dos outros (usando distâncias reais)
+        const CLUSTER_RADIUS_KM = 5.0; // Raio máximo entre restaurantes no mesmo cluster
+        
+        for (const restaurant of restaurantsForClustering) {
             if (assigned.has(restaurant.id)) continue;
             
             // Criar novo cluster começando com este restaurante
             const cluster: Array<typeof restaurantsInRadius[0]> = [restaurant];
             assigned.add(restaurant.id);
             
-            // Encontrar todos os restaurantes próximos a este (dentro de 5km)
-            for (const other of restaurantsInRadius) {
+            // Encontrar todos os restaurantes próximos a este usando distâncias reais
+            const distancesFromThis = restaurantDistanceMap.get(restaurant.id);
+            
+            for (const other of restaurantsForClustering) {
                 if (assigned.has(other.id)) continue;
                 
-                const distanceBetween = calculateDistance(
-                    restaurant.latitude!,
-                    restaurant.longitude!,
-                    other.latitude!,
-                    other.longitude!
-                );
+                let distanceBetween: number;
                 
-                if (distanceBetween <= 5.0) {
+                // Tentar obter distância real calculada
+                if (distancesFromThis && distancesFromThis.has(other.id)) {
+                    distanceBetween = distancesFromThis.get(other.id)!;
+                } else {
+                    // Fallback para Haversine se não foi calculado
+                    distanceBetween = calculateDistance(
+                        restaurant.latitude!,
+                        restaurant.longitude!,
+                        other.latitude!,
+                        other.longitude!
+                    );
+                }
+                
+                if (distanceBetween <= CLUSTER_RADIUS_KM) {
                     cluster.push(other);
                     assigned.add(other.id);
                 }
             }
             
+            // Limitar tamanho do cluster para garantir que caiba no limite de visitas
+            const maxClusterSize = maxResults;
+            if (cluster.length > maxClusterSize) {
+                // Ordenar por score e pegar os melhores
+                cluster.sort((a, b) => b.score - a.score);
+                cluster.splice(maxClusterSize);
+            }
+            
             clusters.push(cluster);
         }
+        
+        // Adicionar restaurantes que não foram agrupados em clusters próprios
+        for (const restaurant of restaurantsInRadius) {
+            if (!assigned.has(restaurant.id)) {
+                clusters.push([restaurant]);
+            }
+        }
+        
+        console.log(`   📊 ${clusters.length} clusters criados (raio de clustering: ${CLUSTER_RADIUS_KM}km)`);
         
         // 3. Ordenar clusters por:
         //    - Distância média do cluster ao cliente fixo

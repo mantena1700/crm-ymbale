@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import styles from './page.module.css';
 import { scheduleVisit, updateClientPriority, updateClientStatus, addNote, autoFillWeeklySchedule, exportWeeklyScheduleToExcel, getWeeklySchedule, exportWeeklyScheduleToAgendamentoTemplate } from './actions';
 import { exportRestaurantsToCheckmob } from '@/app/actions';
@@ -75,6 +76,8 @@ type ViewMode = 'cards' | 'list' | 'calendar';
 type FilterPeriod = 'week' | 'month' | 'all';
 
 export default function CarteiraClient({ initialData }: Props) {
+    const router = useRouter();
+    const scrollPositionRef = useRef<number>(0);
     const { sellers, restaurants, followUps, visits } = initialData;
     
     const [selectedSellerId, setSelectedSellerId] = useState<string>(sellers[0]?.id || '');
@@ -390,8 +393,14 @@ export default function CarteiraClient({ initialData }: Props) {
         try {
             await updateClientStatus(restaurantId, newStatus);
             setEditingStatus(null);
-            // Atualizar localmente
-            window.location.reload();
+            // Salvar posição do scroll antes de atualizar
+            scrollPositionRef.current = window.scrollY || window.pageYOffset;
+            // Atualizar dados sem recarregar página completa
+            router.refresh();
+            // Restaurar posição do scroll após um pequeno delay
+            setTimeout(() => {
+                window.scrollTo(0, scrollPositionRef.current);
+            }, 100);
         } catch (error) {
             alert('❌ Erro ao atualizar status');
         }
@@ -404,7 +413,14 @@ export default function CarteiraClient({ initialData }: Props) {
         try {
             await updateClientPriority(restaurantId, newPriority);
             setEditingPriority(null);
-            window.location.reload();
+            // Salvar posição do scroll antes de atualizar
+            scrollPositionRef.current = window.scrollY || window.pageYOffset;
+            // Atualizar dados sem recarregar página completa
+            router.refresh();
+            // Restaurar posição do scroll após um pequeno delay
+            setTimeout(() => {
+                window.scrollTo(0, scrollPositionRef.current);
+            }, 100);
         } catch (error) {
             alert('❌ Erro ao atualizar prioridade');
         }
@@ -490,8 +506,14 @@ export default function CarteiraClient({ initialData }: Props) {
             if (result.success) {
                 const total = result.total || result.schedule?.length || 0;
                 alert(`✅ Agenda preenchida automaticamente!\n\n${total} visitas agendadas e salvas no banco de dados.`);
-                // Recarregar a página para atualizar o calendário
-                window.location.reload();
+                // Salvar posição do scroll antes de atualizar
+                scrollPositionRef.current = window.scrollY || window.pageYOffset;
+                // Atualizar dados sem recarregar página completa
+                router.refresh();
+                // Restaurar posição do scroll após um pequeno delay
+                setTimeout(() => {
+                    window.scrollTo(0, scrollPositionRef.current);
+                }, 100);
             } else {
                 alert(`❌ Erro ao preencher agenda automaticamente.\n\n${result.error || 'Erro desconhecido'}`);
             }
