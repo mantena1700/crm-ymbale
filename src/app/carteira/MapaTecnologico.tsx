@@ -459,13 +459,7 @@ export default function MapaTecnologico({
                 // Verificar se o Content-Type é JSON
                 const contentType = response.headers.get('content-type');
                 if (!contentType || !contentType.includes('application/json')) {
-                    console.warn('⚠️ Resposta não é JSON, tentando usar variável de ambiente...');
-                    // Tentar usar variável de ambiente como fallback
-                    const envKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-                    if (envKey) {
-                        await loadGoogleMaps(envKey);
-                        setMapLoaded(true);
-                    }
+                    console.warn('⚠️ Resposta não é JSON. A API pode estar retornando HTML (erro 404/500)');
                     setIsLoadingMap(false);
                     return;
                 }
@@ -485,16 +479,6 @@ export default function MapaTecnologico({
                 setIsLoadingMap(false);
             } catch (error) {
                 console.error('Erro ao carregar Google Maps:', error);
-                // Tentar usar variável de ambiente como fallback
-                try {
-                    const envKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-                    if (envKey) {
-                        await loadGoogleMaps(envKey);
-                        setMapLoaded(true);
-                    }
-                } catch (fallbackError) {
-                    console.error('Erro ao usar fallback:', fallbackError);
-                }
                 setIsLoadingMap(false);
             }
         };
