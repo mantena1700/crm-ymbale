@@ -3,7 +3,6 @@
 import { prisma } from '@/lib/db';
 import { getFixedClientsForWeek, findNearbyProspectClients } from './actions';
 import { calculateDistance } from '@/lib/distance-calculator';
-import { calculateRealDistance } from '@/lib/google-maps';
 import type { FillSuggestion } from './ConfirmationModal';
 
 // Constante para limite de visitas por dia
