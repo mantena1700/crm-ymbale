@@ -1207,6 +1207,208 @@ export async function syncRestaurantsWithSellers() {
 }
 
 // Exportar restaurantes selecionados para Excel (mesmo formato da importação)
+// Deletar múltiplos restaurantes permanentemente
+export async function deleteRestaurants(restaurantIds: string[]) {
+    'use server';
+    
+    try {
+        const { prisma } = await import('@/lib/db');
+        
+        if (!restaurantIds || restaurantIds.length === 0) {
+            return {
+                success: false,
+                error: 'Nenhum restaurante selecionado para deletar'
+            };
+        }
+
+        // Deletar dados relacionados primeiro
+        await prisma.comment.deleteMany({ 
+            where: { restaurantId: { in: restaurantIds } } 
+        });
+        await prisma.analysis.deleteMany({ 
+            where: { restaurantId: { in: restaurantIds } } 
+        });
+        await prisma.note.deleteMany({ 
+            where: { restaurantId: { in: restaurantIds } } 
+        });
+        await prisma.followUp.deleteMany({ 
+            where: { restaurantId: { in: restaurantIds } } 
+        });
+        await prisma.activityLog.deleteMany({ 
+            where: { restaurantId: { in: restaurantIds } } 
+        });
+        
+        // Deletar visitas relacionadas
+        try {
+            await prisma.visit.deleteMany({ 
+                where: { restaurantId: { in: restaurantIds } } 
+            });
+        } catch (e) {
+            // Tabela visits pode não existir
+        }
+
+        // Deletar relacionamentos de campanhas
+        try {
+            await prisma.campaignRecipient.deleteMany({ 
+                where: { restaurantId: { in: restaurantIds } } 
+            });
+        } catch (e) {
+            // Tabela pode não existir
+        }
+
+        // Deletar relacionamentos de workflows
+        try {
+            await prisma.workflowExecution.deleteMany({ 
+                where: { restaurantId: { in: restaurantIds } } 
+            });
+        } catch (e) {
+            // Tabela pode não existir
+        }
+
+        // Deletar clientes fixos relacionados
+        try {
+            await prisma.fixedClient.deleteMany({ 
+                where: { restaurantId: { in: restaurantIds } } 
+            });
+        } catch (e) {
+            // Tabela pode não existir
+        }
+
+        // Deletar restaurantes
+        const result = await prisma.restaurant.deleteMany({
+            where: { id: { in: restaurantIds } }
+        });
+
+        revalidatePath('/clients');
+        revalidatePath('/pipeline');
+        revalidatePath('/carteira');
+
+        return {
+            success: true,
+            count: result.count,
+            message: `${result.count} cliente(s) deletado(s) permanentemente`
+        };
+    } catch (error: any) {
+        console.error('Erro ao deletar restaurantes:', error);
+        return {
+            success: false,
+            error: error.message || 'Erro ao deletar restaurantes'
+        };
+    }
+}
+
+// Mover múltiplos restaurantes para "Descartado"
+export async function discardRestaurants(restaurantIds: string[]) {
+    'use server';
+    
+    try {
+        const { prisma } = await import('@/lib/db');
+        
+        if (!restaurantIds || restaurantIds.length === 0) {
+            return {
+                success: false,
+                error: 'Nenhum restaurante selecionado para descartar'
+            };
+        }
+
+        // Atualizar status para "Descartado"
+        const result = await prisma.restaurant.updateMany({
+            where: { id: { in: restaurantIds } },
+            data: { 
+                status: 'Descartado',
+                updatedAt: new Date()
+            }
+        });
+
+        // Criar logs de atividade
+        try {
+            await prisma.activityLog.createMany({
+                data: restaurantIds.map(restaurantId => ({
+                    type: 'status_change',
+                    title: 'Cliente Descartado',
+                    description: 'Cliente movido para a área de descartados',
+                    restaurantId
+                }))
+            });
+        } catch (e) {
+            // Log de atividade pode falhar, mas não é crítico
+            console.warn('Erro ao criar logs de atividade:', e);
+        }
+
+        revalidatePath('/clients');
+        revalidatePath('/pipeline');
+        revalidatePath('/carteira');
+
+        return {
+            success: true,
+            count: result.count,
+            message: `${result.count} cliente(s) movido(s) para descartados`
+        };
+    } catch (error: any) {
+        console.error('Erro ao descartar restaurantes:', error);
+        return {
+            success: false,
+            error: error.message || 'Erro ao descartar restaurantes'
+        };
+    }
+}
+
+// Restaurar múltiplos restaurantes descartados (voltar para "A Analisar")
+export async function restoreRestaurants(restaurantIds: string[]) {
+    'use server';
+    
+    try {
+        const { prisma } = await import('@/lib/db');
+        
+        if (!restaurantIds || restaurantIds.length === 0) {
+            return {
+                success: false,
+                error: 'Nenhum restaurante selecionado para restaurar'
+            };
+        }
+
+        // Atualizar status para "A Analisar"
+        const result = await prisma.restaurant.updateMany({
+            where: { id: { in: restaurantIds } },
+            data: { 
+                status: 'A Analisar',
+                updatedAt: new Date()
+            }
+        });
+
+        // Criar logs de atividade
+        try {
+            await prisma.activityLog.createMany({
+                data: restaurantIds.map(restaurantId => ({
+                    type: 'status_change',
+                    title: 'Cliente Restaurado',
+                    description: 'Cliente restaurado da área de descartados',
+                    restaurantId
+                }))
+            });
+        } catch (e) {
+            // Log de atividade pode falhar, mas não é crítico
+            console.warn('Erro ao criar logs de atividade:', e);
+        }
+
+        revalidatePath('/clients');
+        revalidatePath('/pipeline');
+        revalidatePath('/carteira');
+
+        return {
+            success: true,
+            count: result.count,
+            message: `${result.count} cliente(s) restaurado(s) com sucesso`
+        };
+    } catch (error: any) {
+        console.error('Erro ao restaurar restaurantes:', error);
+        return {
+            success: false,
+            error: error.message || 'Erro ao restaurar restaurantes'
+        };
+    }
+}
+
 export async function exportRestaurantsToExcel(restaurantIds: string[]) {
     'use server';
     

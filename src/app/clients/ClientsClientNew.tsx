@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Restaurant } from '@/lib/types';
 import { PageLayout, Card, Grid, Badge, Button } from '@/components/PageLayout';
 import { Table } from '@/components/Table';
-import { updateRestaurantStatus, syncRestaurantsWithSellers, exportRestaurantsToExcel } from '@/app/actions';
+import { updateRestaurantStatus, syncRestaurantsWithSellers, exportRestaurantsToExcel, deleteRestaurants, discardRestaurants, restoreRestaurants } from '@/app/actions';
 import styles from './ClientsNew.module.css';
 
 interface Seller {
@@ -33,6 +33,11 @@ export default function ClientsClientNew({ initialRestaurants, availableSellers 
     const [allocating, setAllocating] = useState(false);
     const [selectedRestaurants, setSelectedRestaurants] = useState<Set<string>>(new Set());
     const [exporting, setExporting] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+    const [discarding, setDiscarding] = useState(false);
+    const [restoring, setRestoring] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [showDiscardModal, setShowDiscardModal] = useState(false);
 
     // Extract unique values for filters
     const cities = useMemo(() => {
@@ -335,6 +340,104 @@ export default function ClientsClientNew({ initialRestaurants, availableSellers 
         }
     };
 
+    const handleDeleteSelected = async () => {
+        if (selectedRestaurants.size === 0) {
+            alert('⚠️ Nenhum cliente selecionado para deletar.');
+            return;
+        }
+
+        setShowDeleteModal(true);
+    };
+
+    const confirmDelete = async () => {
+        const idsToDelete = Array.from(selectedRestaurants);
+        setShowDeleteModal(false);
+        setDeleting(true);
+
+        try {
+            const result = await deleteRestaurants(idsToDelete);
+            
+            if (result.success) {
+                alert(`✅ ${result.message || `${result.count} cliente(s) deletado(s) com sucesso!`}`);
+                setSelectedRestaurants(new Set());
+                // Recarregar a página para atualizar a lista
+                window.location.reload();
+            } else {
+                alert(`❌ Erro ao deletar: ${result.error || 'Erro desconhecido'}`);
+            }
+        } catch (error: any) {
+            console.error('Erro ao deletar:', error);
+            alert(`❌ Erro ao deletar: ${error.message || 'Erro desconhecido'}`);
+        } finally {
+            setDeleting(false);
+        }
+    };
+
+    const handleDiscardSelected = async () => {
+        if (selectedRestaurants.size === 0) {
+            alert('⚠️ Nenhum cliente selecionado para descartar.');
+            return;
+        }
+
+        setShowDiscardModal(true);
+    };
+
+    const confirmDiscard = async () => {
+        const idsToDiscard = Array.from(selectedRestaurants);
+        setShowDiscardModal(false);
+        setDiscarding(true);
+
+        try {
+            const result = await discardRestaurants(idsToDiscard);
+            
+            if (result.success) {
+                alert(`✅ ${result.message || `${result.count} cliente(s) movido(s) para descartados!`}`);
+                setSelectedRestaurants(new Set());
+                // Recarregar a página para atualizar a lista
+                window.location.reload();
+            } else {
+                alert(`❌ Erro ao descartar: ${result.error || 'Erro desconhecido'}`);
+            }
+        } catch (error: any) {
+            console.error('Erro ao descartar:', error);
+            alert(`❌ Erro ao descartar: ${error.message || 'Erro desconhecido'}`);
+        } finally {
+            setDiscarding(false);
+        }
+    };
+
+    const handleRestoreSelected = async () => {
+        if (selectedRestaurants.size === 0) {
+            alert('⚠️ Nenhum cliente selecionado para restaurar.');
+            return;
+        }
+
+        if (!confirm(`Deseja restaurar ${selectedRestaurants.size} cliente(s) descartado(s)?\n\nEles voltarão para a base de leads ativos com status "A Analisar".`)) {
+            return;
+        }
+
+        const idsToRestore = Array.from(selectedRestaurants);
+        setRestoring(true);
+
+        try {
+            const result = await restoreRestaurants(idsToRestore);
+            
+            if (result.success) {
+                alert(`✅ ${result.message || `${result.count} cliente(s) restaurado(s) com sucesso!`}`);
+                setSelectedRestaurants(new Set());
+                // Recarregar a página para atualizar a lista
+                window.location.reload();
+            } else {
+                alert(`❌ Erro ao restaurar: ${result.error || 'Erro desconhecido'}`);
+            }
+        } catch (error: any) {
+            console.error('Erro ao restaurar:', error);
+            alert(`❌ Erro ao restaurar: ${error.message || 'Erro desconhecido'}`);
+        } finally {
+            setRestoring(false);
+        }
+    };
+
     return (
         <PageLayout
             title="Base de Clientes"
@@ -343,13 +446,42 @@ export default function ClientsClientNew({ initialRestaurants, availableSellers 
             actions={
                 <>
                     {selectedRestaurants.size > 0 && (
-                        <Button 
-                            variant="secondary" 
-                            onClick={handleExportSelected}
-                            disabled={exporting}
-                        >
-                            {exporting ? '⏳ Exportando...' : `📥 Exportar Selecionados (${selectedRestaurants.size})`}
-                        </Button>
+                        <>
+                            <Button 
+                                variant="secondary" 
+                                onClick={handleExportSelected}
+                                disabled={exporting}
+                            >
+                                {exporting ? '⏳ Exportando...' : `📥 Exportar Selecionados (${selectedRestaurants.size})`}
+                            </Button>
+                            {activeTab === 'discarded' ? (
+                                <Button 
+                                    variant="secondary" 
+                                    onClick={handleRestoreSelected}
+                                    disabled={restoring}
+                                    style={{ backgroundColor: '#22c55e', color: 'white' }}
+                                >
+                                    {restoring ? '⏳ Restaurando...' : `↩️ Restaurar Selecionados (${selectedRestaurants.size})`}
+                                </Button>
+                            ) : (
+                                <Button 
+                                    variant="secondary" 
+                                    onClick={handleDiscardSelected}
+                                    disabled={discarding}
+                                    style={{ backgroundColor: '#f59e0b', color: 'white' }}
+                                >
+                                    {discarding ? '⏳ Descartando...' : `🗑️ Descartar Selecionados (${selectedRestaurants.size})`}
+                                </Button>
+                            )}
+                            <Button 
+                                variant="secondary" 
+                                onClick={handleDeleteSelected}
+                                disabled={deleting}
+                                style={{ backgroundColor: '#ef4444', color: 'white' }}
+                            >
+                                {deleting ? '⏳ Deletando...' : `🗑️ Apagar Selecionados (${selectedRestaurants.size})`}
+                            </Button>
+                        </>
                     )}
                     <Button 
                         variant="secondary" 
@@ -678,6 +810,112 @@ export default function ClientsClientNew({ initialRestaurants, availableSellers 
                         emptyMessage="Nenhum cliente encontrado"
                     />
                 </Card>
+            )}
+
+            {/* Modal de Confirmação para Deletar */}
+            {showDeleteModal && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000
+                }}>
+                    <div style={{
+                        backgroundColor: '#1e293b',
+                        padding: '2rem',
+                        borderRadius: '8px',
+                        maxWidth: '500px',
+                        width: '90%',
+                        border: '2px solid #ef4444'
+                    }}>
+                        <h3 style={{ color: '#ef4444', marginBottom: '1rem', fontSize: '1.25rem' }}>
+                            ⚠️ Confirmar Exclusão Permanente
+                        </h3>
+                        <p style={{ color: '#cbd5e1', marginBottom: '1.5rem', lineHeight: '1.6' }}>
+                            Você está prestes a deletar <strong>{selectedRestaurants.size} cliente(s)</strong> permanentemente.
+                            <br /><br />
+                            <strong style={{ color: '#ef4444' }}>Esta ação não pode ser desfeita!</strong>
+                            <br /><br />
+                            Todos os dados relacionados (comentários, análises, notas, follow-ups, visitas) serão perdidos.
+                        </p>
+                        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                            <Button
+                                variant="secondary"
+                                onClick={() => setShowDeleteModal(false)}
+                                disabled={deleting}
+                            >
+                                Cancelar
+                            </Button>
+                            <Button
+                                variant="secondary"
+                                onClick={confirmDelete}
+                                disabled={deleting}
+                                style={{ backgroundColor: '#ef4444', color: 'white' }}
+                            >
+                                {deleting ? '⏳ Deletando...' : '🗑️ Sim, Deletar Permanentemente'}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de Confirmação para Descartar */}
+            {showDiscardModal && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000
+                }}>
+                    <div style={{
+                        backgroundColor: '#1e293b',
+                        padding: '2rem',
+                        borderRadius: '8px',
+                        maxWidth: '500px',
+                        width: '90%',
+                        border: '2px solid #f59e0b'
+                    }}>
+                        <h3 style={{ color: '#f59e0b', marginBottom: '1rem', fontSize: '1.25rem' }}>
+                            📦 Mover para Descartados
+                        </h3>
+                        <p style={{ color: '#cbd5e1', marginBottom: '1.5rem', lineHeight: '1.6' }}>
+                            Você está prestes a mover <strong>{selectedRestaurants.size} cliente(s)</strong> para a área de descartados.
+                            <br /><br />
+                            Os clientes serão removidos da base de leads ativos, mas <strong>não serão deletados permanentemente</strong>.
+                            <br /><br />
+                            Você poderá visualizá-los na aba "Descartados" e restaurá-los no futuro, se necessário.
+                        </p>
+                        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                            <Button
+                                variant="secondary"
+                                onClick={() => setShowDiscardModal(false)}
+                                disabled={discarding}
+                            >
+                                Cancelar
+                            </Button>
+                            <Button
+                                variant="secondary"
+                                onClick={confirmDiscard}
+                                disabled={discarding}
+                                style={{ backgroundColor: '#f59e0b', color: 'white' }}
+                            >
+                                {discarding ? '⏳ Descartando...' : '🗑️ Sim, Descartar'}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
             )}
         </PageLayout>
     );

@@ -210,6 +210,7 @@ export async function generateIntelligentWeeklySchedule(
         const decisionsMap = new Map<string, UserDecision>();
         userDecisions.forEach(decision => {
             decisionsMap.set(decision.suggestionId, decision);
+            console.log(`📋 Decisão registrada: ${decision.suggestionId} - Aceito: ${decision.accepted}, Restaurantes: ${decision.selectedRestaurantIds?.length || 'todos'}`);
         });
 
         // Distribuir restaurantes nos slots
@@ -217,6 +218,7 @@ export async function generateIntelligentWeeklySchedule(
         console.log(`\n🔄 Iniciando distribuição de restaurantes...`);
         console.log(`📆 Total de dias da semana: ${weekDays.length}`);
         console.log(`📊 Decisões do usuário: ${userDecisions.length}`);
+        console.log(`📋 Mapa de decisões criado com ${decisionsMap.size} entradas`);
         
         for (const day of weekDays) {
             const fixedClientsToday = fixedClientsByDay[day.date] || [];
@@ -315,9 +317,21 @@ export async function generateIntelligentWeeklySchedule(
                     }
                     
                     // Preencher slots vazios do dia com clientes próximos
+                    // IMPORTANTE: Limitar a 8 visitas por dia (ou 6 como padrão)
+                    const maxVisitsPerDay = 8;
+                    const currentDayFilled = day.slots.filter(s => s.restaurantId).length;
+                    const remainingSlots = maxVisitsPerDay - currentDayFilled;
+                    
                     let filledCount = 0;
+                    const maxToFill = Math.min(availableNearbyClients.length, remainingSlots);
+                    
+                    console.log(`      📅 Preenchendo slots para ${day.day} (${day.date}):`);
+                    console.log(`         Slots já preenchidos: ${currentDayFilled}/${maxVisitsPerDay}`);
+                    console.log(`         Restaurantes disponíveis: ${availableNearbyClients.length}`);
+                    console.log(`         Máximo a preencher: ${maxToFill}`);
+                    
                     for (const slot of day.slots) {
-                        if (!slot.restaurantId && filledCount < availableNearbyClients.length) {
+                        if (!slot.restaurantId && filledCount < maxToFill) {
                             const nearbyClient = availableNearbyClients[filledCount];
                             
                             slot.restaurantId = nearbyClient.id;
@@ -338,10 +352,17 @@ export async function generateIntelligentWeeklySchedule(
                             // Marcar como usado APENAS neste dia
                             usedInThisDay.add(nearbyClient.id);
                             filledCount++;
+                            
+                            console.log(`         ✅ Slot ${slot.time}: ${nearbyClient.name} (${filledCount}/${maxToFill})`);
                         }
                     }
                     
-                    console.log(`      ✅ Preenchidos: ${filledCount} slots`);
+                    console.log(`      ✅ Preenchidos: ${filledCount} slots (limite: ${maxVisitsPerDay} por dia, já preenchidos: ${currentDayFilled})`);
+                    
+                    // Se ainda há restaurantes disponíveis mas o dia está cheio, avisar
+                    if (availableNearbyClients.length > maxToFill && filledCount >= maxToFill) {
+                        console.log(`      ⚠️ Dia ${day.day} atingiu o limite de ${maxVisitsPerDay} visitas. ${availableNearbyClients.length - maxToFill} restaurante(s) não foram agendados neste dia.`);
+                    }
                 }
                 
                 // Contar quantos slots foram preenchidos no total neste dia
@@ -379,17 +400,27 @@ export async function generateIntelligentWeeklySchedule(
         console.log(`⚠️ IMPORTANTE: Dias com clientes fixos NÃO serão preenchidos com restaurantes distantes`);
 
         // Preencher APENAS dias SEM clientes fixos
+        // IMPORTANTE: Distribuir equilibradamente pelos dias, respeitando limite de 8 por dia
+        const maxVisitsPerDay = 8;
+        
         for (const scoredRestaurant of availableRestaurants) {
             const restaurant = scoredRestaurant.restaurant;
             
             let found = false;
             
             // Preencher APENAS dias SEM clientes fixos
+            // Distribuir de forma equilibrada entre os dias disponíveis
             for (const day of weekDays) {
                 // CRÍTICO: Pular dias com clientes fixos - eles já foram preenchidos com lógica de proximidade
                 // Se ainda têm slots vazios, é porque não há restaurantes próximos suficientes
                 if (daysWithFixedClients.has(day.date)) {
                     continue; // NUNCA preencher dias com clientes fixos com restaurantes não validados
+                }
+                
+                // Verificar se o dia ainda tem espaço (limite de 8 visitas por dia)
+                const currentDayFilled = day.slots.filter(s => s.restaurantId).length;
+                if (currentDayFilled >= maxVisitsPerDay) {
+                    continue; // Dia já atingiu o limite
                 }
                 
                 const emptySlot = day.slots.find(slot => !slot.restaurantId);
@@ -399,12 +430,24 @@ export async function generateIntelligentWeeklySchedule(
                     usedRestaurantIds.add(restaurant.id);
                     restaurantIndex++;
                     found = true;
-                    console.log(`   ✅ Preenchido slot em ${day.day} (sem cliente fixo): ${restaurant.name}`);
+                    console.log(`   ✅ Preenchido slot em ${day.day} (sem cliente fixo): ${restaurant.name} (${currentDayFilled + 1}/${maxVisitsPerDay})`);
                     break;
                 }
             }
             
-            if (!found) break; // Não há mais slots disponíveis em dias sem clientes fixos
+            if (!found) {
+                // Verificar se ainda há slots disponíveis em algum dia
+                const hasAvailableSlots = weekDays.some(day => {
+                    if (daysWithFixedClients.has(day.date)) return false;
+                    const currentDayFilled = day.slots.filter(s => s.restaurantId).length;
+                    return currentDayFilled < maxVisitsPerDay && day.slots.some(s => !s.restaurantId);
+                });
+                
+                if (!hasAvailableSlots) {
+                    console.log(`   ⚠️ Todos os dias sem clientes fixos atingiram o limite de ${maxVisitsPerDay} visitas ou não há mais slots disponíveis`);
+                    break; // Não há mais slots disponíveis em dias sem clientes fixos
+                }
+            }
         }
         
         // Log final sobre dias com clientes fixos que ficaram com slots vazios
