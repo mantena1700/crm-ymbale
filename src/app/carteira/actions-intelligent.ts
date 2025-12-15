@@ -386,18 +386,45 @@ export async function generateIntelligentWeeklySchedule(
         });
         
         // ==========================================================
-        // FASE 2.1: ATRAIR RESTAURANTES PARA O DIA MAIS PRÓXIMO (GRAVIDADE)
+        // FASE 2.1: ATRAIR TODOS OS RESTAURANTES PARA O DIA MAIS PRÓXIMO (GRAVIDADE)
         // ==========================================================
-        console.log(`\n🧲 FASE 2.1: Atraindo restaurantes para o dia mais próximo (gravidade geográfica)...`);
+        console.log(`\n🧲 FASE 2.1: Atraindo TODOS os restaurantes para o dia mais próximo (gravidade geográfica)...`);
         
-        // Primeiro, processar restaurantes próximos coletados (já têm GPS)
-        // Buscar coordenadas dos restaurantes do banco se não estiverem no objeto
-        const restaurantCoordsMap = new Map<string, { lat: number; lng: number }>();
+        // Coletar TODOS os restaurantes da carteira que não foram usados
+        const allAvailableRestaurants: Array<{ restaurant: any; score: number }> = [];
         
-        // Buscar coordenadas do banco para restaurantes que não têm no objeto
-        const restaurantIdsToFetch = new Set<string>();
+        // 1. Adicionar restaurantes próximos coletados na FASE 1
         for (const candidate of allRestaurantCandidates) {
-            const restaurant = candidate.restaurant;
+            if (!usedRestaurantIds.has(candidate.restaurant.id)) {
+                const score = scoredRestaurants.find(sr => sr.restaurant.id === candidate.restaurant.id)?.score || 50;
+                allAvailableRestaurants.push({
+                    restaurant: candidate.restaurant,
+                    score
+                });
+            }
+        }
+        
+        // 2. Adicionar TODOS os outros restaurantes da carteira que não foram usados
+        for (const sr of scoredRestaurants) {
+            if (!usedRestaurantIds.has(sr.restaurant.id)) {
+                // Verificar se já não foi adicionado
+                if (!allAvailableRestaurants.find(ar => ar.restaurant.id === sr.restaurant.id)) {
+                    allAvailableRestaurants.push({
+                        restaurant: sr.restaurant,
+                        score: sr.score
+                    });
+                }
+            }
+        }
+        
+        console.log(`   📊 Total de restaurantes disponíveis para atrair: ${allAvailableRestaurants.length}`);
+        
+        // Buscar coordenadas de todos os restaurantes do banco se necessário
+        const restaurantCoordsMap = new Map<string, { lat: number; lng: number }>();
+        const restaurantIdsToFetch = new Set<string>();
+        
+        for (const item of allAvailableRestaurants) {
+            const restaurant = item.restaurant;
             const lat = restaurant.latitude || restaurant.lat || 0;
             const lng = restaurant.longitude || restaurant.lng || 0;
             if (lat === 0 || lng === 0) {
@@ -410,6 +437,7 @@ export async function generateIntelligentWeeklySchedule(
         // Buscar coordenadas do banco se necessário
         if (restaurantIdsToFetch.size > 0) {
             try {
+                console.log(`   🔍 Buscando coordenadas de ${restaurantIdsToFetch.size} restaurante(s) no banco...`);
                 const restaurantsFromDb = await prisma.restaurant.findMany({
                     where: { id: { in: Array.from(restaurantIdsToFetch) } },
                     select: { id: true, latitude: true, longitude: true }
@@ -423,17 +451,27 @@ export async function generateIntelligentWeeklySchedule(
                         });
                     }
                 });
+                console.log(`   ✅ ${restaurantsFromDb.length} coordenada(s) encontrada(s)`);
             } catch (error) {
-                console.warn('Erro ao buscar coordenadas do banco:', error);
+                console.warn('   ⚠️ Erro ao buscar coordenadas do banco:', error);
             }
         }
         
-        for (const candidate of allRestaurantCandidates) {
-            const restaurant = candidate.restaurant;
+        // Processar TODOS os restaurantes e atrair para o dia mais próximo
+        let attractedCount = 0;
+        let skippedNoGPS = 0;
+        let skippedTooFar = 0;
+        
+        for (const item of allAvailableRestaurants) {
+            const restaurant = item.restaurant;
             const coords = restaurantCoordsMap.get(restaurant.id);
-            if (!coords) continue; // Pular se não tem GPS
-            const { lat, lng } = coords;
             
+            if (!coords) {
+                skippedNoGPS++;
+                continue; // Pular se não tem GPS
+            }
+            
+            const { lat, lng } = coords;
             let bestDayIdx = -1;
             let minDistance = Infinity;
             
@@ -451,23 +489,29 @@ export async function generateIntelligentWeeklySchedule(
             
             // Se encontrou um dia próximo (dentro do raio de gravidade), adicionar ao balde
             if (bestDayIdx !== -1 && minDistance < GRAVITY_MAX_DISTANCE_KM) {
-                const score = scoredRestaurants.find(sr => sr.restaurant.id === restaurant.id)?.score || 50;
                 daysWithGravity[bestDayIdx].bucket.push({
                     restaurant,
                     distToCenter: minDistance,
-                    score
+                    score: item.score
                 });
                 usedRestaurantIds.add(restaurant.id);
+                attractedCount++;
+            } else {
+                skippedTooFar++;
             }
         }
         
-        // ==========================================================
-        // FASE 2.2: PREENCHER SLOTS DE CADA DIA (ORDENAR POR DISTÂNCIA, DEPOIS SCORE)
-        // ==========================================================
-        console.log(`\n🔄 FASE 2.2: Preenchendo slots de cada dia (distância primeiro, score depois)...`);
+        console.log(`   ✅ ${attractedCount} restaurante(s) atraído(s) para os baldes`);
+        console.log(`   ⚠️ ${skippedNoGPS} sem GPS, ${skippedTooFar} fora do raio de ${GRAVITY_MAX_DISTANCE_KM}km`);
         
+        // ==========================================================
+        // FASE 2.2: ORDENAR BALDES E DISTRIBUIR EQUILIBRADAMENTE (ROUND-ROBIN)
+        // ==========================================================
+        console.log(`\n🔄 FASE 2.2: Ordenando baldes e distribuindo equilibradamente entre os dias...`);
+        
+        // Primeiro, ordenar cada balde: primeiro por distância ao centro, depois por score
+        let totalInBuckets = 0;
         for (const day of daysWithGravity) {
-            // Ordenar balde: primeiro por distância ao centro, depois por score
             day.bucket.sort((a, b) => {
                 const distDiff = a.distToCenter - b.distToCenter;
                 // Se a diferença de distância for pequena (< 2km), desempata pelo score
@@ -475,13 +519,54 @@ export async function generateIntelligentWeeklySchedule(
                 return distDiff;
             });
             
+            totalInBuckets += day.bucket.length;
             console.log(`   📦 ${day.day} (${day.date}): ${day.bucket.length} restaurante(s) no balde`);
+        }
+        
+        console.log(`   📊 Total de restaurantes nos baldes: ${totalInBuckets}`);
+        
+        // Distribuir equilibradamente usando round-robin entre os dias que têm restaurantes no balde
+        let daysWithBuckets = daysWithGravity.filter(d => d.bucket.length > 0 && d.slots.some((s: any) => !s.restaurantId));
+        let roundRobinBucketIndex = 0;
+        let totalDistributed = 0;
+        let maxIterations = totalInBuckets * 2; // Limite de segurança para evitar loop infinito
+        let iterations = 0;
+        
+        console.log(`\n🔄 Distribuindo restaurantes entre ${daysWithBuckets.length} dias usando round-robin...`);
+        
+        while (daysWithBuckets.length > 0 && iterations < maxIterations) {
+            iterations++;
             
-            // Preencher slots vazios com restaurantes do balde
-            for (const candidate of day.bucket) {
-                const emptySlot = day.slots.find((s: any) => !s.restaurantId);
-                if (!emptySlot) break; // Dia cheio
-                
+            // Ajustar índice se necessário
+            if (roundRobinBucketIndex >= daysWithBuckets.length) {
+                roundRobinBucketIndex = 0;
+            }
+            
+            const targetDay = daysWithBuckets[roundRobinBucketIndex];
+            
+            // Verificar se o dia ainda tem espaço
+            const currentFilled = targetDay.slots.filter((s: any) => s.restaurantId).length;
+            if (currentFilled >= MAX_VISITS_PER_DAY) {
+                // Remover dia da lista se atingiu o limite
+                daysWithBuckets = daysWithBuckets.filter(d => d.date !== targetDay.date);
+                if (daysWithBuckets.length === 0) break;
+                roundRobinBucketIndex = 0;
+                continue;
+            }
+            
+            // Pegar próximo restaurante do balde deste dia
+            if (targetDay.bucket.length === 0) {
+                // Balde vazio, remover da lista
+                daysWithBuckets = daysWithBuckets.filter(d => d.date !== targetDay.date);
+                if (daysWithBuckets.length === 0) break;
+                roundRobinBucketIndex = 0;
+                continue;
+            }
+            
+            const candidate = targetDay.bucket.shift()!; // Remove do início do array
+            const emptySlot = targetDay.slots.find((s: any) => !s.restaurantId);
+            
+            if (emptySlot) {
                 emptySlot.restaurantId = candidate.restaurant.id;
                 emptySlot.restaurantName = candidate.restaurant.name;
                 
@@ -489,21 +574,120 @@ export async function generateIntelligentWeeklySchedule(
                 (emptySlot as any).distanceFromFixed = candidate.distToCenter;
                 (emptySlot as any).details = `📏 ~${candidate.distToCenter.toFixed(1)}km do centro`;
                 
-                const filled = day.slots.filter((s: any) => s.restaurantId).length;
-                console.log(`      ✅ ${candidate.restaurant.name} (${filled}/${MAX_VISITS_PER_DAY}) - ${candidate.distToCenter.toFixed(1)}km`);
+                const newFilled = currentFilled + 1;
+                totalDistributed++;
+                console.log(`   ✅ ${targetDay.day} (${targetDay.date}): ${candidate.restaurant.name} (${newFilled}/${MAX_VISITS_PER_DAY}) - ${candidate.distToCenter.toFixed(1)}km`);
+                
+                // Se este dia atingiu o limite, remover da lista
+                if (newFilled >= MAX_VISITS_PER_DAY) {
+                    daysWithBuckets = daysWithBuckets.filter(d => d.date !== targetDay.date);
+                    if (daysWithBuckets.length === 0) break;
+                    roundRobinBucketIndex = 0;
+                } else {
+                    // Avançar para próximo dia (round-robin)
+                    roundRobinBucketIndex++;
+                }
+            } else {
+                // Dia não tem mais slots vazios, remover da lista
+                daysWithBuckets = daysWithBuckets.filter(d => d.date !== targetDay.date);
+                if (daysWithBuckets.length === 0) break;
+                roundRobinBucketIndex = 0;
+            }
+        }
+        
+        if (iterations >= maxIterations) {
+            console.warn(`   ⚠️ Limite de iterações atingido (${maxIterations})`);
+        }
+        
+        console.log(`   ✅ Total distribuído: ${totalDistributed} restaurante(s)`);
+        
+        // Coletar restaurantes que sobraram nos baldes para repescagem
+        const remainingInBuckets: Array<{ restaurant: any; score: number; preferredDay: string; distToCenter: number }> = [];
+        for (const day of daysWithGravity) {
+            if (day.bucket.length > 0) {
+                console.log(`   ⚠️ ${day.day}: ${day.bucket.length} restaurante(s) não couberam, indo para repescagem`);
+                day.bucket.forEach(candidate => {
+                    remainingInBuckets.push({
+                        restaurant: candidate.restaurant,
+                        score: candidate.score,
+                        preferredDay: day.date,
+                        distToCenter: candidate.distToCenter
+                    });
+                });
+                day.bucket = []; // Limpar balde
             }
         }
         
         // ==========================================================
-        // FASE 3: REPESCAGEM (Restaurantes sem GPS ou que não couberam)
+        // FASE 3: REPESCAGEM INTELIGENTE (Restaurantes que não couberam ou sem GPS)
         // ==========================================================
-        console.log(`\n📊 FASE 3: Repescagem de restaurantes restantes...`);
+        console.log(`\n📊 FASE 3: Repescagem inteligente de restaurantes restantes...`);
         
-        // Coletar restaurantes que não foram alocados (sem GPS ou que não couberam)
+        // FASE 3.1: Tentar realocar restaurantes que sobraram dos baldes para outros dias próximos
+        if (remainingInBuckets.length > 0) {
+            console.log(`\n🔄 FASE 3.1: Tentando realocar ${remainingInBuckets.length} restaurante(s) que não couberam no dia preferido...`);
+            
+            for (const item of remainingInBuckets) {
+                if (usedRestaurantIds.has(item.restaurant.id)) continue;
+                
+                // Buscar coordenadas se necessário
+                let lat = item.restaurant.latitude || item.restaurant.lat || 0;
+                let lng = item.restaurant.longitude || item.restaurant.lng || 0;
+                
+                if (lat === 0 || lng === 0) {
+                    // Tentar buscar do banco
+                    try {
+                        const rFromDb = await prisma.restaurant.findUnique({
+                            where: { id: item.restaurant.id },
+                            select: { latitude: true, longitude: true }
+                        });
+                        if (rFromDb?.latitude && rFromDb?.longitude) {
+                            lat = Number(rFromDb.latitude);
+                            lng = Number(rFromDb.longitude);
+                        }
+                    } catch (e) {
+                        // Ignorar erro
+                    }
+                }
+                
+                // Se tem GPS, tentar encontrar outro dia próximo
+                if (lat !== 0 && lng !== 0) {
+                    // Encontrar dias com vagas, ordenados por proximidade ao restaurante
+                    const daysWithSlots = daysWithGravity
+                        .filter(d => d.slots.some((s: any) => !s.restaurantId))
+                        .map(day => {
+                            if (day.center) {
+                                const dist = calculateDistance(day.center.lat, day.center.lng, lat, lng);
+                                return { day, dist };
+                            }
+                            return { day, dist: Infinity };
+                        })
+                        .sort((a, b) => a.dist - b.dist);
+                    
+                    // Tentar o dia mais próximo que tenha vaga
+                    for (const { day } of daysWithSlots) {
+                        const emptySlot = day.slots.find((s: any) => !s.restaurantId);
+                        if (emptySlot) {
+                            emptySlot.restaurantId = item.restaurant.id;
+                            emptySlot.restaurantName = item.restaurant.name;
+                            (emptySlot as any).details = `Encaixe (${day.day} cheio)`;
+                            usedRestaurantIds.add(item.restaurant.id);
+                            
+                            const filled = day.slots.filter((s: any) => s.restaurantId).length;
+                            console.log(`   ✅ ${day.day}: ${item.restaurant.name} (${filled}/${MAX_VISITS_PER_DAY}) - realocado`);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        
+        // FASE 3.2: Processar restaurantes sem GPS ou que não foram atraídos
+        console.log(`\n🔄 FASE 3.2: Processando restaurantes sem GPS ou não atraídos...`);
+        
         const remainingRestaurants: Array<{ restaurant: any; score: number; lat?: number; lng?: number }> = [];
         
-        // Adicionar restaurantes sem GPS ou que não foram alocados
-        // Buscar coordenadas do banco se necessário
+        // Adicionar restaurantes que ainda não foram usados
         const remainingIdsToFetch = new Set<string>();
         for (const sr of scoredRestaurants) {
             if (usedRestaurantIds.has(sr.restaurant.id)) continue;
@@ -539,18 +723,18 @@ export async function generateIntelligentWeeklySchedule(
                     }
                 });
             } catch (error) {
-                console.warn('Erro ao buscar coordenadas do banco (repescagem):', error);
+                console.warn('   ⚠️ Erro ao buscar coordenadas do banco (repescagem):', error);
             }
         }
         
         // Ordenar por score (maior primeiro)
         remainingRestaurants.sort((a, b) => b.score - a.score);
         
-        console.log(`   📝 ${remainingRestaurants.length} restaurante(s) disponível(is) para repescagem`);
+        console.log(`   📝 ${remainingRestaurants.length} restaurante(s) disponível(is) para repescagem final`);
         
         // Preencher slots vazios restantes usando round-robin
         let roundRobinIndex = 0;
-        const daysWithSlots = daysWithGravity.filter(d => d.slots.some((s: any) => !s.restaurantId));
+        let daysWithSlots = daysWithGravity.filter(d => d.slots.some((s: any) => !s.restaurantId));
         
         for (const item of remainingRestaurants) {
             if (daysWithSlots.length === 0) break;
@@ -569,16 +753,14 @@ export async function generateIntelligentWeeklySchedule(
                 console.log(`   ✅ ${targetDay.day}: ${item.restaurant.name} (${filled}/${MAX_VISITS_PER_DAY})`);
                 
                 if (filled >= MAX_VISITS_PER_DAY) {
-                    const idx = daysWithSlots.findIndex(d => d.date === targetDay.date);
-                    if (idx !== -1) daysWithSlots.splice(idx, 1);
+                    daysWithSlots = daysWithSlots.filter(d => d.date !== targetDay.date);
                     if (daysWithSlots.length === 0) break;
                     roundRobinIndex = 0;
                 } else {
                     roundRobinIndex++;
                 }
             } else {
-                const idx = daysWithSlots.findIndex(d => d.date === targetDay.date);
-                if (idx !== -1) daysWithSlots.splice(idx, 1);
+                daysWithSlots = daysWithSlots.filter(d => d.date !== targetDay.date);
                 if (daysWithSlots.length === 0) break;
                 roundRobinIndex = 0;
             }
