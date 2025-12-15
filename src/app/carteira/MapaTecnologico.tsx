@@ -448,6 +448,28 @@ export default function MapaTecnologico({
             try {
                 // Tentar buscar a chave da API do banco de dados
                 const response = await fetch('/api/google-maps-key');
+                
+                // Verificar se a resposta é válida antes de tentar fazer parse JSON
+                if (!response.ok) {
+                    console.warn(`⚠️ Erro ao buscar API key: ${response.status} ${response.statusText}`);
+                    setIsLoadingMap(false);
+                    return;
+                }
+                
+                // Verificar se o Content-Type é JSON
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    console.warn('⚠️ Resposta não é JSON, tentando usar variável de ambiente...');
+                    // Tentar usar variável de ambiente como fallback
+                    const envKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+                    if (envKey) {
+                        await loadGoogleMaps(envKey);
+                        setMapLoaded(true);
+                    }
+                    setIsLoadingMap(false);
+                    return;
+                }
+                
                 const data = await response.json();
                 const apiKey = data.apiKey;
                 
@@ -463,6 +485,16 @@ export default function MapaTecnologico({
                 setIsLoadingMap(false);
             } catch (error) {
                 console.error('Erro ao carregar Google Maps:', error);
+                // Tentar usar variável de ambiente como fallback
+                try {
+                    const envKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+                    if (envKey) {
+                        await loadGoogleMaps(envKey);
+                        setMapLoaded(true);
+                    }
+                } catch (fallbackError) {
+                    console.error('Erro ao usar fallback:', fallbackError);
+                }
                 setIsLoadingMap(false);
             }
         };
