@@ -491,7 +491,7 @@ export async function generateIntelligentWeeklySchedule(
         });
         
         // Round-robin: distribuir um restaurante por vez para cada dia disponível
-        let dayIndex = 0;
+        let roundRobinIndex = 0;
         for (const scoredRestaurant of availableRestaurants) {
             if (daysToFill.length === 0) {
                 console.log(`   ⚠️ Todos os dias atingiram o limite de ${MAX_VISITS_PER_DAY} visitas`);
@@ -501,7 +501,7 @@ export async function generateIntelligentWeeklySchedule(
             const restaurant = scoredRestaurant.restaurant;
             
             // Selecionar próximo dia disponível (round-robin)
-            const day = daysToFill[dayIndex % daysToFill.length];
+            const day = daysToFill[roundRobinIndex % daysToFill.length];
             
             // Verificar se o dia ainda tem espaço
             const currentDayFilled = day.slots.filter(s => s.restaurantId).length;
@@ -512,7 +512,7 @@ export async function generateIntelligentWeeklySchedule(
                     daysToFill.splice(dayIdx, 1);
                 }
                 if (daysToFill.length === 0) break;
-                dayIndex = dayIndex % daysToFill.length; // Ajustar índice
+                roundRobinIndex = roundRobinIndex % daysToFill.length; // Ajustar índice
                 continue;
             }
             
@@ -525,7 +525,7 @@ export async function generateIntelligentWeeklySchedule(
                 console.log(`   ✅ Preenchido slot em ${day.day} (${day.date}): ${restaurant.name} (${currentDayFilled + 1}/${MAX_VISITS_PER_DAY})`);
                 
                 // Avançar para próximo dia (round-robin)
-                dayIndex++;
+                roundRobinIndex++;
                 
                 // Se este dia atingiu o limite, remover da lista
                 const newFilled = day.slots.filter(s => s.restaurantId).length;
@@ -533,7 +533,7 @@ export async function generateIntelligentWeeklySchedule(
                     const dayIdx = daysToFill.findIndex(d => d.date === day.date);
                     if (dayIdx !== -1) {
                         daysToFill.splice(dayIdx, 1);
-                        dayIndex = 0; // Resetar índice quando remover um dia
+                        roundRobinIndex = 0; // Resetar índice quando remover um dia
                     }
                 }
             } else {
@@ -541,7 +541,7 @@ export async function generateIntelligentWeeklySchedule(
                 const dayIdx = daysToFill.findIndex(d => d.date === day.date);
                 if (dayIdx !== -1) {
                     daysToFill.splice(dayIdx, 1);
-                    dayIndex = 0; // Resetar índice quando remover um dia
+                    roundRobinIndex = 0; // Resetar índice quando remover um dia
                 }
             }
         }
