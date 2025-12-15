@@ -390,6 +390,9 @@ export async function generateIntelligentWeeklySchedule(
         // ==========================================================
         console.log(`\n🧲 FASE 2.1: Atraindo TODOS os restaurantes para o dia mais próximo (gravidade geográfica)...`);
         
+        // Lista para restaurantes que não foram atraídos (para repescagem na FASE 3)
+        const notAttractedRestaurants: Array<{ restaurant: any; score: number; lat?: number; lng?: number; bestDay?: string; minDistance?: number }> = [];
+        
         // Coletar TODOS os restaurantes da carteira que não foram usados
         const allAvailableRestaurants: Array<{ restaurant: any; score: number }> = [];
         
@@ -468,7 +471,12 @@ export async function generateIntelligentWeeklySchedule(
             
             if (!coords) {
                 skippedNoGPS++;
-                continue; // Pular se não tem GPS
+                // Adicionar à lista de repescagem mesmo sem GPS
+                notAttractedRestaurants.push({
+                    restaurant,
+                    score: item.score
+                });
+                continue;
             }
             
             const { lat, lng } = coords;
@@ -498,11 +506,21 @@ export async function generateIntelligentWeeklySchedule(
                 attractedCount++;
             } else {
                 skippedTooFar++;
+                // Adicionar à lista de repescagem mesmo que esteja longe
+                notAttractedRestaurants.push({
+                    restaurant,
+                    score: item.score,
+                    lat,
+                    lng,
+                    bestDay: bestDayIdx !== -1 ? daysWithGravity[bestDayIdx].date : undefined,
+                    minDistance: bestDayIdx !== -1 ? minDistance : undefined
+                });
             }
         }
         
         console.log(`   ✅ ${attractedCount} restaurante(s) atraído(s) para os baldes`);
         console.log(`   ⚠️ ${skippedNoGPS} sem GPS, ${skippedTooFar} fora do raio de ${GRAVITY_MAX_DISTANCE_KM}km`);
+        console.log(`   📋 ${notAttractedRestaurants.length} restaurante(s) serão processados na repescagem`);
         
         // ==========================================================
         // FASE 2.2: ORDENAR BALDES E DISTRIBUIR EQUILIBRADAMENTE (ROUND-ROBIN)
@@ -685,12 +703,16 @@ export async function generateIntelligentWeeklySchedule(
         // FASE 3.2: Processar restaurantes sem GPS ou que não foram atraídos
         console.log(`\n🔄 FASE 3.2: Processando restaurantes sem GPS ou não atraídos...`);
         
-        const remainingRestaurants: Array<{ restaurant: any; score: number; lat?: number; lng?: number }> = [];
+        // Usar a lista de restaurantes não atraídos da FASE 2.1
+        const remainingRestaurants: Array<{ restaurant: any; score: number; lat?: number; lng?: number; bestDay?: string; minDistance?: number }> = [...notAttractedRestaurants];
         
-        // Adicionar restaurantes que ainda não foram usados
+        // Adicionar também qualquer restaurante que ainda não foi usado (caso tenha sido perdido)
         const remainingIdsToFetch = new Set<string>();
         for (const sr of scoredRestaurants) {
             if (usedRestaurantIds.has(sr.restaurant.id)) continue;
+            
+            // Verificar se já está na lista
+            if (remainingRestaurants.find(r => r.restaurant.id === sr.restaurant.id)) continue;
             
             const lat = (sr.restaurant as any).latitude || (sr.restaurant as any).lat || 0;
             const lng = (sr.restaurant as any).longitude || (sr.restaurant as any).lng || 0;
@@ -727,26 +749,63 @@ export async function generateIntelligentWeeklySchedule(
             }
         }
         
-        // Ordenar por score (maior primeiro)
-        remainingRestaurants.sort((a, b) => b.score - a.score);
+        // Ordenar: primeiro por distância (se tiver), depois por score
+        remainingRestaurants.sort((a, b) => {
+            // Se ambos têm distância, priorizar o mais próximo
+            if (a.minDistance !== undefined && b.minDistance !== undefined) {
+                return a.minDistance - b.minDistance;
+            }
+            // Se só um tem distância, priorizar o que tem
+            if (a.minDistance !== undefined) return -1;
+            if (b.minDistance !== undefined) return 1;
+            // Se nenhum tem distância, ordenar por score
+            return b.score - a.score;
+        });
         
         console.log(`   📝 ${remainingRestaurants.length} restaurante(s) disponível(is) para repescagem final`);
         
-        // Preencher slots vazios restantes usando round-robin
+        // Preencher slots vazios restantes
+        // Se o restaurante tem GPS e um dia preferido, tentar esse dia primeiro
+        // Caso contrário, usar round-robin
         let roundRobinIndex = 0;
         let daysWithSlots = daysWithGravity.filter(d => d.slots.some((s: any) => !s.restaurantId));
         
         for (const item of remainingRestaurants) {
             if (daysWithSlots.length === 0) break;
+            if (usedRestaurantIds.has(item.restaurant.id)) continue;
             
-            roundRobinIndex = roundRobinIndex % daysWithSlots.length;
-            const targetDay = daysWithSlots[roundRobinIndex];
+            let targetDay: typeof daysWithGravity[0] | undefined;
+            
+            // Se tem GPS e um dia preferido, tentar esse dia primeiro
+            if (item.lat && item.lng && item.bestDay) {
+                const preferredDay = daysWithGravity.find(d => d.date === item.bestDay);
+                if (preferredDay && preferredDay.slots.some((s: any) => !s.restaurantId)) {
+                    targetDay = preferredDay;
+                }
+            }
+            
+            // Se não encontrou dia preferido ou não tem GPS, usar round-robin
+            if (!targetDay) {
+                roundRobinIndex = roundRobinIndex % daysWithSlots.length;
+                targetDay = daysWithSlots[roundRobinIndex];
+            }
             
             const emptySlot = targetDay.slots.find((s: any) => !s.restaurantId);
             if (emptySlot) {
                 emptySlot.restaurantId = item.restaurant.id;
                 emptySlot.restaurantName = item.restaurant.name;
-                (emptySlot as any).details = item.lat ? 'Encaixe (Dia Cheio)' : 'Sem GPS';
+                
+                // Detalhes mais informativos
+                if (item.lat && item.lng) {
+                    if (item.minDistance !== undefined) {
+                        (emptySlot as any).details = `Encaixe (~${item.minDistance.toFixed(1)}km)`;
+                    } else {
+                        (emptySlot as any).details = 'Encaixe (Sem centro próximo)';
+                    }
+                } else {
+                    (emptySlot as any).details = 'Sem GPS';
+                }
+                
                 usedRestaurantIds.add(item.restaurant.id);
                 
                 const filled = targetDay.slots.filter((s: any) => s.restaurantId).length;
