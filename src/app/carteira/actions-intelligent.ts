@@ -344,11 +344,13 @@ export async function generateIntelligentWeeklySchedule(
         // FASE 2: Distribuir restaurantes equilibradamente entre os dias que têm clientes fixos
         console.log(`\n🔄 FASE 2: Distribuindo restaurantes equilibradamente entre os dias...`);
         
-        // Criar lista de dias disponíveis para distribuição (apenas dias com clientes fixos)
-        const availableDaysForDistribution = weekDays.filter(day => 
-            daysWithFixedClients.has(day.date) && 
-            day.slots.filter(s => s.restaurantId).length < MAX_VISITS_PER_DAY
-        );
+        // Criar lista de dias disponíveis para distribuição (apenas dias com clientes fixos que têm slots vazios)
+        let availableDaysForDistribution = weekDays.filter(day => {
+            const hasFixedClient = daysWithFixedClients.has(day.date);
+            const currentFilled = day.slots.filter(s => s.restaurantId).length;
+            const hasEmptySlots = day.slots.some(s => !s.restaurantId);
+            return hasFixedClient && currentFilled < MAX_VISITS_PER_DAY && hasEmptySlots;
+        });
         
         console.log(`📆 Dias disponíveis para distribuição: ${availableDaysForDistribution.length}`);
         availableDaysForDistribution.forEach(day => {
@@ -356,100 +358,71 @@ export async function generateIntelligentWeeklySchedule(
             console.log(`   ${day.day} (${day.date}): ${filled}/${MAX_VISITS_PER_DAY} preenchidos`);
         });
         
-        // Distribuir usando round-robin: distribuir um restaurante por vez para cada dia disponível
-        let roundRobinDayIndex = 0;
-        const distributedCount = new Map<string, number>(); // Contador por dia
-        
-        // Inicializar contadores
-        weekDays.forEach(day => {
-            distributedCount.set(day.date, day.slots.filter(s => s.restaurantId).length);
-        });
-        
-        console.log(`\n🔄 Iniciando distribuição round-robin de ${allRestaurantCandidates.length} restaurantes entre ${availableDaysForDistribution.length} dias...`);
-        
-        for (const candidate of allRestaurantCandidates) {
-            // Se não há mais dias disponíveis, parar
-            if (availableDaysForDistribution.length === 0) {
-                console.log(`   ⚠️ Todos os dias atingiram o limite de ${MAX_VISITS_PER_DAY} visitas`);
-                break;
-            }
+        if (availableDaysForDistribution.length === 0) {
+            console.log(`   ⚠️ Nenhum dia disponível para distribuição!`);
+        } else {
+            // Distribuir usando round-robin: distribuir um restaurante por vez para cada dia disponível
+            let roundRobinDayIndex = 0;
             
-            // Ajustar índice se necessário (caso a lista tenha sido reduzida)
-            if (roundRobinDayIndex >= availableDaysForDistribution.length) {
-                roundRobinDayIndex = 0;
-            }
+            console.log(`\n🔄 Iniciando distribuição round-robin de ${allRestaurantCandidates.length} restaurantes entre ${availableDaysForDistribution.length} dias...`);
             
-            // Selecionar próximo dia (round-robin)
-            const targetDay = availableDaysForDistribution[roundRobinDayIndex];
-            
-            // Verificar se o dia ainda tem espaço
-            const currentFilled = distributedCount.get(targetDay.date) || 0;
-            if (currentFilled >= MAX_VISITS_PER_DAY) {
-                // Remover dia da lista
-                const idx = availableDaysForDistribution.findIndex(d => d.date === targetDay.date);
-                if (idx !== -1) {
-                    availableDaysForDistribution.splice(idx, 1);
-                    // Ajustar índice se removemos um dia antes do índice atual
-                    if (idx <= roundRobinDayIndex && roundRobinDayIndex > 0) {
-                        roundRobinDayIndex--;
-                    } else if (roundRobinDayIndex >= availableDaysForDistribution.length) {
-                        roundRobinDayIndex = 0;
+            for (const candidate of allRestaurantCandidates) {
+                // Se não há mais dias disponíveis, parar
+                if (availableDaysForDistribution.length === 0) {
+                    console.log(`   ⚠️ Todos os dias atingiram o limite de ${MAX_VISITS_PER_DAY} visitas`);
+                    break;
+                }
+                
+                // Ajustar índice se necessário
+                roundRobinDayIndex = roundRobinDayIndex % availableDaysForDistribution.length;
+                
+                // Selecionar próximo dia (round-robin)
+                const targetDay = availableDaysForDistribution[roundRobinDayIndex];
+                
+                // Verificar se o dia ainda tem espaço
+                const currentFilled = targetDay.slots.filter(s => s.restaurantId).length;
+                if (currentFilled >= MAX_VISITS_PER_DAY) {
+                    // Remover dia da lista
+                    availableDaysForDistribution = availableDaysForDistribution.filter(d => d.date !== targetDay.date);
+                    if (availableDaysForDistribution.length === 0) break;
+                    roundRobinDayIndex = 0; // Resetar para começar do primeiro dia restante
+                    continue;
+                }
+                
+                // Encontrar slot vazio neste dia
+                const emptySlot = targetDay.slots.find(slot => !slot.restaurantId);
+                if (emptySlot) {
+                    emptySlot.restaurantId = candidate.restaurant.id;
+                    emptySlot.restaurantName = candidate.restaurant.name;
+                    
+                    // Adicionar distância e tempo
+                    if (candidate.distance !== undefined) {
+                        (emptySlot as any).distanceFromFixed = candidate.distance;
                     }
-                }
-                if (availableDaysForDistribution.length === 0) break;
-                continue; // Tentar novamente com o mesmo índice (que agora aponta para o próximo dia)
-            }
-            
-            // Encontrar slot vazio neste dia
-            const emptySlot = targetDay.slots.find(slot => !slot.restaurantId);
-            if (emptySlot) {
-                emptySlot.restaurantId = candidate.restaurant.id;
-                emptySlot.restaurantName = candidate.restaurant.name;
-                
-                // Adicionar distância e tempo
-                if (candidate.distance !== undefined) {
-                    (emptySlot as any).distanceFromFixed = candidate.distance;
-                }
-                if (candidate.durationMinutes !== undefined) {
-                    (emptySlot as any).durationMinutes = candidate.durationMinutes;
-                }
-                
-                // Atualizar contador
-                const newFilled = currentFilled + 1;
-                distributedCount.set(targetDay.date, newFilled);
-                usedRestaurantIds.add(candidate.restaurant.id);
-                
-                console.log(`   ✅ ${targetDay.day} (${targetDay.date}): ${candidate.restaurant.name} (${newFilled}/${MAX_VISITS_PER_DAY})`);
-                
-                // Se este dia atingiu o limite, remover da lista
-                if (newFilled >= MAX_VISITS_PER_DAY) {
-                    const idx = availableDaysForDistribution.findIndex(d => d.date === targetDay.date);
-                    if (idx !== -1) {
-                        availableDaysForDistribution.splice(idx, 1);
-                        // Ajustar índice se removemos um dia antes do índice atual
-                        if (idx < roundRobinDayIndex && roundRobinDayIndex > 0) {
-                            roundRobinDayIndex--;
-                        } else if (roundRobinDayIndex >= availableDaysForDistribution.length) {
-                            roundRobinDayIndex = 0;
-                        }
+                    if (candidate.durationMinutes !== undefined) {
+                        (emptySlot as any).durationMinutes = candidate.durationMinutes;
+                    }
+                    
+                    usedRestaurantIds.add(candidate.restaurant.id);
+                    
+                    const newFilled = currentFilled + 1;
+                    console.log(`   ✅ ${targetDay.day} (${targetDay.date}): ${candidate.restaurant.name} (${newFilled}/${MAX_VISITS_PER_DAY})`);
+                    
+                    // Se este dia atingiu o limite, remover da lista
+                    if (newFilled >= MAX_VISITS_PER_DAY) {
+                        availableDaysForDistribution = availableDaysForDistribution.filter(d => d.date !== targetDay.date);
+                        if (availableDaysForDistribution.length === 0) break;
+                        roundRobinDayIndex = 0; // Resetar para começar do primeiro dia restante
+                    } else {
+                        // Avançar para próximo dia (round-robin)
+                        roundRobinDayIndex++;
                     }
                 } else {
-                    // Avançar para próximo dia (round-robin)
-                    roundRobinDayIndex = (roundRobinDayIndex + 1) % availableDaysForDistribution.length;
+                    // Dia não tem mais slots vazios, remover da lista
+                    availableDaysForDistribution = availableDaysForDistribution.filter(d => d.date !== targetDay.date);
+                    if (availableDaysForDistribution.length === 0) break;
+                    roundRobinDayIndex = 0; // Resetar para começar do primeiro dia restante
                 }
-            } else {
-                // Dia não tem mais slots vazios, remover da lista
-                const idx = availableDaysForDistribution.findIndex(d => d.date === targetDay.date);
-                if (idx !== -1) {
-                    availableDaysForDistribution.splice(idx, 1);
-                    // Ajustar índice se removemos um dia antes do índice atual
-                    if (idx < roundRobinDayIndex && roundRobinDayIndex > 0) {
-                        roundRobinDayIndex--;
-                    } else if (roundRobinDayIndex >= availableDaysForDistribution.length) {
-                        roundRobinDayIndex = 0;
-                    }
-                }
-                if (availableDaysForDistribution.length === 0) break;
             }
         }
         
@@ -508,49 +481,46 @@ export async function generateIntelligentWeeklySchedule(
             
             const restaurant = scoredRestaurant.restaurant;
             
+            // Ajustar índice se necessário
+            roundRobinIndex = roundRobinIndex % daysToFill.length;
+            
             // Selecionar próximo dia disponível (round-robin)
-            const day = daysToFill[roundRobinIndex % daysToFill.length];
+            const day = daysToFill[roundRobinIndex];
             
             // Verificar se o dia ainda tem espaço
             const currentDayFilled = day.slots.filter(s => s.restaurantId).length;
             if (currentDayFilled >= MAX_VISITS_PER_DAY) {
                 // Remover dia da lista se atingiu o limite
-                const dayIdx = daysToFill.findIndex(d => d.date === day.date);
-                if (dayIdx !== -1) {
-                    daysToFill.splice(dayIdx, 1);
-                }
+                daysToFill = daysToFill.filter(d => d.date !== day.date);
                 if (daysToFill.length === 0) break;
-                roundRobinIndex = roundRobinIndex % daysToFill.length; // Ajustar índice
+                roundRobinIndex = 0; // Resetar para começar do primeiro dia restante
                 continue;
             }
             
-                const emptySlot = day.slots.find(slot => !slot.restaurantId);
-                if (emptySlot) {
-                    emptySlot.restaurantId = restaurant.id;
-                    emptySlot.restaurantName = restaurant.name;
+            const emptySlot = day.slots.find(slot => !slot.restaurantId);
+            if (emptySlot) {
+                emptySlot.restaurantId = restaurant.id;
+                emptySlot.restaurantName = restaurant.name;
                 usedRestaurantIds.add(restaurant.id);
-                    restaurantIndex++;
-                console.log(`   ✅ Preenchido slot em ${day.day} (${day.date}): ${restaurant.name} (${currentDayFilled + 1}/${MAX_VISITS_PER_DAY})`);
+                restaurantIndex++;
                 
-                // Avançar para próximo dia (round-robin)
-                roundRobinIndex++;
+                const newFilled = currentDayFilled + 1;
+                console.log(`   ✅ Preenchido slot em ${day.day} (${day.date}): ${restaurant.name} (${newFilled}/${MAX_VISITS_PER_DAY})`);
                 
                 // Se este dia atingiu o limite, remover da lista
-                const newFilled = day.slots.filter(s => s.restaurantId).length;
                 if (newFilled >= MAX_VISITS_PER_DAY) {
-                    const dayIdx = daysToFill.findIndex(d => d.date === day.date);
-                    if (dayIdx !== -1) {
-                        daysToFill.splice(dayIdx, 1);
-                        roundRobinIndex = 0; // Resetar índice quando remover um dia
-                    }
+                    daysToFill = daysToFill.filter(d => d.date !== day.date);
+                    if (daysToFill.length === 0) break;
+                    roundRobinIndex = 0; // Resetar para começar do primeiro dia restante
+                } else {
+                    // Avançar para próximo dia (round-robin)
+                    roundRobinIndex++;
                 }
             } else {
                 // Dia não tem mais slots vazios, remover da lista
-                const dayIdx = daysToFill.findIndex(d => d.date === day.date);
-                if (dayIdx !== -1) {
-                    daysToFill.splice(dayIdx, 1);
-                    roundRobinIndex = 0; // Resetar índice quando remover um dia
-                }
+                daysToFill = daysToFill.filter(d => d.date !== day.date);
+                if (daysToFill.length === 0) break;
+                roundRobinIndex = 0; // Resetar para começar do primeiro dia restante
             }
         }
         
