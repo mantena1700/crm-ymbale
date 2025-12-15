@@ -749,7 +749,7 @@ export async function generateIntelligentWeeklySchedule(
             console.log(`\n🔄 FASE 3.1: Tentando realocar ${remainingInBuckets.length} restaurante(s) que não couberam no dia preferido...`);
 
             for (const item of remainingInBuckets) {
-                if (usedRestaurantIds.has(item.restaurant.id)) continue;
+                // if (usedRestaurantIds.has(item.restaurant.id)) continue; // REMOVIDO: Itens no balde já estão marcados como usados, mas precisamos realocá-los pois não foram agendados
 
                 // Buscar coordenadas se necessário
                 let lat = item.restaurant.latitude || item.restaurant.lat || 0;
