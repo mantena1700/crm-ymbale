@@ -734,6 +734,8 @@ export async function generateIntelligentWeeklySchedule(
                         preferredDay: day.date,
                         distToCenter: candidate.distToCenter
                     });
+                    // CRÍTICO: Remover dos usados para que a repescagem (Fase 3.2) possa pegá-los se a Fase 3.1 falhar
+                    usedRestaurantIds.delete(candidate.restaurant.id);
                 });
                 day.bucket = []; // Limpar balde
             }
