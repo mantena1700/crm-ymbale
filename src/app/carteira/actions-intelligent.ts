@@ -365,6 +365,8 @@ export async function generateIntelligentWeeklySchedule(
             distributedCount.set(day.date, day.slots.filter(s => s.restaurantId).length);
         });
         
+        console.log(`\n🔄 Iniciando distribuição round-robin de ${allRestaurantCandidates.length} restaurantes entre ${availableDaysForDistribution.length} dias...`);
+        
         for (const candidate of allRestaurantCandidates) {
             // Se não há mais dias disponíveis, parar
             if (availableDaysForDistribution.length === 0) {
@@ -372,8 +374,13 @@ export async function generateIntelligentWeeklySchedule(
                 break;
             }
             
+            // Ajustar índice se necessário (caso a lista tenha sido reduzida)
+            if (roundRobinDayIndex >= availableDaysForDistribution.length) {
+                roundRobinDayIndex = 0;
+            }
+            
             // Selecionar próximo dia (round-robin)
-            const targetDay = availableDaysForDistribution[roundRobinDayIndex % availableDaysForDistribution.length];
+            const targetDay = availableDaysForDistribution[roundRobinDayIndex];
             
             // Verificar se o dia ainda tem espaço
             const currentFilled = distributedCount.get(targetDay.date) || 0;
@@ -382,10 +389,15 @@ export async function generateIntelligentWeeklySchedule(
                 const idx = availableDaysForDistribution.findIndex(d => d.date === targetDay.date);
                 if (idx !== -1) {
                     availableDaysForDistribution.splice(idx, 1);
+                    // Ajustar índice se removemos um dia antes do índice atual
+                    if (idx <= roundRobinDayIndex && roundRobinDayIndex > 0) {
+                        roundRobinDayIndex--;
+                    } else if (roundRobinDayIndex >= availableDaysForDistribution.length) {
+                        roundRobinDayIndex = 0;
+                    }
                 }
                 if (availableDaysForDistribution.length === 0) break;
-                roundRobinDayIndex = 0; // Resetar índice
-                continue;
+                continue; // Tentar novamente com o mesmo índice (que agora aponta para o próximo dia)
             }
             
             // Encontrar slot vazio neste dia
@@ -403,30 +415,41 @@ export async function generateIntelligentWeeklySchedule(
                 }
                 
                 // Atualizar contador
-                distributedCount.set(targetDay.date, currentFilled + 1);
+                const newFilled = currentFilled + 1;
+                distributedCount.set(targetDay.date, newFilled);
                 usedRestaurantIds.add(candidate.restaurant.id);
                 
-                console.log(`   ✅ ${targetDay.day} (${targetDay.date}): ${candidate.restaurant.name} (${currentFilled + 1}/${MAX_VISITS_PER_DAY})`);
+                console.log(`   ✅ ${targetDay.day} (${targetDay.date}): ${candidate.restaurant.name} (${newFilled}/${MAX_VISITS_PER_DAY})`);
                 
                 // Se este dia atingiu o limite, remover da lista
-                if (currentFilled + 1 >= MAX_VISITS_PER_DAY) {
+                if (newFilled >= MAX_VISITS_PER_DAY) {
                     const idx = availableDaysForDistribution.findIndex(d => d.date === targetDay.date);
                     if (idx !== -1) {
                         availableDaysForDistribution.splice(idx, 1);
+                        // Ajustar índice se removemos um dia antes do índice atual
+                        if (idx < roundRobinDayIndex && roundRobinDayIndex > 0) {
+                            roundRobinDayIndex--;
+                        } else if (roundRobinDayIndex >= availableDaysForDistribution.length) {
+                            roundRobinDayIndex = 0;
+                        }
                     }
-                    roundRobinDayIndex = 0; // Resetar índice
                 } else {
                     // Avançar para próximo dia (round-robin)
-                    roundRobinDayIndex++;
+                    roundRobinDayIndex = (roundRobinDayIndex + 1) % availableDaysForDistribution.length;
                 }
             } else {
                 // Dia não tem mais slots vazios, remover da lista
                 const idx = availableDaysForDistribution.findIndex(d => d.date === targetDay.date);
                 if (idx !== -1) {
                     availableDaysForDistribution.splice(idx, 1);
+                    // Ajustar índice se removemos um dia antes do índice atual
+                    if (idx < roundRobinDayIndex && roundRobinDayIndex > 0) {
+                        roundRobinDayIndex--;
+                    } else if (roundRobinDayIndex >= availableDaysForDistribution.length) {
+                        roundRobinDayIndex = 0;
+                    }
                 }
                 if (availableDaysForDistribution.length === 0) break;
-                roundRobinDayIndex = 0;
             }
         }
         
