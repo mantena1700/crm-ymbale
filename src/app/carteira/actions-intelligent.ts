@@ -394,16 +394,47 @@ export async function generateIntelligentWeeklySchedule(
         const notAttractedRestaurants: Array<{ restaurant: any; score: number; lat?: number; lng?: number; bestDay?: string; minDistance?: number }> = [];
         
         // Coletar TODOS os restaurantes da carteira que não foram usados
-        const allAvailableRestaurants: Array<{ restaurant: any; score: number }> = [];
+        const allAvailableRestaurants: Array<{ restaurant: any; score: number; preferredDate?: string }> = [];
         
-        // 1. Adicionar restaurantes próximos coletados na FASE 1
+        // 1. PRIMEIRO: Processar restaurantes coletados na FASE 1 (já têm dia preferido)
+        console.log(`   🎯 FASE 2.1.1: Processando ${allRestaurantCandidates.length} restaurante(s) coletados na FASE 1...`);
         for (const candidate of allRestaurantCandidates) {
             if (!usedRestaurantIds.has(candidate.restaurant.id)) {
                 const score = scoredRestaurants.find(sr => sr.restaurant.id === candidate.restaurant.id)?.score || 50;
-                allAvailableRestaurants.push({
-                    restaurant: candidate.restaurant,
-                    score
-                });
+                
+                // Encontrar o dia correspondente ao fixedClientDate
+                const targetDay = daysWithGravity.find(d => d.date === candidate.fixedClientDate);
+                if (targetDay) {
+                    // Buscar coordenadas do restaurante
+                    const lat = candidate.restaurant.latitude || candidate.restaurant.lat || 0;
+                    const lng = candidate.restaurant.longitude || candidate.restaurant.lng || 0;
+                    
+                    if (lat !== 0 && lng !== 0 && targetDay.center) {
+                        // Calcular distância ao centro do dia
+                        const dist = calculateDistance(targetDay.center.lat, targetDay.center.lng, lat, lng);
+                        targetDay.bucket.push({
+                            restaurant: candidate.restaurant,
+                            distToCenter: dist,
+                            score
+                        });
+                        usedRestaurantIds.add(candidate.restaurant.id);
+                        console.log(`      ✅ ${candidate.restaurant.name} → ${targetDay.day} (${dist.toFixed(1)}km do centro)`);
+                    } else {
+                        // Sem GPS ou sem centro, adicionar à lista geral
+                        allAvailableRestaurants.push({
+                            restaurant: candidate.restaurant,
+                            score,
+                            preferredDate: candidate.fixedClientDate
+                        });
+                    }
+                } else {
+                    // Dia não encontrado, adicionar à lista geral
+                    allAvailableRestaurants.push({
+                        restaurant: candidate.restaurant,
+                        score,
+                        preferredDate: candidate.fixedClientDate
+                    });
+                }
             }
         }
         
@@ -420,7 +451,7 @@ export async function generateIntelligentWeeklySchedule(
             }
         }
         
-        console.log(`   📊 Total de restaurantes disponíveis para atrair: ${allAvailableRestaurants.length}`);
+        console.log(`   📊 Total de restaurantes restantes para atrair: ${allAvailableRestaurants.length}`);
         
         // Buscar coordenadas de todos os restaurantes do banco se necessário
         const restaurantCoordsMap = new Map<string, { lat: number; lng: number }>();
@@ -480,12 +511,36 @@ export async function generateIntelligentWeeklySchedule(
             }
             
             const { lat, lng } = coords;
+            
+            // Se o restaurante tem um dia preferido (da FASE 1), priorizar esse dia
+            if (item.preferredDate) {
+                const preferredDay = daysWithGravity.find(d => d.date === item.preferredDate);
+                if (preferredDay && preferredDay.center) {
+                    const dist = calculateDistance(preferredDay.center.lat, preferredDay.center.lng, lat, lng);
+                    preferredDay.bucket.push({
+                        restaurant,
+                        distToCenter: dist,
+                        score: item.score
+                    });
+                    usedRestaurantIds.add(restaurant.id);
+                    attractedCount++;
+                    console.log(`      ✅ ${restaurant.name} → ${preferredDay.day} (preferido, ${dist.toFixed(1)}km)`);
+                    continue;
+                }
+            }
+            
+            // Caso contrário, encontrar o dia com centro mais próximo
             let bestDayIdx = -1;
             let minDistance = Infinity;
             
-            // Encontrar o dia com centro mais próximo
+            // Excluir dias que já têm clientes fixos (eles já receberam seus restaurantes na FASE 2.1.1)
             for (let i = 0; i < daysWithGravity.length; i++) {
                 const day = daysWithGravity[i];
+                // Se o dia tem cliente fixo, não adicionar mais restaurantes aqui (já foram adicionados na FASE 2.1.1)
+                if (daysWithFixedClients.has(day.date)) {
+                    continue;
+                }
+                
                 if (day.center) {
                     const dist = calculateDistance(day.center.lat, day.center.lng, lat, lng);
                     if (dist < minDistance) {
