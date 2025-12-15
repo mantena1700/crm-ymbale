@@ -442,13 +442,8 @@ export async function generateIntelligentWeeklySchedule(
         let restaurantIndex = 0;
         const availableRestaurants = scoredRestaurants.filter(sr => !usedRestaurantIds.has(sr.restaurant.id));
         
-        // Identificar dias que têm clientes fixos (já foram preenchidos com lógica de proximidade)
-        const daysWithFixedClients = new Set<string>();
-        Object.keys(fixedClientsByDay).forEach(date => {
-            if (fixedClientsByDay[date] && fixedClientsByDay[date].length > 0) {
-                daysWithFixedClients.add(date);
-            }
-        });
+        // Reutilizar o Set de dias com clientes fixos já criado anteriormente (linha 239)
+        // Não precisa recriar, já temos a variável daysWithFixedClients disponível
         
         console.log(`📆 Total de slots disponíveis: ${weekDays.reduce((sum, day) => sum + day.slots.filter(s => !s.restaurantId).length, 0)}`);
         console.log(`📝 Restaurantes disponíveis para agendar: ${availableRestaurants.length}`);
@@ -459,7 +454,7 @@ export async function generateIntelligentWeeklySchedule(
         // IMPORTANTE: Distribuir equilibradamente pelos dias, respeitando limite de 6 por dia
         
         // Filtrar dias que ainda têm espaço disponível (incluindo dias com clientes fixos que têm slots vazios)
-        const daysToFill = weekDays.filter(day => {
+        let daysToFill = weekDays.filter(day => {
             const currentDayFilled = day.slots.filter(s => s.restaurantId).length;
             return currentDayFilled < MAX_VISITS_PER_DAY && day.slots.some(s => !s.restaurantId);
         });
