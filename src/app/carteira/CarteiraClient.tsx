@@ -79,7 +79,7 @@ export default function CarteiraClient({ initialData }: Props) {
     const router = useRouter();
     const scrollPositionRef = useRef<number>(0);
     const { sellers, restaurants, followUps, visits } = initialData;
-    
+
     const [selectedSellerId, setSelectedSellerId] = useState<string>(sellers[0]?.id || '');
     const [viewMode, setViewMode] = useState<ViewMode>('cards');
     const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -87,7 +87,7 @@ export default function CarteiraClient({ initialData }: Props) {
     // Usar useEffect para garantir que seja definido apenas no cliente
     const [filterPotential, setFilterPotential] = useState<string[]>([]);
     const [potentialDropdownOpen, setPotentialDropdownOpen] = useState<boolean>(false);
-    
+
     // Inicializar filtro de potencial apenas no cliente para evitar hydration mismatch
     useEffect(() => {
         if (filterPotential.length === 0) {
@@ -110,14 +110,14 @@ export default function CarteiraClient({ initialData }: Props) {
         monday.setHours(0, 0, 0, 0);
         return monday;
     });
-    
+
     // Quick View Modal
     const [quickViewId, setQuickViewId] = useState<string | null>(null);
     const [quickViewTab, setQuickViewTab] = useState<'info' | 'actions' | 'notes' | 'history'>('info');
     const [newNote, setNewNote] = useState('');
     const [editingStatus, setEditingStatus] = useState<string | null>(null);
     const [editingPriority, setEditingPriority] = useState<string | null>(null);
-    
+
     // Exportar Checkmob - Estados
     const [checkmobSelectedRestaurants, setCheckmobSelectedRestaurants] = useState<Set<string>>(new Set());
     const [checkmobExporting, setCheckmobExporting] = useState(false);
@@ -129,10 +129,10 @@ export default function CarteiraClient({ initialData }: Props) {
     const [checkmobFilterState, setCheckmobFilterState] = useState<string>('all');
     const [checkmobFilterHotLeads, setCheckmobFilterHotLeads] = useState<boolean>(false);
     const [checkmobPotentialDropdownOpen, setCheckmobPotentialDropdownOpen] = useState<boolean>(false);
-    
+
     // Agendamentos da semana para o mapa
     const [weeklyScheduledSlots, setWeeklyScheduledSlots] = useState<ScheduledSlot[]>([]);
-    
+
     // Estados para sistema de confirmação inteligente
     const [suggestions, setSuggestions] = useState<FillSuggestion[]>([]);
     const [currentSuggestionIndex, setCurrentSuggestionIndex] = useState<number>(-1);
@@ -141,7 +141,7 @@ export default function CarteiraClient({ initialData }: Props) {
     // Carregar agendamentos da semana
     const loadWeeklySchedule = useCallback(async () => {
         if (!selectedSellerId) return;
-        
+
         try {
             const schedule = await getWeeklySchedule(selectedSellerId, currentWeekStart.toISOString());
             setWeeklyScheduledSlots(schedule);
@@ -234,7 +234,7 @@ export default function CarteiraClient({ initialData }: Props) {
 
     // Restaurantes no plano da semana
     const weekPlanRestaurants = filteredRestaurants.filter(r => weekPlan.includes(r.id));
-    
+
     // Filtros para exportação Checkmob - extrair valores únicos
     const checkmobNeighborhoods = useMemo(() => {
         const unique = new Set(
@@ -244,7 +244,7 @@ export default function CarteiraClient({ initialData }: Props) {
         );
         return ['all', ...Array.from(unique).sort()];
     }, [restaurants]);
-    
+
     const checkmobCities = useMemo(() => {
         const unique = new Set(
             restaurants
@@ -253,7 +253,7 @@ export default function CarteiraClient({ initialData }: Props) {
         );
         return ['all', ...Array.from(unique).sort()];
     }, [restaurants]);
-    
+
     const checkmobStates = useMemo(() => {
         const unique = new Set<string>();
         restaurants.forEach(r => {
@@ -273,7 +273,7 @@ export default function CarteiraClient({ initialData }: Props) {
         });
         return ['all', ...Array.from(unique).sort()];
     }, [restaurants]);
-    
+
     // Filtrar restaurantes para exportação Checkmob
     const checkmobFilteredRestaurants = useMemo(() => {
         return restaurants.filter(r => {
@@ -285,25 +285,25 @@ export default function CarteiraClient({ initialData }: Props) {
                     if (r.sellerId !== checkmobFilterSeller) return false;
                 }
             }
-            
+
             // Filtro por status
             if (checkmobFilterStatus !== 'all' && r.status !== checkmobFilterStatus) return false;
-            
+
             // Filtro por potencial (múltipla seleção)
             if (checkmobFilterPotential.length > 0 && !checkmobFilterPotential.includes(r.salesPotential || '')) return false;
-            
+
             // Filtro por bairro
             if (checkmobFilterNeighborhood !== 'all') {
                 const neighborhood = r.address?.neighborhood || '';
                 if (neighborhood !== checkmobFilterNeighborhood) return false;
             }
-            
+
             // Filtro por cidade
             if (checkmobFilterCity !== 'all') {
                 const city = r.address?.city || '';
                 if (city !== checkmobFilterCity) return false;
             }
-            
+
             // Filtro por estado (normalizar para comparação)
             if (checkmobFilterState !== 'all') {
                 // Parsear address se for string JSON
@@ -315,22 +315,22 @@ export default function CarteiraClient({ initialData }: Props) {
                         addressObj = r.address;
                     }
                 }
-                
+
                 const state = (addressObj?.state || addressObj?.estado || '').trim().toUpperCase();
                 const filterState = checkmobFilterState.trim().toUpperCase();
-                
+
                 if (state !== filterState) {
                     return false;
                 }
             }
-            
+
             // Filtro por leads quentes (ALTÍSSIMO + Qualificado/Contatado)
             if (checkmobFilterHotLeads) {
                 const isHighPotential = r.salesPotential === 'ALTÍSSIMO' || r.salesPotential === 'ALTISSIMO';
                 const isQualifiedOrContacted = r.status === 'Qualificado' || r.status === 'Contatado';
                 if (!(isHighPotential && isQualifiedOrContacted)) return false;
             }
-            
+
             return true;
         });
     }, [
@@ -345,7 +345,7 @@ export default function CarteiraClient({ initialData }: Props) {
     ]);
 
     // Follow-ups do vendedor
-    const sellerFollowUps = followUps.filter(f => 
+    const sellerFollowUps = followUps.filter(f =>
         carteiraRestaurants.some(r => r.id === f.restaurantId)
     );
 
@@ -362,7 +362,7 @@ export default function CarteiraClient({ initialData }: Props) {
         const fechados = carteiraRestaurants.filter(r => r.status === 'Fechado').length;
         const altissimo = carteiraRestaurants.filter(r => r.salesPotential === 'ALTISSIMO').length;
         const alto = carteiraRestaurants.filter(r => r.salesPotential === 'ALTO').length;
-        
+
         return { total, aAnalisar, qualificados, contatados, negociacao, fechados, altissimo, alto };
     }, [carteiraRestaurants]);
 
@@ -438,11 +438,11 @@ export default function CarteiraClient({ initialData }: Props) {
         setLoading(true);
         try {
             console.log('🔍 Iniciando análise de preenchimento inteligente...');
-            
+
             // Primeiro, analisar e obter sugestões
             // Buscar agendamentos existentes para passar para a análise
             const existingSchedule = await getWeeklySchedule(selectedSellerId, currentWeekStart.toISOString());
-            
+
             const analyzedSuggestions = await analyzeIntelligentFill(
                 carteiraRestaurants.map(r => ({
                     id: r.id,
@@ -484,7 +484,7 @@ export default function CarteiraClient({ initialData }: Props) {
     const executeFillWithDecisions = async (decisions: UserDecision[]) => {
         try {
             console.log('🚀 Executando preenchimento com decisões do usuário...');
-            
+
             const result = await autoFillWeeklySchedule(
                 selectedSellerId,
                 carteiraRestaurants.map(r => ({
@@ -624,8 +624,8 @@ export default function CarteiraClient({ initialData }: Props) {
     };
 
     const handleExportToCheckmob = async () => {
-        const idsToExport = checkmobSelectedRestaurants.size > 0 
-            ? Array.from(checkmobSelectedRestaurants) 
+        const idsToExport = checkmobSelectedRestaurants.size > 0
+            ? Array.from(checkmobSelectedRestaurants)
             : checkmobFilteredRestaurants.map(r => r.id);
 
         if (idsToExport.length === 0) {
@@ -640,7 +640,7 @@ export default function CarteiraClient({ initialData }: Props) {
         setCheckmobExporting(true);
         try {
             const result = await exportRestaurantsToCheckmob(idsToExport);
-            
+
             if (result.success && result.data) {
                 // Converter base64 para Blob
                 const byteCharacters = atob(result.data);
@@ -649,8 +649,8 @@ export default function CarteiraClient({ initialData }: Props) {
                     byteNumbers[i] = byteCharacters.charCodeAt(i);
                 }
                 const byteArray = new Uint8Array(byteNumbers);
-                const blob = new Blob([byteArray], { 
-                    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+                const blob = new Blob([byteArray], {
+                    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
                 });
 
                 // Criar link temporário para download
@@ -698,8 +698,8 @@ export default function CarteiraClient({ initialData }: Props) {
                     byteNumbers[i] = byteCharacters.charCodeAt(i);
                 }
                 const byteArray = new Uint8Array(byteNumbers);
-                const blob = new Blob([byteArray], { 
-                    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+                const blob = new Blob([byteArray], {
+                    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
                 });
 
                 // Criar link temporário para download
@@ -730,7 +730,7 @@ export default function CarteiraClient({ initialData }: Props) {
         console.log('🚀 Iniciando exportação de agendamento...');
         console.log('   selectedSellerId:', selectedSellerId);
         console.log('   currentWeekStart:', currentWeekStart);
-        
+
         if (!selectedSellerId) {
             alert('Selecione um executivo primeiro.');
             return;
@@ -755,8 +755,8 @@ export default function CarteiraClient({ initialData }: Props) {
                     byteNumbers[i] = byteCharacters.charCodeAt(i);
                 }
                 const byteArray = new Uint8Array(byteNumbers);
-                const blob = new Blob([byteArray], { 
-                    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+                const blob = new Blob([byteArray], {
+                    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
                 });
 
                 console.log('📦 Blob criado, tamanho:', blob.size, 'bytes');
@@ -789,7 +789,7 @@ export default function CarteiraClient({ initialData }: Props) {
 
     const handleAddNote = async () => {
         if (!quickViewId || !newNote.trim()) return;
-        
+
         setLoading(true);
         try {
             await addNote(quickViewId, newNote);
@@ -867,8 +867,8 @@ export default function CarteiraClient({ initialData }: Props) {
                     <div className={styles.headerRight}>
                         <div className={styles.sellerSelect}>
                             <label>Executivo:</label>
-                            <select 
-                                value={selectedSellerId} 
+                            <select
+                                value={selectedSellerId}
                                 onChange={e => setSelectedSellerId(e.target.value)}
                             >
                                 {sellers.map(seller => (
@@ -934,43 +934,43 @@ export default function CarteiraClient({ initialData }: Props) {
 
             {/* Tabs */}
             <div className={styles.tabs}>
-                <button 
+                <button
                     className={`${styles.tab} ${activeTab === 'carteira-padrao' ? styles.active : ''}`}
                     onClick={() => setActiveTab('carteira-padrao')}
                 >
                     💼 Carteira Padrão
                 </button>
-                <button 
+                <button
                     className={`${styles.tab} ${activeTab === 'carteira' ? styles.active : ''}`}
                     onClick={() => setActiveTab('carteira')}
                 >
                     📋 Carteira Individual
                 </button>
-                <button 
+                <button
                     className={`${styles.tab} ${activeTab === 'semana' ? styles.active : ''}`}
                     onClick={() => setActiveTab('semana')}
                 >
                     📅 Plano da Semana {weekPlan.length > 0 && <span className={styles.badge}>{weekPlan.length}</span>}
                 </button>
-                <button 
+                <button
                     className={`${styles.tab} ${activeTab === 'agenda' ? styles.active : ''}`}
                     onClick={() => setActiveTab('agenda')}
                 >
                     🗓️ Agenda Completa
                 </button>
-                <button 
+                <button
                     className={`${styles.tab} ${activeTab === 'mapa' ? styles.active : ''}`}
                     onClick={() => setActiveTab('mapa')}
                 >
                     🗺️ Mapa da Região
                 </button>
-                <button 
+                <button
                     className={`${styles.tab} ${activeTab === 'exportar-checkmob' ? styles.active : ''}`}
                     onClick={() => setActiveTab('exportar-checkmob')}
                 >
                     📥 Exportar Checkmob
                 </button>
-                <button 
+                <button
                     className={`${styles.tab} ${activeTab === 'clientes-fixos' ? styles.active : ''}`}
                     onClick={() => setActiveTab('clientes-fixos')}
                 >
@@ -1007,16 +1007,16 @@ export default function CarteiraClient({ initialData }: Props) {
                                 onClick={() => setPotentialDropdownOpen(!potentialDropdownOpen)}
                             >
                                 <span>
-                                    {filterPotential.length === 0 
-                                        ? 'Nenhum selecionado' 
+                                    {filterPotential.length === 0
+                                        ? 'Nenhum selecionado'
                                         : filterPotential.length === 4
-                                        ? 'Todos os Potenciais'
-                                        : filterPotential.length === 1
-                                        ? (filterPotential[0] === 'ALTISSIMO' ? '🔥 Altíssimo' :
-                                           filterPotential[0] === 'ALTO' ? '⬆️ Alto' :
-                                           filterPotential[0] === 'MEDIO' ? '➡️ Médio' :
-                                           filterPotential[0] === 'BAIXO' ? '⬇️ Baixo' : filterPotential[0])
-                                        : `${filterPotential.length} selecionados`}
+                                            ? 'Todos os Potenciais'
+                                            : filterPotential.length === 1
+                                                ? (filterPotential[0] === 'ALTISSIMO' ? '🔥 Altíssimo' :
+                                                    filterPotential[0] === 'ALTO' ? '⬆️ Alto' :
+                                                        filterPotential[0] === 'MEDIO' ? '➡️ Médio' :
+                                                            filterPotential[0] === 'BAIXO' ? '⬇️ Baixo' : filterPotential[0])
+                                                : `${filterPotential.length} selecionados`}
                                 </span>
                                 <span className={styles.dropdownArrow}>
                                     {potentialDropdownOpen ? '▲' : '▼'}
@@ -1025,7 +1025,7 @@ export default function CarteiraClient({ initialData }: Props) {
                             {potentialDropdownOpen && (
                                 <div className={styles.dropdownMenu}>
                                     <label className={styles.dropdownOption}>
-                                        <input 
+                                        <input
                                             type="checkbox"
                                             checked={filterPotential.length === 4}
                                             onChange={(e) => {
@@ -1039,7 +1039,7 @@ export default function CarteiraClient({ initialData }: Props) {
                                         <span>Todos</span>
                                     </label>
                                     <label className={styles.dropdownOption}>
-                                        <input 
+                                        <input
                                             type="checkbox"
                                             checked={filterPotential.includes('ALTISSIMO')}
                                             onChange={(e) => {
@@ -1053,7 +1053,7 @@ export default function CarteiraClient({ initialData }: Props) {
                                         <span>🔥 Altíssimo</span>
                                     </label>
                                     <label className={styles.dropdownOption}>
-                                        <input 
+                                        <input
                                             type="checkbox"
                                             checked={filterPotential.includes('ALTO')}
                                             onChange={(e) => {
@@ -1067,7 +1067,7 @@ export default function CarteiraClient({ initialData }: Props) {
                                         <span>⬆️ Alto</span>
                                     </label>
                                     <label className={styles.dropdownOption}>
-                                        <input 
+                                        <input
                                             type="checkbox"
                                             checked={filterPotential.includes('MEDIO')}
                                             onChange={(e) => {
@@ -1081,7 +1081,7 @@ export default function CarteiraClient({ initialData }: Props) {
                                         <span>➡️ Médio</span>
                                     </label>
                                     <label className={styles.dropdownOption}>
-                                        <input 
+                                        <input
                                             type="checkbox"
                                             checked={filterPotential.includes('BAIXO')}
                                             onChange={(e) => {
@@ -1103,7 +1103,7 @@ export default function CarteiraClient({ initialData }: Props) {
                     {sellers.map(seller => {
                         // Filtrar restaurantes deste executivo
                         const sellerRestaurants = restaurants.filter(r => r.sellerId === seller.id);
-                        
+
                         // Aplicar filtros globais
                         const filteredSellerRestaurants = sellerRestaurants.filter(r => {
                             if (searchTerm) {
@@ -1123,14 +1123,14 @@ export default function CarteiraClient({ initialData }: Props) {
 
                         // Visitas deste executivo
                         const sellerVisits = visits.filter(v => v.sellerId === seller.id);
-                        
+
                         // Estatísticas deste executivo
                         const sellerStats = {
                             total: sellerRestaurants.length,
-                            visitados: sellerRestaurants.filter(r => 
+                            visitados: sellerRestaurants.filter(r =>
                                 sellerVisits.some(v => v.restaurantId === r.id)
                             ).length,
-                            naoVisitados: sellerRestaurants.filter(r => 
+                            naoVisitados: sellerRestaurants.filter(r =>
                                 !sellerVisits.some(v => v.restaurantId === r.id)
                             ).length,
                             aAnalisar: sellerRestaurants.filter(r => r.status === 'A Analisar').length,
@@ -1207,7 +1207,7 @@ export default function CarteiraClient({ initialData }: Props) {
                                                         .filter(v => v.restaurantId === restaurant.id)
                                                         .sort((a, b) => new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime())[0];
                                                     const priority = getPriorityBadge(restaurant.salesPotential);
-                                                    
+
                                                     return (
                                                         <tr key={restaurant.id}>
                                                             <td>
@@ -1243,7 +1243,7 @@ export default function CarteiraClient({ initialData }: Props) {
                                                             <td>⭐ {restaurant.rating?.toFixed(1) || 'N/D'}</td>
                                                             <td>
                                                                 <div className={styles.tableActions}>
-                                                                    <button 
+                                                                    <button
                                                                         onClick={() => {
                                                                             setQuickViewId(restaurant.id);
                                                                             setQuickViewTab('info');
@@ -1252,7 +1252,7 @@ export default function CarteiraClient({ initialData }: Props) {
                                                                     >
                                                                         👁️
                                                                     </button>
-                                                                    <button 
+                                                                    <button
                                                                         onClick={() => {
                                                                             setSelectedSellerId(seller.id);
                                                                             setShowScheduleModal(restaurant.id);
@@ -1318,16 +1318,16 @@ export default function CarteiraClient({ initialData }: Props) {
                                 onClick={() => setPotentialDropdownOpen(!potentialDropdownOpen)}
                             >
                                 <span>
-                                    {filterPotential.length === 0 
-                                        ? 'Nenhum selecionado' 
+                                    {filterPotential.length === 0
+                                        ? 'Nenhum selecionado'
                                         : filterPotential.length === 4
-                                        ? 'Todos os Potenciais'
-                                        : filterPotential.length === 1
-                                        ? (filterPotential[0] === 'ALTISSIMO' ? '🔥 Altíssimo' :
-                                           filterPotential[0] === 'ALTO' ? '⬆️ Alto' :
-                                           filterPotential[0] === 'MEDIO' ? '➡️ Médio' :
-                                           filterPotential[0] === 'BAIXO' ? '⬇️ Baixo' : filterPotential[0])
-                                        : `${filterPotential.length} selecionados`}
+                                            ? 'Todos os Potenciais'
+                                            : filterPotential.length === 1
+                                                ? (filterPotential[0] === 'ALTISSIMO' ? '🔥 Altíssimo' :
+                                                    filterPotential[0] === 'ALTO' ? '⬆️ Alto' :
+                                                        filterPotential[0] === 'MEDIO' ? '➡️ Médio' :
+                                                            filterPotential[0] === 'BAIXO' ? '⬇️ Baixo' : filterPotential[0])
+                                                : `${filterPotential.length} selecionados`}
                                 </span>
                                 <span className={styles.dropdownArrow}>
                                     {potentialDropdownOpen ? '▲' : '▼'}
@@ -1336,7 +1336,7 @@ export default function CarteiraClient({ initialData }: Props) {
                             {potentialDropdownOpen && (
                                 <div className={styles.dropdownMenu}>
                                     <label className={styles.dropdownOption}>
-                                        <input 
+                                        <input
                                             type="checkbox"
                                             checked={filterPotential.length === 4}
                                             onChange={(e) => {
@@ -1350,7 +1350,7 @@ export default function CarteiraClient({ initialData }: Props) {
                                         <span>Todos</span>
                                     </label>
                                     <label className={styles.dropdownOption}>
-                                        <input 
+                                        <input
                                             type="checkbox"
                                             checked={filterPotential.includes('ALTISSIMO')}
                                             onChange={(e) => {
@@ -1364,7 +1364,7 @@ export default function CarteiraClient({ initialData }: Props) {
                                         <span>🔥 Altíssimo</span>
                                     </label>
                                     <label className={styles.dropdownOption}>
-                                        <input 
+                                        <input
                                             type="checkbox"
                                             checked={filterPotential.includes('ALTO')}
                                             onChange={(e) => {
@@ -1378,7 +1378,7 @@ export default function CarteiraClient({ initialData }: Props) {
                                         <span>⬆️ Alto</span>
                                     </label>
                                     <label className={styles.dropdownOption}>
-                                        <input 
+                                        <input
                                             type="checkbox"
                                             checked={filterPotential.includes('MEDIO')}
                                             onChange={(e) => {
@@ -1392,7 +1392,7 @@ export default function CarteiraClient({ initialData }: Props) {
                                         <span>➡️ Médio</span>
                                     </label>
                                     <label className={styles.dropdownOption}>
-                                        <input 
+                                        <input
                                             type="checkbox"
                                             checked={filterPotential.includes('BAIXO')}
                                             onChange={(e) => {
@@ -1409,14 +1409,14 @@ export default function CarteiraClient({ initialData }: Props) {
                             )}
                         </div>
                         <div className={styles.viewModes}>
-                            <button 
+                            <button
                                 className={viewMode === 'cards' ? styles.active : ''}
                                 onClick={() => setViewMode('cards')}
                                 title="Cards"
                             >
                                 ▦
                             </button>
-                            <button 
+                            <button
                                 className={viewMode === 'list' ? styles.active : ''}
                                 onClick={() => setViewMode('list')}
                                 title="Lista"
@@ -1457,10 +1457,10 @@ export default function CarteiraClient({ initialData }: Props) {
                                 const priority = getPriorityBadge(restaurant.salesPotential);
                                 const isInWeekPlan = weekPlan.includes(restaurant.id);
                                 const hasFollowUp = sellerFollowUps.some(f => f.restaurantId === restaurant.id);
-                                
+
                                 return (
-                                    <div 
-                                        key={restaurant.id} 
+                                    <div
+                                        key={restaurant.id}
                                         className={`${styles.card} ${isInWeekPlan ? styles.inWeekPlan : ''}`}
                                     >
                                         <div className={styles.cardHeader}>
@@ -1470,7 +1470,7 @@ export default function CarteiraClient({ initialData }: Props) {
                                                     {priority.label}
                                                 </span>
                                             </div>
-                                            <button 
+                                            <button
                                                 className={`${styles.weekPlanBtn} ${isInWeekPlan ? styles.active : ''}`}
                                                 onClick={() => toggleWeekPlan(restaurant.id)}
                                                 title={isInWeekPlan ? 'Remover do plano' : 'Adicionar ao plano'}
@@ -1478,41 +1478,41 @@ export default function CarteiraClient({ initialData }: Props) {
                                                 {isInWeekPlan ? '✓' : '+'}
                                             </button>
                                         </div>
-                                        
+
                                         <div className={styles.cardBody}>
                                             <div className={styles.cardInfo}>
                                                 <span>📍 {restaurant.address?.neighborhood || 'N/D'}</span>
                                                 <span>⭐ {restaurant.rating?.toFixed(1) || 'N/D'}</span>
                                                 <span>📝 {restaurant.commentsCount} comentários</span>
                                             </div>
-                                            
-                                        <div className={styles.cardMeta}>
-                                            <span className={`${styles.statusBadge} ${getStatusBadge(restaurant.status)}`}>
-                                                {restaurant.status}
-                                            </span>
-                                            {hasFollowUp && (
-                                                <span className={styles.followUpBadge}>📅 Follow-up</span>
-                                            )}
+
+                                            <div className={styles.cardMeta}>
+                                                <span className={`${styles.statusBadge} ${getStatusBadge(restaurant.status)}`}>
+                                                    {restaurant.status}
+                                                </span>
+                                                {hasFollowUp && (
+                                                    <span className={styles.followUpBadge}>📅 Follow-up</span>
+                                                )}
+                                            </div>
                                         </div>
-                                    </div>
-                                    
-                                    <div className={styles.cardActions}>
-                                        <button 
-                                            className={styles.viewBtn}
-                                            onClick={() => {
-                                                setQuickViewId(restaurant.id);
-                                                setQuickViewTab('info');
-                                            }}
-                                        >
-                                            👁️ Ver
-                                        </button>
-                                        <button 
-                                            className={styles.scheduleBtn}
-                                            onClick={() => setShowScheduleModal(restaurant.id)}
-                                        >
-                                            📅 Agendar
-                                        </button>
-                                    </div>
+
+                                        <div className={styles.cardActions}>
+                                            <button
+                                                className={styles.viewBtn}
+                                                onClick={() => {
+                                                    setQuickViewId(restaurant.id);
+                                                    setQuickViewTab('info');
+                                                }}
+                                            >
+                                                👁️ Ver
+                                            </button>
+                                            <button
+                                                className={styles.scheduleBtn}
+                                                onClick={() => setShowScheduleModal(restaurant.id)}
+                                            >
+                                                📅 Agendar
+                                            </button>
+                                        </div>
                                     </div>
                                 );
                             })}
@@ -1538,11 +1538,11 @@ export default function CarteiraClient({ initialData }: Props) {
                                     {filteredRestaurants.map(restaurant => {
                                         const priority = getPriorityBadge(restaurant.salesPotential);
                                         const isInWeekPlan = weekPlan.includes(restaurant.id);
-                                        
+
                                         return (
                                             <tr key={restaurant.id} className={isInWeekPlan ? styles.inWeekPlan : ''}>
                                                 <td>
-                                                    <button 
+                                                    <button
                                                         className={`${styles.weekPlanCheck} ${isInWeekPlan ? styles.active : ''}`}
                                                         onClick={() => toggleWeekPlan(restaurant.id)}
                                                     >
@@ -1703,7 +1703,7 @@ export default function CarteiraClient({ initialData }: Props) {
                                     <span>📋</span>
                                     <h3>Nenhum cliente no plano</h3>
                                     <p>Adicione clientes da carteira clicando no botão "+" dos cards</p>
-                                    <button 
+                                    <button
                                         className={styles.primaryBtn}
                                         onClick={() => setActiveTab('carteira')}
                                     >
@@ -1714,8 +1714,8 @@ export default function CarteiraClient({ initialData }: Props) {
                                 <>
                                     <div className={styles.weekDays}>
                                         {weekDays.map(day => (
-                                            <div 
-                                                key={day.date} 
+                                            <div
+                                                key={day.date}
                                                 className={`${styles.weekDay} ${day.isToday ? styles.today : ''}`}
                                             >
                                                 <span className={styles.dayName}>{day.dayName}</span>
@@ -1727,7 +1727,7 @@ export default function CarteiraClient({ initialData }: Props) {
                                     <div className={styles.weekPlanCards}>
                                         {weekPlanRestaurants.map((restaurant, index) => {
                                             const priority = getPriorityBadge(restaurant.salesPotential);
-                                            
+
                                             return (
                                                 <div key={restaurant.id} className={styles.weekPlanCard}>
                                                     <div className={styles.weekPlanOrder}>
@@ -1741,13 +1741,13 @@ export default function CarteiraClient({ initialData }: Props) {
                                                         </span>
                                                     </div>
                                                     <div className={styles.weekPlanActions}>
-                                                        <button 
+                                                        <button
                                                             className={styles.scheduleBtn}
                                                             onClick={() => setShowScheduleModal(restaurant.id)}
                                                         >
                                                             📅 Agendar
                                                         </button>
-                                                        <button 
+                                                        <button
                                                             className={styles.removeBtn}
                                                             onClick={() => toggleWeekPlan(restaurant.id)}
                                                         >
@@ -1771,7 +1771,7 @@ export default function CarteiraClient({ initialData }: Props) {
                                             <span>🔥</span>
                                             <div>
                                                 <strong>
-                                                    {weekPlanRestaurants.filter(r => 
+                                                    {weekPlanRestaurants.filter(r =>
                                                         r.salesPotential === 'ALTISSIMO' || r.salesPotential === 'ALTO'
                                                     ).length}
                                                 </strong>
@@ -1793,7 +1793,7 @@ export default function CarteiraClient({ initialData }: Props) {
                         <h2>🗓️ Agenda Completa da Semana</h2>
                         <p>Visualização completa de todos os agendamentos da semana</p>
                     </div>
-                    
+
                     {/* Agenda Semanal Completa */}
                     <div className={styles.fullWeekAgenda}>
                         {weekDays.map(day => {
@@ -1828,7 +1828,7 @@ export default function CarteiraClient({ initialData }: Props) {
                                                     const scheduledTime = new Date(followUp.scheduledDate);
                                                     const timeStr = scheduledTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
                                                     const priority = getPriorityBadge(restaurant.salesPotential);
-                                                    
+
                                                     return (
                                                         <div key={followUp.id} className={styles.agendaItem}>
                                                             <div className={styles.agendaItemTime}>{timeStr}</div>
@@ -1867,7 +1867,7 @@ export default function CarteiraClient({ initialData }: Props) {
                                 {sellerVisits.slice(0, 10).map(visit => {
                                     const restaurant = restaurants.find(r => r.id === visit.restaurantId);
                                     if (!restaurant) return null;
-                                    
+
                                     return (
                                         <div key={visit.id} className={styles.historyItem}>
                                             <div className={styles.historyDate}>
@@ -1893,8 +1893,8 @@ export default function CarteiraClient({ initialData }: Props) {
 
             {/* Mapa Tab */}
             {activeTab === 'mapa' && (
-                <MapaTecnologico 
-                    restaurants={carteiraRestaurants} 
+                <MapaTecnologico
+                    restaurants={carteiraRestaurants}
                     scheduledSlots={weeklyScheduledSlots}
                     weekStart={currentWeekStart}
                     sellerId={selectedSellerId}
@@ -1921,8 +1921,8 @@ export default function CarteiraClient({ initialData }: Props) {
                         <div className={styles.filterRow}>
                             <div className={styles.filterGroup}>
                                 <label>👔 Executivo</label>
-                                <select 
-                                    value={checkmobFilterSeller} 
+                                <select
+                                    value={checkmobFilterSeller}
                                     onChange={e => setCheckmobFilterSeller(e.target.value)}
                                 >
                                     <option value="all">Todos</option>
@@ -1935,8 +1935,8 @@ export default function CarteiraClient({ initialData }: Props) {
 
                             <div className={styles.filterGroup}>
                                 <label>📊 Status</label>
-                                <select 
-                                    value={checkmobFilterStatus} 
+                                <select
+                                    value={checkmobFilterStatus}
                                     onChange={e => setCheckmobFilterStatus(e.target.value)}
                                 >
                                     <option value="all">Todos</option>
@@ -1957,11 +1957,11 @@ export default function CarteiraClient({ initialData }: Props) {
                                         onClick={() => setCheckmobPotentialDropdownOpen(!checkmobPotentialDropdownOpen)}
                                     >
                                         <span>
-                                            {checkmobFilterPotential.length === 0 
-                                                ? 'Todos' 
+                                            {checkmobFilterPotential.length === 0
+                                                ? 'Todos'
                                                 : checkmobFilterPotential.length === 1
-                                                ? checkmobFilterPotential[0]
-                                                : `${checkmobFilterPotential.length} selecionados`}
+                                                    ? checkmobFilterPotential[0]
+                                                    : `${checkmobFilterPotential.length} selecionados`}
                                         </span>
                                         <span className={styles.dropdownArrow}>
                                             {checkmobPotentialDropdownOpen ? '▲' : '▼'}
@@ -1970,7 +1970,7 @@ export default function CarteiraClient({ initialData }: Props) {
                                     {checkmobPotentialDropdownOpen && (
                                         <div className={styles.dropdownMenu}>
                                             <label className={styles.dropdownOption}>
-                                                <input 
+                                                <input
                                                     type="checkbox"
                                                     checked={checkmobFilterPotential.length === 0}
                                                     onChange={(e) => {
@@ -1982,7 +1982,7 @@ export default function CarteiraClient({ initialData }: Props) {
                                                 <span>Todos</span>
                                             </label>
                                             <label className={styles.dropdownOption}>
-                                                <input 
+                                                <input
                                                     type="checkbox"
                                                     checked={checkmobFilterPotential.includes('ALTÍSSIMO')}
                                                     onChange={(e) => {
@@ -1996,7 +1996,7 @@ export default function CarteiraClient({ initialData }: Props) {
                                                 <span>ALTÍSSIMO</span>
                                             </label>
                                             <label className={styles.dropdownOption}>
-                                                <input 
+                                                <input
                                                     type="checkbox"
                                                     checked={checkmobFilterPotential.includes('ALTO')}
                                                     onChange={(e) => {
@@ -2010,7 +2010,7 @@ export default function CarteiraClient({ initialData }: Props) {
                                                 <span>ALTO</span>
                                             </label>
                                             <label className={styles.dropdownOption}>
-                                                <input 
+                                                <input
                                                     type="checkbox"
                                                     checked={checkmobFilterPotential.includes('MÉDIO')}
                                                     onChange={(e) => {
@@ -2024,7 +2024,7 @@ export default function CarteiraClient({ initialData }: Props) {
                                                 <span>MÉDIO</span>
                                             </label>
                                             <label className={styles.dropdownOption}>
-                                                <input 
+                                                <input
                                                     type="checkbox"
                                                     checked={checkmobFilterPotential.includes('BAIXO')}
                                                     onChange={(e) => {
@@ -2044,8 +2044,8 @@ export default function CarteiraClient({ initialData }: Props) {
 
                             <div className={styles.filterGroup}>
                                 <label>📍 Bairro</label>
-                                <select 
-                                    value={checkmobFilterNeighborhood} 
+                                <select
+                                    value={checkmobFilterNeighborhood}
                                     onChange={e => setCheckmobFilterNeighborhood(e.target.value)}
                                 >
                                     <option value="all">Todos</option>
@@ -2059,8 +2059,8 @@ export default function CarteiraClient({ initialData }: Props) {
                         <div className={styles.filterRow}>
                             <div className={styles.filterGroup}>
                                 <label>🏙️ Cidade</label>
-                                <select 
-                                    value={checkmobFilterCity} 
+                                <select
+                                    value={checkmobFilterCity}
                                     onChange={e => setCheckmobFilterCity(e.target.value)}
                                 >
                                     <option value="all">Todos</option>
@@ -2072,8 +2072,8 @@ export default function CarteiraClient({ initialData }: Props) {
 
                             <div className={styles.filterGroup}>
                                 <label>🗺️ Estado</label>
-                                <select 
-                                    value={checkmobFilterState} 
+                                <select
+                                    value={checkmobFilterState}
                                     onChange={e => setCheckmobFilterState(e.target.value)}
                                 >
                                     <option value="all">Todos</option>
@@ -2085,9 +2085,9 @@ export default function CarteiraClient({ initialData }: Props) {
 
                             <div className={styles.filterGroup}>
                                 <label className={styles.checkboxFilterLabel}>
-                                    <input 
-                                        type="checkbox" 
-                                        checked={checkmobFilterHotLeads} 
+                                    <input
+                                        type="checkbox"
+                                        checked={checkmobFilterHotLeads}
                                         onChange={e => setCheckmobFilterHotLeads(e.target.checked)}
                                     />
                                     🔥 Leads Quentes (ALTÍSSIMO + Qualificado/Contatado)
@@ -2161,8 +2161,8 @@ export default function CarteiraClient({ initialData }: Props) {
                                                 <td>
                                                     <span className={styles.statusBadge} style={{
                                                         background: restaurant.status === 'Fechado' ? '#22c55e' :
-                                                                    restaurant.status === 'Negociação' ? '#f59e0b' :
-                                                                    restaurant.status === 'Contatado' ? '#3b82f6' :
+                                                            restaurant.status === 'Negociação' ? '#f59e0b' :
+                                                                restaurant.status === 'Contatado' ? '#3b82f6' :
                                                                     restaurant.status === 'Qualificado' ? '#10b981' : '#6366f1',
                                                         color: 'white',
                                                         padding: '0.25rem 0.5rem',
@@ -2175,8 +2175,8 @@ export default function CarteiraClient({ initialData }: Props) {
                                                 <td>
                                                     <span className={styles.potentialBadge} style={{
                                                         background: restaurant.salesPotential === 'ALTÍSSIMO' ? '#ef4444' :
-                                                                    restaurant.salesPotential === 'ALTO' ? '#f59e0b' :
-                                                                    restaurant.salesPotential === 'MÉDIO' ? '#3b82f6' : '#94a3b8',
+                                                            restaurant.salesPotential === 'ALTO' ? '#f59e0b' :
+                                                                restaurant.salesPotential === 'MÉDIO' ? '#3b82f6' : '#94a3b8',
                                                         color: 'white',
                                                         padding: '0.25rem 0.5rem',
                                                         borderRadius: '4px',
@@ -2221,7 +2221,7 @@ export default function CarteiraClient({ initialData }: Props) {
 
             {/* Clientes Fixos Tab */}
             {activeTab === 'clientes-fixos' && (
-                <FixedClientsSection 
+                <FixedClientsSection
                     sellerId={selectedSellerId}
                     restaurants={carteiraRestaurants}
                 />
@@ -2266,13 +2266,13 @@ export default function CarteiraClient({ initialData }: Props) {
                             </div>
                         </div>
                         <div className={styles.modalFooter}>
-                            <button 
+                            <button
                                 className={styles.cancelBtn}
                                 onClick={() => setShowScheduleModal(null)}
                             >
                                 Cancelar
                             </button>
-                            <button 
+                            <button
                                 className={styles.confirmBtn}
                                 onClick={handleScheduleVisit}
                                 disabled={!scheduleData.date || loading}
@@ -2299,25 +2299,25 @@ export default function CarteiraClient({ initialData }: Props) {
                         </div>
 
                         <div className={styles.quickViewTabs}>
-                            <button 
+                            <button
                                 className={`${styles.qvTab} ${quickViewTab === 'info' ? styles.active : ''}`}
                                 onClick={() => setQuickViewTab('info')}
                             >
                                 📋 Informações
                             </button>
-                            <button 
+                            <button
                                 className={`${styles.qvTab} ${quickViewTab === 'actions' ? styles.active : ''}`}
                                 onClick={() => setQuickViewTab('actions')}
                             >
                                 ⚡ Ações Rápidas
                             </button>
-                            <button 
+                            <button
                                 className={`${styles.qvTab} ${quickViewTab === 'notes' ? styles.active : ''}`}
                                 onClick={() => setQuickViewTab('notes')}
                             >
                                 📝 Notas
                             </button>
-                            <button 
+                            <button
                                 className={`${styles.qvTab} ${quickViewTab === 'history' ? styles.active : ''}`}
                                 onClick={() => setQuickViewTab('history')}
                             >
@@ -2364,7 +2364,7 @@ export default function CarteiraClient({ initialData }: Props) {
                                         <div className={styles.qvStatusItem}>
                                             <label>Status:</label>
                                             {editingStatus === quickViewId ? (
-                                                <select 
+                                                <select
                                                     value={quickViewRestaurant.status}
                                                     onChange={e => handleUpdateStatus(quickViewId, e.target.value)}
                                                     disabled={loading}
@@ -2376,7 +2376,7 @@ export default function CarteiraClient({ initialData }: Props) {
                                                     <option value="Fechado">Fechado</option>
                                                 </select>
                                             ) : (
-                                                <span 
+                                                <span
                                                     className={`${styles.statusBadge} ${getStatusBadge(quickViewRestaurant.status)} ${styles.clickable}`}
                                                     onClick={() => setEditingStatus(quickViewId)}
                                                 >
@@ -2387,7 +2387,7 @@ export default function CarteiraClient({ initialData }: Props) {
                                         <div className={styles.qvStatusItem}>
                                             <label>Potencial:</label>
                                             {editingPriority === quickViewId ? (
-                                                <select 
+                                                <select
                                                     value={quickViewRestaurant.salesPotential || ''}
                                                     onChange={e => handleUpdatePriority(quickViewId, e.target.value)}
                                                     disabled={loading}
@@ -2398,7 +2398,7 @@ export default function CarteiraClient({ initialData }: Props) {
                                                     <option value="BAIXO">⬇️ Baixo</option>
                                                 </select>
                                             ) : (
-                                                <span 
+                                                <span
                                                     className={`${styles.priorityBadge} ${getPriorityBadge(quickViewRestaurant.salesPotential).class} ${styles.clickable}`}
                                                     onClick={() => setEditingPriority(quickViewId)}
                                                 >
@@ -2411,7 +2411,7 @@ export default function CarteiraClient({ initialData }: Props) {
                                     <div className={styles.qvAddress}>
                                         <h4>📍 Endereço Completo</h4>
                                         <p>
-                                            {quickViewRestaurant.address?.street || ''} 
+                                            {quickViewRestaurant.address?.street || ''}
                                             {quickViewRestaurant.address?.number ? `, ${quickViewRestaurant.address.number}` : ''}
                                         </p>
                                         <p>
@@ -2425,7 +2425,7 @@ export default function CarteiraClient({ initialData }: Props) {
                             {quickViewTab === 'actions' && (
                                 <div className={styles.qvActionsTab}>
                                     <div className={styles.qvActionsList}>
-                                        <button 
+                                        <button
                                             className={styles.qvActionBtn}
                                             onClick={() => {
                                                 setQuickViewId(null);
@@ -2438,7 +2438,7 @@ export default function CarteiraClient({ initialData }: Props) {
                                                 <span>Marcar uma visita presencial</span>
                                             </div>
                                         </button>
-                                        <button 
+                                        <button
                                             className={styles.qvActionBtn}
                                             onClick={() => toggleWeekPlan(quickViewId)}
                                         >
@@ -2448,7 +2448,7 @@ export default function CarteiraClient({ initialData }: Props) {
                                                 <span>Plano de visitas da semana</span>
                                             </div>
                                         </button>
-                                        <button 
+                                        <button
                                             className={styles.qvActionBtn}
                                             onClick={() => setQuickViewTab('notes')}
                                         >
@@ -2458,7 +2458,7 @@ export default function CarteiraClient({ initialData }: Props) {
                                                 <span>Registrar observação</span>
                                             </div>
                                         </button>
-                                        <a 
+                                        <a
                                             href={`/restaurant/${quickViewId}`}
                                             className={styles.qvActionBtn}
                                             target="_blank"
@@ -2499,7 +2499,7 @@ export default function CarteiraClient({ initialData }: Props) {
                                             placeholder="Digite uma nota rápida sobre este cliente..."
                                             rows={3}
                                         />
-                                        <button 
+                                        <button
                                             className={styles.qvAddNoteBtn}
                                             onClick={handleAddNote}
                                             disabled={!newNote.trim() || loading}
@@ -2507,7 +2507,7 @@ export default function CarteiraClient({ initialData }: Props) {
                                             {loading ? 'Salvando...' : '💾 Salvar Nota'}
                                         </button>
                                     </div>
-                                    
+
                                     <div className={styles.qvNotesList}>
                                         <h4>📝 Notas Anteriores</h4>
                                         {quickViewFollowUps.filter(f => f.notes).length === 0 ? (

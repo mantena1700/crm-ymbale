@@ -1,136 +1,107 @@
-# 📦 CRM Ymbale
+# 🎯 CRM Ymbale
 
-Sistema de CRM (Customer Relationship Management) para gestão de leads e clientes.
+Sistema de CRM completo para gestão de vendas, pipeline de leads, carteira de clientes e campanhas de marketing.
 
-## 🚀 Tecnologias
+## 📋 Funcionalidades Principais
 
-- **Next.js 16** - Framework React com App Router
-- **TypeScript** - Tipagem estática
-- **Prisma** - ORM para banco de dados
-- **PostgreSQL** - Banco de dados
-- **Docker** - Containerização do banco
+- **Pipeline de Vendas**: Gestão completa do funil de vendas com Kanban
+- **Carteira de Clientes**: Organização e agendamento inteligente de visitas
+- **Campanhas**: Automação de marketing com workflows e templates
+- **Análise IA**: Análise inteligente de leads e sugestões de estratégia
+- **Atribuição Geográfica**: Distribuição automática de clientes por região
+- **Relatórios**: Dashboards e relatórios de performance
 
-## 📋 Funcionalidades
+## 🚀 Início Rápido
 
-### Core
-- ✅ Dashboard com métricas
-- ✅ Gestão de leads/clientes
-- ✅ Pipeline de vendas
-- ✅ Agenda de follow-ups
-- ✅ Gestão de executivos (antigo "vendedores")
-- ✅ Campanhas de marketing
-- ✅ Relatórios
-- ✅ Análise em lote com IA
-- ✅ Sistema de metas
-- ✅ Autenticação de usuários
+### Pré-requisitos
 
-### 🆕 Novidades (v2.0.0)
-- ✅ **Sistema de Zonas de Atendimento** - Gestão geográfica baseada em CEP
-- ✅ **Atribuição Automática** - Restaurantes atribuídos automaticamente aos executivos por zona
-- ✅ **Carteira Padrão** - Visão consolidada de todas as carteiras
-- ✅ **Redesign Completo** - UI/UX moderno e profissional
-- ✅ **Importação Inteligente** - Identificação automática de zona na importação Excel
+- Node.js 18+
+- PostgreSQL
+- npm ou yarn
 
-## 🔧 Instalação Local
-
-### 1. Clonar repositório
+### Instalação
 
 ```bash
-git clone https://github.com/mantena1700/crm-ymbale.git
-cd crm-ymbale
-```
-
-### 2. Instalar dependências
-
-```bash
+# Instalar dependências
 npm install
-```
 
-### 3. Iniciar PostgreSQL com Docker
+# Configurar variáveis de ambiente
+cp .env.example .env.local
 
-```bash
-docker compose up -d postgres
-```
+# Executar migrações do banco
+npx prisma migrate dev
 
-### 4. Configurar ambiente
-
-```bash
-cp env.example .env
-```
-
-### 5. Criar banco de dados
-
-```bash
-npx prisma generate
-npx prisma db push
-```
-
-### 6. Criar usuário admin
-
-```bash
-npx tsx scripts/create-admin.ts
-```
-
-### 7. Iniciar em desenvolvimento
-
-```bash
+# Iniciar servidor de desenvolvimento
 npm run dev
 ```
 
-Acesse: http://localhost:3000
+Acesse: `http://localhost:3000`
 
-## 🌐 Deploy em VPS
+## 📚 Documentação
 
-Consulte os arquivos:
-- [DEPLOYMENT.md](./DEPLOYMENT.md) - **Guia completo de deploy e atualização na VPS**
-- [DEPLOY_VPS.md](./DEPLOY_VPS.md) - Instruções de instalação inicial
-- [CHANGELOG.md](./CHANGELOG.md) - **Documentação completa de funcionalidades e mudanças**
+A documentação completa está organizada em `.docs/`:
 
-## 👤 Credenciais Padrão
+- **[Arquitetura](.docs/architecture/)** - Estrutura do sistema e módulos
+- **[Deployment](.docs/deployment/)** - Guias de deploy e troubleshooting
+- **[Guias](.docs/guides/)** - Manuais de usuário e desenvolvedor
+- **[Changelog](.docs/changelog/)** - Histórico de mudanças
 
-| Campo | Valor |
-|-------|-------|
-| Usuário | `admin` |
-| Senha | `admin` |
+## 🔧 Scripts Disponíveis
 
-⚠️ **Troque a senha no primeiro acesso!**
+### Desenvolvimento
+```bash
+npm run dev              # Servidor de desenvolvimento
+npm run build            # Build de produção
+npm run start            # Iniciar produção
+```
 
-## 📁 Estrutura do Projeto
+### Banco de Dados
+```bash
+npm run ensure-fixed-clients    # Garantir tabela de clientes fixos
+npm run populate-coords         # Popular coordenadas
+npm run setup-geographic        # Configurar atribuição geográfica
+```
+
+### Utilitários
+```bash
+npm run diagnostico      # Diagnóstico do sistema
+npm run reatribuir       # Reatribuir restaurantes
+```
+
+## 🛠️ Scripts de Manutenção
+
+Scripts de deploy e manutenção estão em `.scripts/`:
+
+- **Deployment**: `.scripts/deployment/` - Deploy e atualizações
+- **Maintenance**: `.scripts/maintenance/` - Limpeza e diagnósticos
+- **Development**: `.scripts/development/` - Ferramentas de dev
+
+## 🏗️ Estrutura do Projeto
 
 ```
 crm-ymbale/
+├── .docs/              # Documentação
+├── .scripts/           # Scripts de automação
 ├── src/
-│   ├── app/           # Páginas e rotas (App Router)
+│   ├── app/           # Páginas e rotas Next.js
 │   ├── components/    # Componentes React
-│   ├── lib/           # Utilitários e configurações
-│   └── types/         # Definições TypeScript
-├── prisma/
-│   └── schema.prisma  # Schema do banco de dados
-├── scripts/           # Scripts utilitários
-├── public/            # Arquivos estáticos
-└── docker-compose.yml # Configuração Docker
+│   ├── lib/           # Bibliotecas e utilitários
+│   └── styles/        # Estilos globais
+├── prisma/            # Schema e migrações
+└── public/            # Arquivos estáticos
 ```
 
-## 🔑 Variáveis de Ambiente
+## 🔐 Segurança
 
-| Variável | Descrição |
-|----------|-----------|
-| `DATABASE_URL` | URL de conexão PostgreSQL |
-| `NODE_ENV` | Ambiente (development/production) |
-| `OPENAI_API_KEY` | (Opcional) Chave API OpenAI |
-| `GOOGLE_AI_API_KEY` | (Opcional) Chave API Google AI |
-| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | (Opcional) Chave Google Maps |
-
-## 📊 Comandos Úteis
-
-| Comando | Descrição |
-|---------|-----------|
-| `npm run dev` | Iniciar em desenvolvimento |
-| `npm run build` | Build de produção |
-| `npm start` | Iniciar produção |
-| `npx prisma studio` | Interface visual do banco |
-| `npx prisma db push` | Sincronizar schema |
+Consulte [SECURITY.md](.docs/SECURITY.md) para informações sobre segurança e boas práticas.
 
 ## 📝 Licença
 
-Projeto privado - Todos os direitos reservados.
+Propriedade de Ymbale - Todos os direitos reservados.
+
+## 🤝 Suporte
+
+Para dúvidas ou problemas:
+1. Consulte a [documentação](.docs/)
+2. Verifique o [troubleshooting](.docs/deployment/troubleshooting.md)
+3. Entre em contato com a equipe de desenvolvimento

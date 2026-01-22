@@ -26,8 +26,7 @@ export async function getRestaurants(): Promise<Restaurant[]> {
                 zonas.forEach(z => zonasMap.set(z.id, z.zona_nome));
             }
         } catch (e) {
-            // Se não conseguir buscar zonas, continuar sem elas
-            console.warn('Erro ao buscar zonas:', e);
+            // Se não conseguir buscar zonas, continuar sem elas (silencioso)
         }
 
         // Buscar restaurantes com Prisma
@@ -48,7 +47,7 @@ export async function getRestaurants(): Promise<Restaurant[]> {
                 FROM information_schema.columns 
                 WHERE table_name = 'restaurants' AND column_name = 'zona_id'
             `;
-            
+
             if (columnCheck.length > 0) {
                 // Coluna existe, buscar zonaId
                 const zonaIds = await prisma.$queryRaw<Array<{ id: string; zona_id: string | null }>>`
@@ -57,14 +56,14 @@ export async function getRestaurants(): Promise<Restaurant[]> {
                 zonaIds.forEach(z => zonaIdMap.set(z.id, z.zona_id));
             }
         } catch (e) {
-            console.warn('Erro ao buscar zonaId dos restaurantes:', e);
+            // Coluna zona_id não existe, continuar sem ela (silencioso)
         }
 
         return restaurants.map(r => {
             // Tentar pegar zonaId do SQL primeiro, senão do Prisma
             const zonaId = zonaIdMap.get(r.id) || (r as any).zonaId || undefined;
             const zonaNome = zonaId ? (zonasMap.get(zonaId) || undefined) : undefined;
-            
+
             // Garantir que address sempre tenha valores padrão
             const rawAddress = (r.address as any) || {};
             const safeAddress = {
@@ -74,7 +73,7 @@ export async function getRestaurants(): Promise<Restaurant[]> {
                 state: rawAddress.state || rawAddress.estado || 'Estado não informado',
                 zip: rawAddress.zip || rawAddress.cep || rawAddress.zipCode || '',
             };
-            
+
             return {
                 id: r.id,
                 name: r.name || 'Restaurante sem nome',
@@ -498,7 +497,7 @@ export async function getSellers(): Promise<Seller[]> {
         const sellers = await prisma.seller.findMany({
             orderBy: { name: 'asc' }
         });
-        
+
         return sellers.map(s => ({
             id: s.id,
             name: s.name,
