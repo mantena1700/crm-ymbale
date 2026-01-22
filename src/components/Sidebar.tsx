@@ -11,7 +11,7 @@ export const SidebarContext = createContext<{
     setIsCollapsed: (value: boolean) => void;
 }>({
     isCollapsed: false,
-    setIsCollapsed: () => {}
+    setIsCollapsed: () => { }
 });
 
 export const useSidebar = () => useContext(SidebarContext);
@@ -67,7 +67,7 @@ const Sidebar = () => {
                     setUser(data.user);
                 }
             })
-            .catch(() => {});
+            .catch(() => { });
     }, []);
 
     // Buscar configurações do sistema
@@ -83,7 +83,7 @@ const Sidebar = () => {
                     });
                 }
             })
-            .catch(() => {});
+            .catch(() => { });
     }, []);
 
     // Buscar contadores reais (notificações e follow-ups)
@@ -95,9 +95,9 @@ const Sidebar = () => {
                     setNotifications(data.notifications || 0);
                     setPendingFollowUps(data.pendingFollowUps || 0);
                 })
-                .catch(() => {});
+                .catch(() => { });
         };
-        
+
         fetchCounts();
         // Atualizar a cada 60 segundos
         const interval = setInterval(fetchCounts, 60000);
@@ -143,6 +143,7 @@ const Sidebar = () => {
             title: 'ANÁLISES',
             items: [
                 { href: '/batch-analysis', icon: '🤖', label: 'Análise IA', permission: 'analysis.view' },
+                { href: '/packaging-analysis', icon: '📦', label: 'Embalagens', permission: 'packaging.view' },
                 { href: '/reports', icon: '📈', label: 'Relatórios', permission: 'reports.view' },
                 { href: '/insights', icon: '💡', label: 'Insights', permission: 'insights.view' },
             ]
@@ -253,7 +254,7 @@ const Sidebar = () => {
     return (
         <SidebarContext.Provider value={{ isCollapsed, setIsCollapsed }}>
             {/* Mobile Toggle */}
-            <button 
+            <button
                 className={styles.mobileToggle}
                 onClick={() => setIsMobileOpen(!isMobileOpen)}
                 aria-label="Toggle menu"
@@ -293,7 +294,7 @@ const Sidebar = () => {
                             </div>
                         )}
                     </div>
-                    <button 
+                    <button
                         className={styles.collapseButton}
                         onClick={() => setIsCollapsed(!isCollapsed)}
                         title={isCollapsed ? 'Expandir menu' : 'Recolher menu'}
@@ -363,8 +364,8 @@ const Sidebar = () => {
                         )}
                     </Link>
                     {!isCollapsed && (
-                        <button 
-                            className={styles.logoutButton} 
+                        <button
+                            className={styles.logoutButton}
                             title="Sair"
                             onClick={handleLogout}
                             disabled={loggingOut}
