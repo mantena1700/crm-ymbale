@@ -56,7 +56,7 @@ export default function ClientsClientNew({ initialRestaurants, availableSellers 
 
     const statuses = ['Todos', 'A Analisar', 'Qualificado', 'Contatado', 'Negociação', 'Fechado'];
     const potentials = ['Todos', 'ALTÍSSIMO', 'ALTO', 'MÉDIO', 'BAIXO'];
-    
+
     // Calcular contagem de leads por executivo
     const sellerCounts = useMemo(() => {
         const counts = new Map<string, number>();
@@ -67,26 +67,26 @@ export default function ClientsClientNew({ initialRestaurants, availableSellers 
         });
         return counts;
     }, [restaurants]);
-    
+
     // Contar leads sem executivo
     const withoutSellerCount = useMemo(() => {
         return restaurants.filter(r => !r.seller).length;
     }, [restaurants]);
-    
+
     // Opções de executivos: Todos + lista de executivos + "Sem Executivo" se houver restaurantes sem executivo
     const hasRestaurantsWithoutSeller = restaurants.some(r => !r.seller);
     // Criar array de opções com IDs únicos para evitar chaves duplicadas
     const sellersOptions = [
         { value: 'Todos', label: 'Todos', id: 'todos' },
-        ...(availableSellers || []).map(s => ({ 
-            value: s.name, 
-            label: `${s.name} (${sellerCounts.get(s.name) || 0})`, 
-            id: s.id 
+        ...(availableSellers || []).map(s => ({
+            value: s.name,
+            label: `${s.name} (${sellerCounts.get(s.name) || 0})`,
+            id: s.id
         })),
-        ...(hasRestaurantsWithoutSeller ? [{ 
-            value: 'Sem Executivo', 
-            label: `Sem Executivo (${withoutSellerCount})`, 
-            id: 'sem-executivo' 
+        ...(hasRestaurantsWithoutSeller ? [{
+            value: 'Sem Executivo',
+            label: `Sem Executivo (${withoutSellerCount})`,
+            id: 'sem-executivo'
         }] : [])
     ];
 
@@ -102,12 +102,12 @@ export default function ClientsClientNew({ initialRestaurants, availableSellers 
                 (r.address?.neighborhood?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
                 sellerName.toLowerCase().includes(searchTerm.toLowerCase());
             const matchesCity = selectedCity === 'Todos' || (r.address?.city || 'Outros') === selectedCity;
-            const matchesNeighborhood = selectedNeighborhood === 'Todos' || 
+            const matchesNeighborhood = selectedNeighborhood === 'Todos' ||
                 (r.address?.neighborhood || 'Outros') === selectedNeighborhood;
             const matchesStatus = selectedStatus === 'Todos' || (r.status || 'A Analisar') === selectedStatus;
             const matchesPotential = selectedPotential === 'Todos' || r.salesPotential === selectedPotential;
             // Filtro de executivo: comparar o nome do executivo
-            const matchesSeller = selectedSeller === 'Todos' || 
+            const matchesSeller = selectedSeller === 'Todos' ||
                 (sellerName && sellerName === selectedSeller) ||
                 (!sellerName && selectedSeller === 'Sem Executivo');
 
@@ -130,7 +130,7 @@ export default function ClientsClientNew({ initialRestaurants, availableSellers 
             altissimo: active.filter(r => r?.salesPotential === 'ALTÍSSIMO').length,
             alto: active.filter(r => r?.salesPotential === 'ALTO').length,
             medio: active.filter(r => r?.salesPotential === 'MÉDIO').length,
-            avgRating: active.length > 0 
+            avgRating: active.length > 0
                 ? (active.reduce((sum, r) => {
                     const rating = r?.rating != null && !isNaN(Number(r.rating)) ? Number(r.rating) : 0;
                     return sum + rating;
@@ -190,9 +190,9 @@ export default function ClientsClientNew({ initialRestaurants, availableSellers 
             width: '120px',
             render: (value: string) => (
                 <Badge variant={
-                    value === 'ALTÍSSIMO' ? 'danger' : 
-                    value === 'ALTO' ? 'warning' : 
-                    value === 'MÉDIO' ? 'info' : 'default'
+                    value === 'ALTÍSSIMO' ? 'danger' :
+                        value === 'ALTO' ? 'warning' :
+                            value === 'MÉDIO' ? 'info' : 'default'
                 }>
                     {value}
                 </Badge>
@@ -203,10 +203,10 @@ export default function ClientsClientNew({ initialRestaurants, availableSellers 
             label: 'Status',
             width: '120px',
             render: (value: string) => {
-                const variant = 
+                const variant =
                     value === 'Fechado' ? 'success' :
-                    value === 'Negociação' ? 'warning' :
-                    value === 'Contatado' ? 'info' : 'default';
+                        value === 'Negociação' ? 'warning' :
+                            value === 'Contatado' ? 'info' : 'default';
                 return <Badge variant={variant}>{value || 'A Analisar'}</Badge>;
             }
         },
@@ -288,8 +288,8 @@ export default function ClientsClientNew({ initialRestaurants, availableSellers 
     };
 
     const handleExportSelected = async () => {
-        const idsToExport = selectedRestaurants.size > 0 
-            ? Array.from(selectedRestaurants) 
+        const idsToExport = selectedRestaurants.size > 0
+            ? Array.from(selectedRestaurants)
             : filteredRestaurants.map(r => r.id);
 
         if (idsToExport.length === 0) {
@@ -304,7 +304,7 @@ export default function ClientsClientNew({ initialRestaurants, availableSellers 
         setExporting(true);
         try {
             const result = await exportRestaurantsToExcel(idsToExport);
-            
+
             if (result.success && result.data) {
                 // Converter base64 para Blob
                 const byteCharacters = atob(result.data);
@@ -313,8 +313,8 @@ export default function ClientsClientNew({ initialRestaurants, availableSellers 
                     byteNumbers[i] = byteCharacters.charCodeAt(i);
                 }
                 const byteArray = new Uint8Array(byteNumbers);
-                const blob = new Blob([byteArray], { 
-                    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+                const blob = new Blob([byteArray], {
+                    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
                 });
 
                 // Criar link temporário para download
@@ -356,7 +356,7 @@ export default function ClientsClientNew({ initialRestaurants, availableSellers 
 
         try {
             const result = await deleteRestaurants(idsToDelete);
-            
+
             if (result.success) {
                 alert(`✅ ${result.message || `${result.count} cliente(s) deletado(s) com sucesso!`}`);
                 setSelectedRestaurants(new Set());
@@ -389,7 +389,7 @@ export default function ClientsClientNew({ initialRestaurants, availableSellers 
 
         try {
             const result = await discardRestaurants(idsToDiscard);
-            
+
             if (result.success) {
                 alert(`✅ ${result.message || `${result.count} cliente(s) movido(s) para descartados!`}`);
                 setSelectedRestaurants(new Set());
@@ -421,7 +421,7 @@ export default function ClientsClientNew({ initialRestaurants, availableSellers 
 
         try {
             const result = await restoreRestaurants(idsToRestore);
-            
+
             if (result.success) {
                 alert(`✅ ${result.message || `${result.count} cliente(s) restaurado(s) com sucesso!`}`);
                 setSelectedRestaurants(new Set());
@@ -447,16 +447,16 @@ export default function ClientsClientNew({ initialRestaurants, availableSellers 
                 <>
                     {selectedRestaurants.size > 0 && (
                         <>
-                            <Button 
-                                variant="secondary" 
+                            <Button
+                                variant="secondary"
                                 onClick={handleExportSelected}
                                 disabled={exporting}
                             >
                                 {exporting ? '⏳ Exportando...' : `📥 Exportar Selecionados (${selectedRestaurants.size})`}
                             </Button>
                             {activeTab === 'discarded' ? (
-                                <Button 
-                                    variant="secondary" 
+                                <Button
+                                    variant="secondary"
                                     onClick={handleRestoreSelected}
                                     disabled={restoring}
                                     style={{ backgroundColor: '#22c55e', color: 'white' }}
@@ -464,8 +464,8 @@ export default function ClientsClientNew({ initialRestaurants, availableSellers 
                                     {restoring ? '⏳ Restaurando...' : `↩️ Restaurar Selecionados (${selectedRestaurants.size})`}
                                 </Button>
                             ) : (
-                                <Button 
-                                    variant="secondary" 
+                                <Button
+                                    variant="secondary"
                                     onClick={handleDiscardSelected}
                                     disabled={discarding}
                                     style={{ backgroundColor: '#f59e0b', color: 'white' }}
@@ -473,8 +473,8 @@ export default function ClientsClientNew({ initialRestaurants, availableSellers 
                                     {discarding ? '⏳ Descartando...' : `🗑️ Descartar Selecionados (${selectedRestaurants.size})`}
                                 </Button>
                             )}
-                            <Button 
-                                variant="secondary" 
+                            <Button
+                                variant="secondary"
                                 onClick={handleDeleteSelected}
                                 disabled={deleting}
                                 style={{ backgroundColor: '#ef4444', color: 'white' }}
@@ -483,16 +483,16 @@ export default function ClientsClientNew({ initialRestaurants, availableSellers 
                             </Button>
                         </>
                     )}
-                    <Button 
-                        variant="secondary" 
+                    <Button
+                        variant="secondary"
                         onClick={handleExportSelected}
                         disabled={exporting || filteredRestaurants.length === 0}
                         title={filteredRestaurants.length === 0 ? 'Nenhum cliente para exportar' : 'Exportar todos os clientes filtrados'}
                     >
                         {exporting ? '⏳ Exportando...' : `📥 Exportar Todos (${filteredRestaurants.length})`}
                     </Button>
-                    <Button 
-                        variant="secondary" 
+                    <Button
+                        variant="secondary"
                         onClick={handleSyncRestaurants}
                         disabled={allocating}
                     >
@@ -717,9 +717,9 @@ export default function ClientsClientNew({ initialRestaurants, availableSellers 
                 <div className={styles.gridView}>
                     {filteredRestaurants.map(restaurant => (
                         <Card key={restaurant.id} className={styles.restaurantCard}>
-                            <div 
+                            <div
                                 className={styles.cardHeader}
-                                style={{ 
+                                style={{
                                     borderLeft: `4px solid ${getPotentialColor(restaurant.salesPotential)}`,
                                     position: 'relative'
                                 }}
@@ -732,9 +732,9 @@ export default function ClientsClientNew({ initialRestaurants, availableSellers 
                                         handleSelectRestaurant(restaurant.id);
                                     }}
                                     onClick={(e) => e.stopPropagation()}
-                                    style={{ 
-                                        cursor: 'pointer', 
-                                        width: '18px', 
+                                    style={{
+                                        cursor: 'pointer',
+                                        width: '18px',
                                         height: '18px',
                                         position: 'absolute',
                                         top: '0.5rem',
@@ -744,9 +744,9 @@ export default function ClientsClientNew({ initialRestaurants, availableSellers 
                                 />
                                 <h3 className={styles.cardTitle}>{restaurant.name}</h3>
                                 <Badge variant={
-                                    restaurant.salesPotential === 'ALTÍSSIMO' ? 'danger' : 
-                                    restaurant.salesPotential === 'ALTO' ? 'warning' : 
-                                    restaurant.salesPotential === 'MÉDIO' ? 'info' : 'default'
+                                    restaurant.salesPotential === 'ALTÍSSIMO' ? 'danger' :
+                                        restaurant.salesPotential === 'ALTO' ? 'warning' :
+                                            restaurant.salesPotential === 'MÉDIO' ? 'info' : 'default'
                                 }>
                                     {restaurant.salesPotential}
                                 </Badge>
@@ -774,8 +774,8 @@ export default function ClientsClientNew({ initialRestaurants, availableSellers 
                                     <span className={styles.infoLabel}>📊</span>
                                     <Badge variant={
                                         restaurant.status === 'Fechado' ? 'success' :
-                                        restaurant.status === 'Negociação' ? 'warning' :
-                                        restaurant.status === 'Contatado' ? 'info' : 'default'
+                                            restaurant.status === 'Negociação' ? 'warning' :
+                                                restaurant.status === 'Contatado' ? 'info' : 'default'
                                     }>
                                         {restaurant.status || 'A Analisar'}
                                     </Badge>

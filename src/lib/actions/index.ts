@@ -33,5 +33,12 @@ export {
     updateGoal
 } from './metas';
 
+// Actions de Análise de Embalagem
+export {
+    analyzePackagingComments,
+    calculateLeadPriority,
+    reprocessAllRestaurants
+} from './packaging-analysis';
+
 // Actions de importação permanecem em app/actions.ts por enquanto
 // devido ao tamanho e complexidade (será refatorado em etapa futura)

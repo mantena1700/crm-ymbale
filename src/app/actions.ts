@@ -11,7 +11,7 @@ import { analyzeRestaurant } from '@/lib/ai-service';
 // Função para gerar o próximo código de cliente (começando em 10000)
 async function getNextCodigoCliente(): Promise<number> {
     const { prisma } = await import('@/lib/db');
-    
+
     // Buscar o maior código existente
     const maxCodigo = await prisma.restaurant.findFirst({
         where: {
@@ -26,11 +26,11 @@ async function getNextCodigoCliente(): Promise<number> {
             codigoCliente: true
         }
     });
-    
+
     // Se não há códigos, começar em 10000
     const startCode = 10000;
     const nextCode = maxCodigo?.codigoCliente ? maxCodigo.codigoCliente + 1 : startCode;
-    
+
     // Garantir que seja pelo menos 10000
     return Math.max(nextCode, startCode);
 }
@@ -282,41 +282,41 @@ async function parseTextFile(file: File): Promise<any[]> {
     const text = await file.text();
     const lines = text.split(/\r?\n/).filter(line => line.trim());
     const restaurants: any[] = [];
-    
+
     if (lines.length === 0) return restaurants;
-    
+
     // Detectar formato do arquivo
     // Formato 1: Linhas separadas por delimitador (|, ;, tab, etc)
-    const delimiter = text.includes('|') ? '|' : 
-                     text.includes(';') ? ';' : 
-                     text.includes('\t') ? '\t' : ',';
-    
+    const delimiter = text.includes('|') ? '|' :
+        text.includes(';') ? ';' :
+            text.includes('\t') ? '\t' : ',';
+
     // Verificar se tem cabeçalho
     const firstLine = lines[0].toLowerCase();
-    const hasHeader = firstLine.includes('nome') || 
-                     firstLine.includes('restaurante') ||
-                     firstLine.includes('cidade') ||
-                     firstLine.includes('avaliação') ||
-                     firstLine.includes('rating');
-    
+    const hasHeader = firstLine.includes('nome') ||
+        firstLine.includes('restaurante') ||
+        firstLine.includes('cidade') ||
+        firstLine.includes('avaliação') ||
+        firstLine.includes('rating');
+
     const startIndex = hasHeader ? 1 : 0;
-    
+
     // Se tem cabeçalho, processar como delimitado
     if (hasHeader && lines.length > 1) {
         const header = lines[0].split(delimiter).map(h => h.trim().toLowerCase());
-        
+
         for (let i = startIndex; i < lines.length; i++) {
             const line = lines[i].trim();
             if (!line) continue;
-            
+
             const parts = line.split(delimiter).map(p => p.trim());
             const restaurant: any = { comments: [] };
-            
+
             header.forEach((field, index) => {
                 if (parts[index] !== undefined) {
                     const value = parts[index].trim();
                     if (!value) return;
-                    
+
                     // Mapear campos usando os mesmos nomes que o Excel espera
                     if (field.includes('nome') || field.includes('restaurante')) {
                         restaurant['Nome'] = value;
@@ -359,7 +359,7 @@ async function parseTextFile(file: File): Promise<any[]> {
                     }
                 }
             });
-            
+
             if (restaurant.name) {
                 restaurants.push(restaurant);
             }
@@ -367,7 +367,7 @@ async function parseTextFile(file: File): Promise<any[]> {
     } else {
         // Formato sem cabeçalho: tentar detectar campos por padrões
         let currentRestaurant: any = null;
-        
+
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i].trim();
             if (!line) {
@@ -378,7 +378,7 @@ async function parseTextFile(file: File): Promise<any[]> {
                 }
                 continue;
             }
-            
+
             // Detectar início de novo restaurante
             if (!currentRestaurant || line.match(/^(Nome|Restaurante)[:\s]/i)) {
                 if (currentRestaurant && currentRestaurant.name) {
@@ -386,7 +386,7 @@ async function parseTextFile(file: File): Promise<any[]> {
                 }
                 currentRestaurant = { comments: [] };
             }
-            
+
             // Buscar campos por padrões e mapear para formato compatível com Excel
             const nameMatch = line.match(/(?:Nome|Restaurante)[:\s]+(.+)/i);
             if (nameMatch) {
@@ -395,7 +395,7 @@ async function parseTextFile(file: File): Promise<any[]> {
                 currentRestaurant.name = name;
                 continue;
             }
-            
+
             const cityMatch = line.match(/(?:Cidade|City)[:\s]+(.+)/i);
             if (cityMatch) {
                 const city = cityMatch[1].trim();
@@ -403,7 +403,7 @@ async function parseTextFile(file: File): Promise<any[]> {
                 currentRestaurant.city = city;
                 continue;
             }
-            
+
             const ratingMatch = line.match(/(?:Avaliação|Rating|Nota)[:\s]+([\d,\.]+)/i);
             if (ratingMatch) {
                 const rating = parseFloat(ratingMatch[1].replace(',', '.')) || 0;
@@ -411,7 +411,7 @@ async function parseTextFile(file: File): Promise<any[]> {
                 currentRestaurant.rating = rating;
                 continue;
             }
-            
+
             const reviewMatch = line.match(/(?:Nº|Número|Total)\s*(?:Avaliações|Reviews)[:\s]+(\d+)/i);
             if (reviewMatch) {
                 const reviewCount = parseInt(reviewMatch[1]) || 0;
@@ -419,7 +419,7 @@ async function parseTextFile(file: File): Promise<any[]> {
                 currentRestaurant.reviewCount = reviewCount;
                 continue;
             }
-            
+
             const commentMatch = line.match(/(?:Comentário|Comment)[:\s]+(.+)/i);
             if (commentMatch) {
                 const comment = commentMatch[1].trim();
@@ -428,7 +428,7 @@ async function parseTextFile(file: File): Promise<any[]> {
                 currentRestaurant[`Comentário ${commentIndex}`] = comment;
                 continue;
             }
-            
+
             // Buscar outros campos comuns
             const bairroMatch = line.match(/(?:Bairro|Neighborhood)[:\s]+(.+)/i);
             if (bairroMatch) {
@@ -436,28 +436,28 @@ async function parseTextFile(file: File): Promise<any[]> {
                 currentRestaurant.neighborhood = bairroMatch[1].trim();
                 continue;
             }
-            
+
             const estadoMatch = line.match(/(?:Estado|State|UF)[:\s]+(.+)/i);
             if (estadoMatch) {
                 currentRestaurant['Estado'] = estadoMatch[1].trim();
                 currentRestaurant.state = estadoMatch[1].trim();
                 continue;
             }
-            
+
             const cepMatch = line.match(/(?:CEP|Zip)[:\s]+(.+)/i);
             if (cepMatch) {
                 currentRestaurant['CEP'] = cepMatch[1].trim();
                 currentRestaurant.zip = cepMatch[1].trim();
                 continue;
             }
-            
+
             const potencialMatch = line.match(/(?:Potencial|Potential)[:\s]+(.+)/i);
             if (potencialMatch) {
                 currentRestaurant['Potencial Vendas'] = potencialMatch[1].trim();
                 currentRestaurant.salesPotential = potencialMatch[1].trim();
                 continue;
             }
-            
+
             // Se não parece ser um campo estruturado, pode ser comentário ou parte do nome
             if (line.length > 10 && !line.match(/^[A-Z][^:]+:\s*[A-Z]/)) {
                 if (!currentRestaurant.name && line.length < 100) {
@@ -472,13 +472,13 @@ async function parseTextFile(file: File): Promise<any[]> {
                 }
             }
         }
-        
+
         // Adicionar último restaurante
         if (currentRestaurant && currentRestaurant.name) {
             restaurants.push(currentRestaurant);
         }
     }
-    
+
     return restaurants;
 }
 
@@ -536,9 +536,9 @@ export async function importExcelFile(formData: FormData) {
                 const fileName = file.name.toLowerCase();
                 const isExcel = fileName.endsWith('.xlsx') || fileName.endsWith('.xls');
                 const isText = fileName.endsWith('.txt') || fileName.endsWith('.csv');
-                
+
                 let rows: any[] = [];
-                
+
                 if (isExcel) {
                     // Processar arquivo Excel
                     const bytes = await file.arrayBuffer();
@@ -565,7 +565,7 @@ export async function importExcelFile(formData: FormData) {
                     try {
                         // Extrair TODOS os comentários (busca dinâmica em todas as colunas)
                         const comments: string[] = [];
-                        
+
                         // Se o arquivo de texto já trouxe comentários no formato array
                         if (Array.isArray(row.comments)) {
                             comments.push(...row.comments.filter((c: any) => c && c.toString().trim()));
@@ -679,8 +679,13 @@ export async function importExcelFile(formData: FormData) {
 
                         // Gerar código de cliente único
                         const codigoCliente = await getNextCodigoCliente();
-                        
-                        // Criar restaurante com zona e executivo já atribuídos
+
+                        // Extrair potencial de vendas para análise
+                        const salesPotential = getColumnValue(row, ['Potencial Vendas', 'Potencial', 'potencial', 'Sales Potential']) || 'N/A';
+
+
+
+                        // Criar restaurante com zona, executivo e análise já atribuídos
                         await prisma.restaurant.create({
                             data: {
                                 name: name,
@@ -701,7 +706,7 @@ export async function importExcelFile(formData: FormData) {
                                     const val = getColumnValue(row, ['Projeção Entregas/Mês', 'ProjeÃ§Ã£o Entregas/MÃªs', 'Entregas/Mês', 'Entregas por Mês', 'Projected Deliveries']);
                                     return val ? parseInt(String(val).replace(/[^\d]/g, '')) : 0;
                                 })(),
-                                salesPotential: getColumnValue(row, ['Potencial Vendas', 'Potencial', 'potencial', 'Sales Potential']) || 'N/A',
+                                salesPotential: salesPotential,
                                 address: {
                                     street: getColumnValue(row, ['Endereço (Rua)', 'EndereÃ§o (Rua)', 'Rua', 'Endereço', 'Street']) || '',
                                     neighborhood: neighborhood,
@@ -716,8 +721,7 @@ export async function importExcelFile(formData: FormData) {
                                     return val ? (val instanceof Date ? val : new Date(String(val))) : null;
                                 })(),
                                 status: (() => {
-                                    const potencial = getColumnValue(row, ['Potencial Vendas', 'Potencial']) || '';
-                                    return String(potencial).toUpperCase().includes('ALTISSIMO') || String(potencial).toUpperCase().includes('ALTÍSSIMO') ? 'Qualificado' : 'A Analisar';
+                                    return String(salesPotential).toUpperCase().includes('ALTISSIMO') || String(salesPotential).toUpperCase().includes('ALTÍSSIMO') ? 'Qualificado' : 'A Analisar';
                                 })(),
                                 sourceFile: file.name,
                                 comments: {
@@ -810,9 +814,9 @@ export async function clearMockData() {
             removed = mockRestaurants.length;
         }
 
-    revalidatePath('/');
-    revalidatePath('/clients');
-    revalidatePath('/pipeline');
+        revalidatePath('/');
+        revalidatePath('/clients');
+        revalidatePath('/pipeline');
 
         return `✅ Limpeza concluída! ${removed} restaurantes mockados removidos.`;
 
@@ -856,26 +860,26 @@ export async function clearLastImport(hours: number = 24) {
         const restaurantIds = recentRestaurants.map(r => r.id);
 
         // Deletar dados relacionados
-        await prisma.comment.deleteMany({ 
-            where: { restaurantId: { in: restaurantIds } } 
+        await prisma.comment.deleteMany({
+            where: { restaurantId: { in: restaurantIds } }
         });
-        await prisma.analysis.deleteMany({ 
-            where: { restaurantId: { in: restaurantIds } } 
+        await prisma.analysis.deleteMany({
+            where: { restaurantId: { in: restaurantIds } }
         });
-        await prisma.note.deleteMany({ 
-            where: { restaurantId: { in: restaurantIds } } 
+        await prisma.note.deleteMany({
+            where: { restaurantId: { in: restaurantIds } }
         });
-        await prisma.followUp.deleteMany({ 
-            where: { restaurantId: { in: restaurantIds } } 
+        await prisma.followUp.deleteMany({
+            where: { restaurantId: { in: restaurantIds } }
         });
-        await prisma.activityLog.deleteMany({ 
-            where: { restaurantId: { in: restaurantIds } } 
+        await prisma.activityLog.deleteMany({
+            where: { restaurantId: { in: restaurantIds } }
         });
-        
+
         // Deletar visitas relacionadas
         try {
-            await prisma.visit.deleteMany({ 
-                where: { restaurantId: { in: restaurantIds } } 
+            await prisma.visit.deleteMany({
+                where: { restaurantId: { in: restaurantIds } }
             });
         } catch (e) {
             // Tabela visits pode não existir
@@ -898,7 +902,7 @@ export async function clearLastImport(hours: number = 24) {
 
         revalidatePath('/');
         revalidatePath('/clients');
-    revalidatePath('/pipeline');
+        revalidatePath('/pipeline');
 
         return {
             success: true,
@@ -1060,11 +1064,11 @@ export async function getVisits(restaurantId?: string, sellerId?: string) {
 // Função para sincronizar todos os restaurantes com executivos baseado nas áreas geográficas
 export async function syncRestaurantsWithSellers() {
     'use server';
-    
+
     try {
         const { prisma } = await import('@/lib/db');
         const { atribuirExecutivoAutomatico } = await import('@/lib/geographic-attribution');
-        
+
         // Buscar todos os executivos ativos com áreas de cobertura configuradas
         const sellers = await prisma.seller.findMany({
             where: {
@@ -1072,11 +1076,13 @@ export async function syncRestaurantsWithSellers() {
                 territorioAtivo: true,
                 OR: [
                     { areasCobertura: { not: null } },
-                    { AND: [
-                        { baseLatitude: { not: null } },
-                        { baseLongitude: { not: null } },
-                        { raioKm: { not: null } }
-                    ]}
+                    {
+                        AND: [
+                            { baseLatitude: { not: null } },
+                            { baseLongitude: { not: null } },
+                            { raioKm: { not: null } }
+                        ]
+                    }
                 ]
             },
             select: {
@@ -1111,7 +1117,7 @@ export async function syncRestaurantsWithSellers() {
         });
 
         console.log(`📊 Total de restaurantes a verificar: ${restaurants.length}`);
-        
+
         let updated = 0;
         let skipped = 0;
         let noCoordinates = 0;
@@ -1182,7 +1188,7 @@ export async function syncRestaurantsWithSellers() {
                 console.error(`   ❌ Erro ao processar restaurante ${restaurant.id}:`, e.message);
             }
         }
-        
+
         console.log(`\n📊 Resumo:`);
         console.log(`   ✅ Atualizados: ${updated}`);
         console.log(`   ⏭️ Já corretos: ${skipped}`);
@@ -1210,10 +1216,10 @@ export async function syncRestaurantsWithSellers() {
 // Deletar múltiplos restaurantes permanentemente
 export async function deleteRestaurants(restaurantIds: string[]) {
     'use server';
-    
+
     try {
         const { prisma } = await import('@/lib/db');
-        
+
         if (!restaurantIds || restaurantIds.length === 0) {
             return {
                 success: false,
@@ -1222,26 +1228,26 @@ export async function deleteRestaurants(restaurantIds: string[]) {
         }
 
         // Deletar dados relacionados primeiro
-        await prisma.comment.deleteMany({ 
-            where: { restaurantId: { in: restaurantIds } } 
+        await prisma.comment.deleteMany({
+            where: { restaurantId: { in: restaurantIds } }
         });
-        await prisma.analysis.deleteMany({ 
-            where: { restaurantId: { in: restaurantIds } } 
+        await prisma.analysis.deleteMany({
+            where: { restaurantId: { in: restaurantIds } }
         });
-        await prisma.note.deleteMany({ 
-            where: { restaurantId: { in: restaurantIds } } 
+        await prisma.note.deleteMany({
+            where: { restaurantId: { in: restaurantIds } }
         });
-        await prisma.followUp.deleteMany({ 
-            where: { restaurantId: { in: restaurantIds } } 
+        await prisma.followUp.deleteMany({
+            where: { restaurantId: { in: restaurantIds } }
         });
-        await prisma.activityLog.deleteMany({ 
-            where: { restaurantId: { in: restaurantIds } } 
+        await prisma.activityLog.deleteMany({
+            where: { restaurantId: { in: restaurantIds } }
         });
-        
+
         // Deletar visitas relacionadas
         try {
-            await prisma.visit.deleteMany({ 
-                where: { restaurantId: { in: restaurantIds } } 
+            await prisma.visit.deleteMany({
+                where: { restaurantId: { in: restaurantIds } }
             });
         } catch (e) {
             // Tabela visits pode não existir
@@ -1249,8 +1255,8 @@ export async function deleteRestaurants(restaurantIds: string[]) {
 
         // Deletar relacionamentos de campanhas
         try {
-            await prisma.campaignRecipient.deleteMany({ 
-                where: { restaurantId: { in: restaurantIds } } 
+            await prisma.campaignRecipient.deleteMany({
+                where: { restaurantId: { in: restaurantIds } }
             });
         } catch (e) {
             // Tabela pode não existir
@@ -1258,8 +1264,8 @@ export async function deleteRestaurants(restaurantIds: string[]) {
 
         // Deletar relacionamentos de workflows
         try {
-            await prisma.workflowExecution.deleteMany({ 
-                where: { restaurantId: { in: restaurantIds } } 
+            await prisma.workflowExecution.deleteMany({
+                where: { restaurantId: { in: restaurantIds } }
             });
         } catch (e) {
             // Tabela pode não existir
@@ -1267,8 +1273,8 @@ export async function deleteRestaurants(restaurantIds: string[]) {
 
         // Deletar clientes fixos relacionados
         try {
-            await prisma.fixedClient.deleteMany({ 
-                where: { restaurantId: { in: restaurantIds } } 
+            await prisma.fixedClient.deleteMany({
+                where: { restaurantId: { in: restaurantIds } }
             });
         } catch (e) {
             // Tabela pode não existir
@@ -1300,10 +1306,10 @@ export async function deleteRestaurants(restaurantIds: string[]) {
 // Mover múltiplos restaurantes para "Descartado"
 export async function discardRestaurants(restaurantIds: string[]) {
     'use server';
-    
+
     try {
         const { prisma } = await import('@/lib/db');
-        
+
         if (!restaurantIds || restaurantIds.length === 0) {
             return {
                 success: false,
@@ -1314,7 +1320,7 @@ export async function discardRestaurants(restaurantIds: string[]) {
         // Atualizar status para "Descartado"
         const result = await prisma.restaurant.updateMany({
             where: { id: { in: restaurantIds } },
-            data: { 
+            data: {
                 status: 'Descartado',
                 updatedAt: new Date()
             }
@@ -1356,10 +1362,10 @@ export async function discardRestaurants(restaurantIds: string[]) {
 // Restaurar múltiplos restaurantes descartados (voltar para "A Analisar")
 export async function restoreRestaurants(restaurantIds: string[]) {
     'use server';
-    
+
     try {
         const { prisma } = await import('@/lib/db');
-        
+
         if (!restaurantIds || restaurantIds.length === 0) {
             return {
                 success: false,
@@ -1370,7 +1376,7 @@ export async function restoreRestaurants(restaurantIds: string[]) {
         // Atualizar status para "A Analisar"
         const result = await prisma.restaurant.updateMany({
             where: { id: { in: restaurantIds } },
-            data: { 
+            data: {
                 status: 'A Analisar',
                 updatedAt: new Date()
             }
@@ -1411,11 +1417,11 @@ export async function restoreRestaurants(restaurantIds: string[]) {
 
 export async function exportRestaurantsToExcel(restaurantIds: string[]) {
     'use server';
-    
+
     try {
         const xlsx = await import('xlsx');
         const { prisma } = await import('@/lib/db');
-        
+
         // Buscar restaurantes selecionados
         const restaurants = await prisma.restaurant.findMany({
             where: {
@@ -1444,13 +1450,13 @@ export async function exportRestaurantsToExcel(restaurantIds: string[]) {
         // Preparar dados para Excel (mesmo formato da importação)
         const excelData = restaurants.map((r: any) => {
             const address = typeof r.address === 'string' ? JSON.parse(r.address) : r.address;
-            
+
             // Preparar comentários (Comentário 1, Comentário 2, etc.)
             const commentObj: any = {};
             r.comments.forEach((comment: any, index: number) => {
                 commentObj[`Comentário ${index + 1}`] = comment.content || '';
             });
-            
+
             return {
                 'Nome': r.name || '',
                 'Endereço (Rua)': address?.street || address?.address || '',
@@ -1474,7 +1480,7 @@ export async function exportRestaurantsToExcel(restaurantIds: string[]) {
         // Criar workbook
         const wb = xlsx.utils.book_new();
         const ws = xlsx.utils.json_to_sheet(excelData);
-        
+
         // Ajustar largura das colunas
         const colWidths = [
             { wch: 30 }, // Nome
@@ -1498,15 +1504,15 @@ export async function exportRestaurantsToExcel(restaurantIds: string[]) {
             colWidths.push({ wch: 30 });
         }
         ws['!cols'] = colWidths;
-        
+
         xlsx.utils.book_append_sheet(wb, ws, 'Clientes');
-        
+
         // Converter para buffer
         const buffer = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
-        
+
         // Converter para base64
         const base64 = Buffer.from(buffer).toString('base64');
-        
+
         return {
             success: true,
             data: base64,
@@ -1525,13 +1531,13 @@ export async function exportRestaurantsToExcel(restaurantIds: string[]) {
 // Exportar restaurantes para formato Checkmob (template de cadastro)
 export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
     'use server';
-    
+
     try {
         const ExcelJS = await import('exceljs');
         const fs = await import('fs');
         const path = await import('path');
         const { prisma } = await import('@/lib/db');
-        
+
         // Caminho do template original
         // Tentar múltiplos caminhos possíveis
         const possiblePaths = [
@@ -1544,10 +1550,10 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
             // Caminho usando path.join
             path.join('C:', 'Users', 'Bel', 'Documents', 'CRM_Ymbale', 'Copy of Template - Cadastro Cliente(1).xlsx'),
         ];
-        
+
         let finalTemplatePath = '';
         let triedPaths: string[] = [];
-        
+
         for (const templatePath of possiblePaths) {
             triedPaths.push(templatePath);
             try {
@@ -1563,14 +1569,14 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
                 continue;
             }
         }
-        
+
         // Verificar se o template existe
         if (!finalTemplatePath || !fs.existsSync(finalTemplatePath)) {
             const errorMsg = `Template não encontrado.\n\nCaminhos tentados:\n${triedPaths.map((p, i) => `${i + 1}. ${p}`).join('\n')}\n\nVerifique se o arquivo "Copy of Template - Cadastro Cliente(1).xlsx" está em:\nC:\\Users\\Bel\\Documents\\CRM_Ymbale\\`;
             console.error('❌ Erro:', errorMsg);
             throw new Error(errorMsg);
         }
-        
+
         // Verificar se o campo codigo_cliente existe no banco
         let codigoClienteFieldExists = false;
         try {
@@ -1579,8 +1585,8 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
             codigoClienteFieldExists = true;
             console.log('✅ Campo codigo_cliente existe no banco');
         } catch (error: any) {
-            if (error.message?.includes('codigo_cliente') || 
-                error.message?.includes('does not exist') || 
+            if (error.message?.includes('codigo_cliente') ||
+                error.message?.includes('does not exist') ||
                 error.message?.includes('Unknown column') ||
                 error.message?.includes('column "codigo_cliente" does not exist')) {
                 console.warn('⚠️ Campo codigo_cliente não existe no banco ainda. Pulando geração de códigos.');
@@ -1591,7 +1597,7 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
                 codigoClienteFieldExists = false;
             }
         }
-        
+
         // Verificar e gerar códigos de cliente se necessário (apenas se o campo existir)
         if (codigoClienteFieldExists) {
             try {
@@ -1602,12 +1608,12 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
                     WHERE id = ANY(${restaurantIds}::uuid[])
                     AND codigo_cliente IS NULL
                 `;
-                
+
                 const restaurantsWithoutCode = Number(restaurantsWithoutCodeResult[0]?.count || 0);
-                
+
                 if (restaurantsWithoutCode > 0) {
                     console.log(`📝 Encontrados ${restaurantsWithoutCode} restaurantes sem código. Gerando códigos...`);
-                    
+
                     // Buscar o maior código existente usando SQL
                     const maxCodigoResult = await prisma.$queryRaw<Array<{ codigo_cliente: number | null }>>`
                         SELECT codigo_cliente
@@ -1616,9 +1622,9 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
                         ORDER BY codigo_cliente DESC
                         LIMIT 1
                     `;
-                    
+
                     let currentCode = maxCodigoResult[0]?.codigo_cliente ? maxCodigoResult[0].codigo_cliente + 1 : 10000;
-                    
+
                     // Buscar restaurantes sem código usando SQL
                     const restaurantsToUpdate = await prisma.$queryRaw<Array<{ id: string; name: string }>>`
                         SELECT id, name
@@ -1627,14 +1633,14 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
                         AND codigo_cliente IS NULL
                         ORDER BY created_at ASC
                     `;
-                    
+
                     // Atribuir códigos usando SQL
                     for (const restaurant of restaurantsToUpdate) {
                         // Verificar se o código já existe
                         const existingCode = await prisma.$queryRaw<Array<{ id: string }>>`
                             SELECT id FROM restaurants WHERE codigo_cliente = ${currentCode} LIMIT 1
                         `;
-                        
+
                         while (existingCode.length > 0) {
                             currentCode++;
                             const checkAgain = await prisma.$queryRaw<Array<{ id: string }>>`
@@ -1642,28 +1648,28 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
                             `;
                             if (checkAgain.length === 0) break;
                         }
-                        
+
                         await prisma.$executeRaw`
                             UPDATE restaurants
                             SET codigo_cliente = ${currentCode}
                             WHERE id = ${restaurant.id}::uuid
                         `;
-                        
+
                         console.log(`   ✅ Código ${currentCode} atribuído a ${restaurant.name}`);
                         currentCode++;
                     }
-                    
+
                     console.log(`✅ ${restaurantsToUpdate.length} códigos gerados!`);
                 }
             } catch (error: any) {
                 console.warn('⚠️ Erro ao gerar códigos:', error.message);
             }
         }
-        
+
         // Buscar restaurantes selecionados - usar SQL direto se o campo existir, senão usar include
         // IMPORTANTE: Buscar DEPOIS de gerar os códigos para garantir que os códigos estejam disponíveis
         let restaurants: any[];
-        
+
         if (codigoClienteFieldExists) {
             // Usar SQL direto para garantir que codigoCliente seja retornado
             // Buscar novamente para pegar os códigos recém-gerados
@@ -1687,7 +1693,7 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
                 WHERE r.id = ANY(${restaurantIds}::uuid[])
                 ORDER BY r.name ASC
             `;
-            
+
             restaurants = restaurantsResult.map(r => ({
                 id: r.id,
                 name: r.name,
@@ -1695,18 +1701,18 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
                 address: typeof r.address === 'string' ? JSON.parse(r.address) : r.address,
                 seller: r.seller_name ? { name: r.seller_name } : null
             }));
-            
+
             console.log(`\n📊 Total de restaurantes encontrados: ${restaurants.length}`);
             const withCode = restaurants.filter((r: any) => r.codigoCliente !== null && r.codigoCliente !== undefined);
             const withoutCode = restaurants.filter((r: any) => !r.codigoCliente);
             console.log(`📊 Restaurantes COM código: ${withCode.length}`);
             console.log(`📊 Restaurantes SEM código: ${withoutCode.length}`);
-            
+
             if (withoutCode.length > 0) {
                 console.warn(`\n⚠️ ATENÇÃO: ${withoutCode.length} restaurantes ainda não têm código!`);
                 console.warn(`   IDs sem código:`, withoutCode.map((r: any) => r.id).slice(0, 5).join(', '));
             }
-            
+
             if (withCode.length > 0) {
                 console.log(`\n✅ Exemplos de códigos gerados:`);
                 withCode.slice(0, 5).forEach((r: any) => {
@@ -1730,13 +1736,13 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
                     name: 'asc'
                 }
             });
-            
+
             // Adicionar codigoCliente como null para todos
             restaurants = restaurants.map((r: any) => ({
                 ...r,
                 codigoCliente: null
             }));
-            
+
             console.log(`\n⚠️ Campo codigo_cliente não existe no banco. Todos os códigos serão vazios.`);
             console.log(`📊 Total de restaurantes encontrados: ${restaurants.length}`);
         }
@@ -1744,19 +1750,19 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
         // Carregar o template original
         const workbook = new ExcelJS.Workbook();
         await workbook.xlsx.readFile(finalTemplatePath);
-        
+
         // Obter a primeira planilha (que contém o template)
         const worksheet = workbook.getWorksheet(1);
-        
+
         if (!worksheet) {
             throw new Error('Planilha não encontrada no template');
         }
-        
+
         // Encontrar a linha de cabeçalho (geralmente linha 1)
         // Procurar pela linha que contém "Nome", "E-mail", etc.
         let headerRow = 1;
         let foundHeader = false;
-        
+
         // Verificar se a linha 1 tem os cabeçalhos esperados
         const firstRow = worksheet.getRow(1);
         const firstRowValues = firstRow.values as any[];
@@ -1767,7 +1773,7 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
                 headerRow = 1;
             }
         }
-        
+
         // Se não encontrou na linha 1, procurar nas próximas linhas
         if (!foundHeader) {
             for (let row = 1; row <= 10; row++) {
@@ -1783,12 +1789,12 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
                 }
             }
         }
-        
+
         // Se não encontrou o cabeçalho, usar linha 1 como padrão
         if (!foundHeader) {
             headerRow = 1;
         }
-        
+
         // Limpar dados de exemplo (manter apenas o cabeçalho na linha 1)
         // Deletar todas as linhas após o cabeçalho até o final
         // Os dados começarão na linha 2 (A2)
@@ -1801,7 +1807,7 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
                 worksheet.spliceRows(headerRow + 1, rowsToDelete);
             }
         }
-        
+
         // Garantir que não há linhas vazias entre o cabeçalho e onde vamos adicionar os dados
         // Verificar se há linhas vazias após o cabeçalho e removê-las
         let nextRowToCheck = headerRow + 1;
@@ -1817,17 +1823,17 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
                 break;
             }
         }
-        
+
         // Mapear colunas do template
         const headerRowData = worksheet.getRow(headerRow);
         const headerValues = headerRowData.values as any[];
-        
+
         console.log(`\n📋 Mapeando colunas do template (linha ${headerRow})...`);
         console.log(`   Valores do cabeçalho:`, headerValues.map((v, i) => `[${i}]: "${v}"`).join(', '));
-        
+
         // Criar mapa de colunas (índice da coluna -> nome do campo)
         const columnMap: { [key: string]: number } = {};
-        
+
         // PRIMEIRO: Mapear especificamente a coluna B (índice 2 no ExcelJS) como "Nome"
         // No ExcelJS, as colunas começam em 1: A=1, B=2, C=3, etc.
         // Mas no array headerValues, o índice 0 = A, índice 1 = B, índice 2 = C
@@ -1844,12 +1850,12 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
                 }
             }
         }
-        
+
         // Depois mapear outras colunas
         headerValues.forEach((value, index) => {
             if (value && typeof value === 'string') {
                 const normalizedValue = value.trim().toLowerCase();
-                
+
                 // Se já mapeamos a coluna B como "Nome", não mapear outras colunas com "nome"
                 if (columnMap['Nome'] !== undefined && index === columnMap['Nome']) {
                     // Já mapeado, pular
@@ -1896,9 +1902,9 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
                 // NÃO mapear outras colunas com "nome" - apenas a coluna B
             }
         });
-        
+
         console.log(`\n📊 Colunas mapeadas:`, Object.keys(columnMap).map(k => `${k}: coluna ${columnMap[k]}`).join(', '));
-        
+
         if (!columnMap['Código Cliente']) {
             console.warn(`\n⚠️ ATENÇÃO: Coluna "Código Cliente" NÃO foi encontrada no template!`);
             console.warn(`   Procurando por variações...`);
@@ -1912,33 +1918,33 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
                 }
             });
         }
-        
+
         // Adicionar dados dos restaurantes começando na linha 2 (A2)
         console.log(`\n📝 Preenchendo dados de ${restaurants.length} restaurantes...`);
         restaurants.forEach((r: any, index: number) => {
             // Acessar codigoCliente - agora garantido que está no select
             const codigoCliente = r.codigoCliente;
             const address = typeof r.address === 'string' ? JSON.parse(r.address) : r.address;
-            
+
             // Log detalhado para debug
             console.log(`\n   [${index + 1}/${restaurants.length}] Restaurante: ${r.name}`);
             console.log(`      Código Cliente (raw): ${codigoCliente} (tipo: ${typeof codigoCliente})`);
             console.log(`      Código Cliente (string): ${codigoCliente !== null && codigoCliente !== undefined ? String(codigoCliente) : 'VAZIO'}`);
-            
+
             // Extrair CEP (tentar várias variações)
-            const cep = address?.zip || 
-                       address?.cep || 
-                       address?.postal_code || 
-                       address?.postalCode ||
-                       address?.CEP ||
-                       '';
-            
+            const cep = address?.zip ||
+                address?.cep ||
+                address?.postal_code ||
+                address?.postalCode ||
+                address?.CEP ||
+                '';
+
             // Extrair endereço, número e bairro separadamente
             const enderecoCompleto = address?.street || address?.address || '';
             // Tentar separar número do endereço (formato comum: "Rua Exemplo, 123")
             let endereco = enderecoCompleto;
             let numero = '';
-            
+
             if (enderecoCompleto) {
                 const numeroMatch = enderecoCompleto.match(/,\s*(\d+)/);
                 if (numeroMatch) {
@@ -1953,17 +1959,17 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
                     }
                 }
             }
-            
+
             const bairro = address?.neighborhood || address?.bairro || '';
-            
+
             // Criar nova linha diretamente na posição correta (linha 2, 3, 4, etc.)
             // A primeira linha de dados será na linha 2 (A2)
             // Calcular o número da linha: headerRow (1) + 1 + index (0, 1, 2, ...)
             const targetRowNumber = headerRow + 1 + index;
-            
+
             // Obter a linha na posição correta (criará se não existir)
             const newRow = worksheet.getRow(targetRowNumber);
-            
+
             // IMPORTANTE: Nome do restaurante (nome do cliente) vai APENAS na coluna B
             // No ExcelJS, as colunas começam em 1: A=1, B=2, C=3, etc.
             // Coluna B = índice 2 (não 1!)
@@ -1971,7 +1977,7 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
             const nomeCell = newRow.getCell(colunaBIndex);
             nomeCell.value = r.name || '';
             console.log(`      ✅ Nome do restaurante preenchido na COLUNA B (índice ${colunaBIndex}, célula ${nomeCell.address}): "${r.name}"`);
-            
+
             // Verificar se a coluna B realmente tem "Nome" no cabeçalho
             const headerCellB = worksheet.getCell(headerRow, colunaBIndex);
             if (headerCellB && headerCellB.value) {
@@ -2062,7 +2068,7 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
                     }
                 }
             }
-            
+
             // Preencher Clientes (template antigo) - apenas se existir e NÃO for o novo template
             // No novo template, o nome já foi preenchido na coluna "Nome" acima
             if (columnMap['Clientes'] !== undefined && columnMap['Nome'] === undefined) {
@@ -2071,13 +2077,13 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
                 console.log(`      Preenchendo coluna "Clientes" (template antigo) com: "${r.name}"`);
             }
         });
-        
+
         // Converter para buffer
         const buffer = await workbook.xlsx.writeBuffer();
-        
+
         // Converter para base64
         const base64 = Buffer.from(buffer).toString('base64');
-        
+
         return {
             success: true,
             data: base64,
@@ -2096,10 +2102,10 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
 // Função para gerar códigos de cliente para todos os restaurantes que não têm código
 export async function generateMissingCodigoCliente(): Promise<{ success: boolean; generated: number; error?: string }> {
     'use server';
-    
+
     try {
         const { prisma } = await import('@/lib/db');
-        
+
         // Verificar se há restaurantes sem código
         const restaurantsWithoutCode = await prisma.restaurant.findMany({
             where: {
@@ -2113,11 +2119,11 @@ export async function generateMissingCodigoCliente(): Promise<{ success: boolean
                 name: true
             }
         });
-        
+
         if (restaurantsWithoutCode.length === 0) {
             return { success: true, generated: 0 };
         }
-        
+
         // Buscar o maior código existente
         const maxCodigo = await prisma.restaurant.findFirst({
             where: {
@@ -2132,12 +2138,12 @@ export async function generateMissingCodigoCliente(): Promise<{ success: boolean
                 codigoCliente: true
             }
         });
-        
+
         let currentCode = maxCodigo?.codigoCliente ? maxCodigo.codigoCliente + 1 : 10000;
         let generated = 0;
-        
+
         console.log(`📝 Gerando códigos para ${restaurantsWithoutCode.length} restaurantes, começando em ${currentCode}...`);
-        
+
         // Atribuir códigos sequencialmente
         for (const restaurant of restaurantsWithoutCode) {
             // Verificar se o código já existe
@@ -2146,24 +2152,24 @@ export async function generateMissingCodigoCliente(): Promise<{ success: boolean
             })) {
                 currentCode++;
             }
-            
+
             await prisma.restaurant.update({
                 where: { id: restaurant.id },
                 data: { codigoCliente: currentCode }
             });
-            
+
             generated++;
             if (generated % 100 === 0) {
                 console.log(`   ✅ ${generated} códigos gerados...`);
             }
-            
+
             currentCode++;
         }
-        
+
         console.log(`✅ Total de ${generated} códigos gerados!`);
-        
+
         return { success: true, generated };
-        
+
     } catch (error: any) {
         console.error('Erro ao gerar códigos:', error);
         return {
@@ -2177,10 +2183,10 @@ export async function generateMissingCodigoCliente(): Promise<{ success: boolean
 // Função para verificar status dos códigos de cliente
 export async function checkCodigoClienteStatus(): Promise<{ total: number; withCode: number; withoutCode: number; nextCode: number }> {
     'use server';
-    
+
     try {
         const { prisma } = await import('@/lib/db');
-        
+
         const total = await prisma.restaurant.count();
         const withCode = await prisma.restaurant.count({
             where: {
@@ -2190,7 +2196,7 @@ export async function checkCodigoClienteStatus(): Promise<{ total: number; withC
             }
         });
         const withoutCode = total - withCode;
-        
+
         const maxCodigo = await prisma.restaurant.findFirst({
             where: {
                 codigoCliente: {
@@ -2204,16 +2210,16 @@ export async function checkCodigoClienteStatus(): Promise<{ total: number; withC
                 codigoCliente: true
             }
         });
-        
+
         const nextCode = maxCodigo?.codigoCliente ? maxCodigo.codigoCliente + 1 : 10000;
-        
+
         return {
             total,
             withCode,
             withoutCode,
             nextCode
         };
-        
+
     } catch (error: any) {
         console.error('Erro ao verificar status:', error);
         return {

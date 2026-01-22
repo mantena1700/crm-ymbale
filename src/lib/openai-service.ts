@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
 import { Restaurant, AnalysisResult } from './types';
-import 'server-only';
+
 
 /**
  * Analyze restaurant using OpenAI GPT - REAL analysis based on actual comments
@@ -10,17 +10,17 @@ export async function analyzeRestaurantWithOpenAI(restaurant: Restaurant, apiKey
     console.log('🔍 STARTING REAL AI ANALYSIS');
     console.log('Restaurant:', restaurant.name);
     console.log('Total comments available:', restaurant.comments.length);
-    
+
     if (!apiKey || apiKey.length < 50) {
         console.error('❌ API Key invalid or missing');
         throw new Error('OPENAI_API_KEY não configurada');
     }
 
     const openai = new OpenAI({ apiKey });
-    
+
     // Get ALL comments (up to 25 for better analysis)
     const allComments = restaurant.comments.slice(0, 25);
-    
+
     if (allComments.length === 0) {
         console.log('⚠️ No comments found for analysis');
         return {
@@ -35,7 +35,7 @@ export async function analyzeRestaurantWithOpenAI(restaurant: Restaurant, apiKey
 
     // Format comments with numbers for reference
     const formattedComments = allComments.map((c, i) => `[${i + 1}] "${c}"`).join('\n\n');
-    
+
     console.log('📝 Comments being analyzed:');
     console.log('---');
     allComments.slice(0, 5).forEach((c, i) => console.log(`[${i + 1}] ${c.substring(0, 80)}...`));
@@ -99,9 +99,9 @@ Baseado EXCLUSIVAMENTE nos comentários acima, retorne JSON:
         const responseText = completion.choices[0]?.message?.content || '{}';
         console.log('✅ OpenAI Response:');
         console.log(responseText);
-        
+
         const data = JSON.parse(responseText);
-        
+
         console.log('🎯 Analysis Results:');
         console.log('- Score:', data.score);
         console.log('- Pain Points:', data.painPoints);
@@ -122,7 +122,7 @@ Baseado EXCLUSIVAMENTE nos comentários acima, retorne JSON:
         console.error('❌ OpenAI Error:', error?.message || error);
         console.error('Error details:', error?.status, error?.code);
         console.log('========================================');
-        
+
         return {
             restaurantId: restaurant.id,
             score: 0,
@@ -148,7 +148,7 @@ export async function generateEmailWithAI(
         const { getOpenAiApiKey } = await import('@/app/settings/api-keys-actions');
         apiKey = await getOpenAiApiKey() || undefined;
     }
-    
+
     if (!apiKey || apiKey.length < 50) {
         return {
             subject: `Proposta de Embalagens - ${restaurant.name}`,
@@ -161,7 +161,7 @@ export async function generateEmailWithAI(
 
     try {
         const openai = new OpenAI({ apiKey });
-        
+
         const completion = await openai.chat.completions.create({
             model: 'gpt-4o-mini',
             messages: [
@@ -226,7 +226,7 @@ export async function generateStrategyWithAI(
         const { getOpenAiApiKey } = await import('@/app/settings/api-keys-actions');
         apiKey = await getOpenAiApiKey() || undefined;
     }
-    
+
     if (!apiKey || apiKey.length < 50) {
         return 'Estratégia padrão: Contato inicial por email, seguido de ligação.';
     }
@@ -235,7 +235,7 @@ export async function generateStrategyWithAI(
 
     try {
         const openai = new OpenAI({ apiKey });
-        
+
         const completion = await openai.chat.completions.create({
             model: 'gpt-4o-mini',
             messages: [
@@ -286,14 +286,14 @@ export async function generateFollowUpMessageWithAI(
         const { getOpenAiApiKey } = await import('@/app/settings/api-keys-actions');
         apiKey = await getOpenAiApiKey() || undefined;
     }
-    
+
     if (!apiKey || apiKey.length < 50) {
         return `Olá, gostaria de dar seguimento à nossa conversa sobre embalagens para ${restaurant.name}.`;
     }
 
     try {
         const openai = new OpenAI({ apiKey });
-        
+
         const completion = await openai.chat.completions.create({
             model: 'gpt-4o-mini',
             messages: [
@@ -324,12 +324,12 @@ Crie uma mensagem curta (máximo 80 palavras) e personalizada.`
  * Segment client with AI
  */
 export async function segmentClientWithAI(
-    restaurant: Restaurant, 
+    restaurant: Restaurant,
     analysis: AnalysisResult | null
 ): Promise<{ segment: 'high' | 'medium' | 'low'; reasoning: string; priority: number }> {
     const score = analysis?.score || 0;
     const potential = restaurant.salesPotential;
-    
+
     if (score >= 70 || potential === 'ALTÍSSIMO') {
         return { segment: 'high', reasoning: 'Alto score ou potencial altíssimo', priority: 9 };
     }
@@ -344,7 +344,7 @@ export async function segmentClientWithAI(
  */
 export async function generateReportInsights(prompt: string): Promise<string> {
     const apiKey = process.env.OPENAI_API_KEY;
-    
+
     if (!apiKey || apiKey.length < 50) {
         throw new Error('OPENAI_API_KEY não configurada');
     }

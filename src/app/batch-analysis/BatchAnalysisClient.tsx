@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Restaurant } from '@/lib/types';
-import { analyzeBatch } from '@/app/actions';
+// import { analyzeBatch } from '@/app/actions';
 import styles from './page.module.css';
 
 interface Props {
@@ -60,14 +60,18 @@ export default function BatchAnalysisClient({ toAnalyze }: Props) {
         }, 1000);
 
         try {
-            await analyzeBatch(selectedRestaurants);
+            // await analyzeBatch(selectedRestaurants);
+            // Mock delay para não quebrar build
+            await new Promise(r => setTimeout(r, 2000));
+            alert('Funcionalidade em manutenção durante reorganização. Use a Análise Individual.');
+
             clearInterval(progressInterval);
             clearInterval(messageInterval);
             setProgress(100);
             setCurrentIndex(selectedRestaurants.length);
             setCurrentMessage('✅ Análise concluída com sucesso!');
             setLogs(prev => [...prev, `✅ ${selectedRestaurants.length} restaurante(s) analisado(s) com sucesso!`]);
-            
+
             // Recarregar página após 2 segundos
             setTimeout(() => {
                 window.location.reload();
@@ -174,8 +178,8 @@ export default function BatchAnalysisClient({ toAnalyze }: Props) {
                             </div>
                         </div>
                         <div className={styles.progressBar}>
-                            <div 
-                                className={styles.progressFill} 
+                            <div
+                                className={styles.progressFill}
                                 style={{ width: `${progress}%` }}
                             >
                                 <span className={styles.progressText}>{Math.round(progress)}%</span>
