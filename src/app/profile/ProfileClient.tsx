@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { updateProfile, uploadProfilePhoto, UserProfile } from './actions';
+import { updateProfile, uploadProfilePhoto, changePassword, UserProfile } from './actions';
 import styles from './page.module.css';
 
 interface Props {
@@ -15,6 +15,16 @@ export default function ProfileClient({ initialProfile }: Props) {
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
     const [photoFile, setPhotoFile] = useState<File | null>(null);
     const [photoPreview, setPhotoPreview] = useState<string | null>(profile.photoUrl || null);
+
+    // Password change states
+    const [showPasswordModal, setShowPasswordModal] = useState(false);
+    const [passwordData, setPasswordData] = useState({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+    });
+    const [passwordLoading, setPasswordLoading] = useState(false);
+    const [passwordMessage, setPasswordMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
     const [formData, setFormData] = useState({
         name: profile.name,
@@ -42,13 +52,12 @@ export default function ProfileClient({ initialProfile }: Props) {
         try {
             let photoUrl = profile.photoUrl;
 
-            // Upload foto se houver
             if (photoFile) {
                 const uploadFormData = new FormData();
                 uploadFormData.append('photo', photoFile);
                 const uploadResult = await uploadProfilePhoto(uploadFormData);
-                if (uploadResult.success && uploadResult.photoUrl) {
-                    photoUrl = uploadResult.photoUrl;
+                if (uploadResult.success && 'photoUrl' in uploadResult && uploadResult.photoUrl) {
+                    photoUrl = uploadResult.photoUrl as string;
                 }
             }
 
@@ -61,11 +70,7 @@ export default function ProfileClient({ initialProfile }: Props) {
             if (result.success) {
                 setProfile(prev => ({ ...prev, ...formData, photoUrl }));
                 setEditing(false);
-                setMessage({ type: 'success', text: 'Perfil atualizado com sucesso! Atualizando...' });
-                // Forçar atualização da página após 1 segundo para garantir que a foto apareça em todos os lugares
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1000);
+                setMessage({ type: 'success', text: 'Perfil atualizado com sucesso!' });
             } else {
                 setMessage({ type: 'error', text: result.error || 'Erro ao salvar' });
             }
@@ -88,6 +93,40 @@ export default function ProfileClient({ initialProfile }: Props) {
         setPhotoFile(null);
         setPhotoPreview(profile.photoUrl || null);
         setEditing(false);
+    };
+
+    const handlePasswordChange = async () => {
+        if (passwordData.newPassword !== passwordData.confirmPassword) {
+            setPasswordMessage({ type: 'error', text: 'As senhas não coincidem' });
+            return;
+        }
+
+        if (passwordData.newPassword.length < 6) {
+            setPasswordMessage({ type: 'error', text: 'A nova senha deve ter pelo menos 6 caracteres' });
+            return;
+        }
+
+        setPasswordLoading(true);
+        setPasswordMessage(null);
+
+        try {
+            const result = await changePassword(passwordData.currentPassword, passwordData.newPassword);
+
+            if (result.success) {
+                setPasswordMessage({ type: 'success', text: result.message || 'Senha alterada com sucesso!' });
+                setTimeout(() => {
+                    setShowPasswordModal(false);
+                    setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                    setPasswordMessage(null);
+                }, 2000);
+            } else {
+                setPasswordMessage({ type: 'error', text: result.error || 'Erro ao alterar senha' });
+            }
+        } catch (error: any) {
+            setPasswordMessage({ type: 'error', text: error.message || 'Erro ao alterar senha' });
+        } finally {
+            setPasswordLoading(false);
+        }
     };
 
     return (
@@ -166,24 +205,6 @@ export default function ProfileClient({ initialProfile }: Props) {
                                         placeholder="(11) 99999-9999"
                                     />
                                 </div>
-                                <div className={styles.field}>
-                                    <label>Cargo</label>
-                                    <input
-                                        type="text"
-                                        value={formData.role}
-                                        onChange={e => setFormData(prev => ({ ...prev, role: e.target.value }))}
-                                        placeholder="Seu cargo"
-                                    />
-                                </div>
-                                <div className={styles.field}>
-                                    <label>Departamento</label>
-                                    <input
-                                        type="text"
-                                        value={formData.department}
-                                        onChange={e => setFormData(prev => ({ ...prev, department: e.target.value }))}
-                                        placeholder="Seu departamento"
-                                    />
-                                </div>
                             </div>
                             <div className={styles.fieldFull}>
                                 <label>Biografia</label>
@@ -239,15 +260,15 @@ export default function ProfileClient({ initialProfile }: Props) {
                     <div className={styles.actions}>
                         {editing ? (
                             <>
-                                <button 
-                                    className={styles.cancelBtn} 
+                                <button
+                                    className={styles.cancelBtn}
                                     onClick={handleCancel}
                                     disabled={loading}
                                 >
                                     Cancelar
                                 </button>
-                                <button 
-                                    className={styles.saveBtn} 
+                                <button
+                                    className={styles.saveBtn}
                                     onClick={handleSave}
                                     disabled={loading}
                                 >
@@ -255,8 +276,8 @@ export default function ProfileClient({ initialProfile }: Props) {
                                 </button>
                             </>
                         ) : (
-                            <button 
-                                className={styles.editBtn} 
+                            <button
+                                className={styles.editBtn}
                                 onClick={() => setEditing(true)}
                             >
                                 ✏️ Editar Perfil
@@ -267,14 +288,31 @@ export default function ProfileClient({ initialProfile }: Props) {
 
                 {/* Cards Laterais */}
                 <div className={styles.sideCards}>
+                    {/* Segurança */}
+                    <div className={styles.card}>
+                        <h3>🔒 Segurança</h3>
+                        <div className={styles.security}>
+                            <button
+                                className={styles.securityBtn}
+                                onClick={() => setShowPasswordModal(true)}
+                            >
+                                🔑 Alterar Senha
+                            </button>
+                            <div className={styles.lastLogin}>
+                                <span>Último acesso:</span>
+                                <span>Agora</span>
+                            </div>
+                        </div>
+                    </div>
+
                     {/* Preferências */}
                     <div className={styles.card}>
                         <h3>⚙️ Preferências</h3>
                         <div className={styles.preferences}>
                             <label className={styles.toggle}>
                                 <span>Notificações Push</span>
-                                <input 
-                                    type="checkbox" 
+                                <input
+                                    type="checkbox"
                                     checked={profile.preferences.notifications}
                                     onChange={e => setProfile(prev => ({
                                         ...prev,
@@ -285,8 +323,8 @@ export default function ProfileClient({ initialProfile }: Props) {
                             </label>
                             <label className={styles.toggle}>
                                 <span>Alertas por Email</span>
-                                <input 
-                                    type="checkbox" 
+                                <input
+                                    type="checkbox"
                                     checked={profile.preferences.emailAlerts}
                                     onChange={e => setProfile(prev => ({
                                         ...prev,
@@ -297,45 +335,71 @@ export default function ProfileClient({ initialProfile }: Props) {
                             </label>
                         </div>
                     </div>
+                </div>
+            </div>
 
-                    {/* Estatísticas */}
-                    <div className={styles.card}>
-                        <h3>📊 Estatísticas</h3>
-                        <div className={styles.stats}>
-                            <div className={styles.stat}>
-                                <span className={styles.statValue}>104</span>
-                                <span className={styles.statLabel}>Leads Gerenciados</span>
+            {/* Password Change Modal */}
+            {showPasswordModal && (
+                <div className={styles.modal} onClick={() => setShowPasswordModal(false)}>
+                    <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
+                        <button className={styles.closeModal} onClick={() => setShowPasswordModal(false)}>✕</button>
+                        <h2>🔑 Alterar Senha</h2>
+
+                        {passwordMessage && (
+                            <div className={`${styles.message} ${styles[passwordMessage.type]}`}>
+                                {passwordMessage.type === 'success' ? '✅' : '❌'} {passwordMessage.text}
                             </div>
-                            <div className={styles.stat}>
-                                <span className={styles.statValue}>23</span>
-                                <span className={styles.statLabel}>Análises Realizadas</span>
+                        )}
+
+                        <div className={styles.form}>
+                            <div className={styles.field}>
+                                <label>Senha Atual</label>
+                                <input
+                                    type="password"
+                                    value={passwordData.currentPassword}
+                                    onChange={e => setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
+                                    placeholder="Digite sua senha atual"
+                                />
                             </div>
-                            <div className={styles.stat}>
-                                <span className={styles.statValue}>6</span>
-                                <span className={styles.statLabel}>Conversões</span>
+                            <div className={styles.field}>
+                                <label>Nova Senha</label>
+                                <input
+                                    type="password"
+                                    value={passwordData.newPassword}
+                                    onChange={e => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
+                                    placeholder="Digite a nova senha (mín. 6 caracteres)"
+                                />
+                            </div>
+                            <div className={styles.field}>
+                                <label>Confirmar Nova Senha</label>
+                                <input
+                                    type="password"
+                                    value={passwordData.confirmPassword}
+                                    onChange={e => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                                    placeholder="Confirme a nova senha"
+                                />
                             </div>
                         </div>
-                    </div>
 
-                    {/* Segurança */}
-                    <div className={styles.card}>
-                        <h3>🔒 Segurança</h3>
-                        <div className={styles.security}>
-                            <button className={styles.securityBtn}>
-                                🔑 Alterar Senha
+                        <div className={styles.modalActions}>
+                            <button
+                                className={styles.cancelBtn}
+                                onClick={() => setShowPasswordModal(false)}
+                                disabled={passwordLoading}
+                            >
+                                Cancelar
                             </button>
-                            <button className={styles.securityBtn}>
-                                📱 Ativar 2FA
+                            <button
+                                className={styles.saveBtn}
+                                onClick={handlePasswordChange}
+                                disabled={passwordLoading || !passwordData.currentPassword || !passwordData.newPassword}
+                            >
+                                {passwordLoading ? 'Alterando...' : '✓ Alterar Senha'}
                             </button>
-                            <div className={styles.lastLogin}>
-                                <span>Último acesso:</span>
-                                <span>Hoje, {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
-                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 }
-

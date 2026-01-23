@@ -154,19 +154,23 @@
     }
 }
 
-.field, .fieldFull {
+.field,
+.fieldFull {
     display: flex;
     flex-direction: column;
     gap: var(--space-1);
 }
 
-.field label, .fieldFull label {
+.field label,
+.fieldFull label {
     font-size: var(--text-sm);
     font-weight: 600;
     color: var(--text-muted);
 }
 
-.field input, .fieldFull input, .fieldFull textarea {
+.field input,
+.fieldFull input,
+.fieldFull textarea {
     padding: var(--space-2);
     background: var(--secondary);
     border: 1px solid var(--border);
@@ -176,7 +180,9 @@
     transition: all 0.2s ease;
 }
 
-.field input:focus, .fieldFull input:focus, .fieldFull textarea:focus {
+.field input:focus,
+.fieldFull input:focus,
+.fieldFull textarea:focus {
     outline: none;
     border-color: var(--primary);
     box-shadow: 0 0 0 3px var(--primary-glow);
@@ -272,7 +278,9 @@
     border-top: 1px solid var(--border);
 }
 
-.editBtn, .saveBtn, .cancelBtn {
+.editBtn,
+.saveBtn,
+.cancelBtn {
     padding: var(--space-2) var(--space-4);
     border-radius: var(--radius-md);
     font-size: var(--text-sm);
@@ -390,11 +398,11 @@
     transition: all 0.3s ease;
 }
 
-.toggle input:checked + .slider {
+.toggle input:checked+.slider {
     background: var(--primary);
 }
 
-.toggle input:checked + .slider::after {
+.toggle input:checked+.slider::after {
     left: calc(100% - 22px);
 }
 
@@ -467,3 +475,67 @@
     font-weight: 500;
 }
 
+/* Modal */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: var(--space-4);
+}
+
+.modalContent {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-xl);
+    padding: var(--space-6);
+    width: 100%;
+    max-width: 480px;
+    position: relative;
+}
+
+.modalContent h2 {
+    font-size: var(--text-xl);
+    font-weight: 700;
+    color: var(--foreground);
+    margin-bottom: var(--space-4);
+}
+
+.closeModal {
+    position: absolute;
+    top: var(--space-3);
+    right: var(--space-3);
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: var(--secondary);
+    border-radius: var(--radius-md);
+    color: var(--text-muted);
+    font-size: 1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.closeModal:hover {
+    background: var(--danger);
+    color: white;
+}
+
+.modalActions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    margin-top: var(--space-4);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--border);
+}

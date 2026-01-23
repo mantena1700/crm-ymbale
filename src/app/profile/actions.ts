@@ -131,4 +131,54 @@ export async function uploadProfilePhoto(formData: FormData) {
     return { success: false, error: 'Upload de foto não configurado neste ambiente' };
 }
 
+// Alterar senha do próprio usuário
+export async function changePassword(currentPassword: string, newPassword: string) {
+    const sessionUser = await getCurrentUser();
+    if (!sessionUser) {
+        return { success: false, error: 'Não autenticado' };
+    }
 
+    try {
+        const { verifyPassword, hashPassword } = await import('@/lib/auth');
+
+        // Buscar usuário com senha
+        const user = await prisma.user.findUnique({
+            where: { id: sessionUser.id },
+            select: { password: true }
+        });
+
+        if (!user) {
+            return { success: false, error: 'Usuário não encontrado' };
+        }
+
+        // Verificar senha atual
+        const isValid = await verifyPassword(currentPassword, user.password);
+        if (!isValid) {
+            return { success: false, error: 'Senha atual incorreta' };
+        }
+
+        // Validar nova senha
+        if (newPassword.length < 6) {
+            return { success: false, error: 'A nova senha deve ter pelo menos 6 caracteres' };
+        }
+
+        // Hash da nova senha
+        const hashedPassword = await hashPassword(newPassword);
+
+        // Atualizar
+        await prisma.user.update({
+            where: { id: sessionUser.id },
+            data: {
+                password: hashedPassword,
+                mustChangePassword: false
+            }
+        });
+
+        revalidatePath('/profile');
+
+        return { success: true, message: 'Senha alterada com sucesso!' };
+    } catch (error: any) {
+        console.error('Erro ao alterar senha:', error);
+        return { success: false, error: 'Erro ao alterar senha' };
+    }
+}

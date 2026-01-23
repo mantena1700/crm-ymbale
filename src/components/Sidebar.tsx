@@ -118,7 +118,7 @@ const Sidebar = () => {
         }
     };
 
-    // Menu completo com todas as funcionalidades
+    // Menu simplificado e organizado
     const navSections: NavSection[] = [
         {
             title: '',
@@ -127,29 +127,26 @@ const Sidebar = () => {
             ]
         },
         {
-            title: 'VENDAS',
+            title: 'COMERCIAL',
             items: [
                 { href: '/clients', icon: '👥', label: 'Leads', permission: 'clients.view' },
                 { href: '/pipeline', icon: '📊', label: 'Pipeline', permission: 'pipeline.view' },
                 { href: '/agenda', icon: '📅', label: 'Agenda', badge: pendingFollowUps, permission: 'agenda.view' },
-                { href: '/campaigns', icon: '📧', label: 'Campanhas', permission: 'campaigns.view' },
             ]
         },
         {
             title: 'GESTÃO',
             items: [
-                { href: '/carteira', icon: '🗺️', label: 'Carteira', permission: 'carteira.view' },
-                { href: '/goals', icon: '🎯', label: 'Metas', permission: 'goals.view' },
                 { href: '/sellers', icon: '👔', label: 'Equipe', permission: 'sellers.view' },
+                { href: '/goals', icon: '🎯', label: 'Metas', permission: 'goals.view' },
+                { href: '/carteira', icon: '🗺️', label: 'Carteira', permission: 'carteira.view' },
             ]
         },
         {
             title: 'ANÁLISES',
             items: [
-                { href: '/batch-analysis', icon: '🤖', label: 'Análise IA', permission: 'analysis.view' },
-                { href: '/packaging-analysis', icon: '📦', label: 'Embalagens', permission: 'packaging.view' },
+                { href: '/packaging-analysis', icon: '🤖', label: 'Análise IA', permission: 'analysis.view' },
                 { href: '/reports', icon: '📈', label: 'Relatórios', permission: 'reports.view' },
-                { href: '/insights', icon: '💡', label: 'Insights', permission: 'insights.view' },
             ]
         },
         {

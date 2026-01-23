@@ -193,9 +193,9 @@ export default function RestaurantDetailsClient({ restaurant, initialAnalysis, i
                                 </span>
                                 {restaurant.analysisStrategy && (
                                     <span style={{
-                                        padding: '4px 12px',
+                                        padding: '4px 10px',
                                         borderRadius: '100px',
-                                        fontSize: '0.8rem',
+                                        fontSize: '0.75rem',
                                         fontWeight: 600,
                                         backgroundColor: restaurant.analysisStrategy.includes('DIAMANTE') ? '#3b82f6' :
                                             restaurant.analysisStrategy.includes('OURO') ? '#f59e0b' :
@@ -205,13 +205,13 @@ export default function RestaurantDetailsClient({ restaurant, initialAnalysis, i
                                         color: 'white',
                                         display: 'inline-flex',
                                         alignItems: 'center',
-                                        gap: '4px'
+                                        gap: '4px',
+                                        whiteSpace: 'nowrap'
                                     }}>
-                                        {restaurant.analysisStrategy.includes('DIAMANTE') ? '💎' :
-                                            restaurant.analysisStrategy.includes('OURO') ? '🏆' :
-                                                restaurant.analysisStrategy.includes('PRATA') ? '🥈' :
-                                                    restaurant.analysisStrategy.includes('BRONZE') ? '🥉' : '✅'}
-                                        {restaurant.analysisStrategy.split('(')[0].trim()}
+                                        {restaurant.analysisStrategy.includes('DIAMANTE') ? '💎 Diamante' :
+                                            restaurant.analysisStrategy.includes('OURO') ? '🏆 Ouro' :
+                                                restaurant.analysisStrategy.includes('PRATA') ? '🥈 Prata' :
+                                                    restaurant.analysisStrategy.includes('BRONZE') ? '🥉 Bronze' : '✅ OK'}
                                     </span>
                                 )}
                                 <span className={styles.location}>
