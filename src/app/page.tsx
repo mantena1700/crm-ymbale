@@ -19,7 +19,7 @@ export default async function Dashboard() {
         contactedLeads: restaurants.filter(r => r.status === 'Contatado').length,
         negotiatingLeads: restaurants.filter(r => r.status === 'Negociação').length,
         closedDeals: restaurants.filter(r => r.status === 'Fechado').length,
-        pendingAnalysis: restaurants.filter(r => (!r.status || r.status === 'A Analisar') && !r.analyses?.length).length,
+        pendingAnalysis: restaurants.filter(r => r.status === 'A Analisar' && (!r.analyses || r.analyses.length === 0)).length,
         avgRating: restaurants.length > 0
             ? (restaurants.reduce((sum, r) => sum + r.rating, 0) / restaurants.length).toFixed(1)
             : '0',

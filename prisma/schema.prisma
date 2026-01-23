@@ -7,57 +7,44 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ========================================
-// CONFIGURAÇÕES DO SISTEMA (WHITE LABEL)
-// ========================================
-
 model SystemSettings {
-  id            String   @id @default("system")
-  crmName       String   @default("Ymbale") @map("crm_name") @db.VarChar(100)
-  crmLogo       String?  @map("crm_logo") @db.VarChar(500)
-  crmFavicon    String?  @map("crm_favicon") @db.VarChar(500)
-  primaryColor  String   @default("#6366f1") @map("primary_color") @db.VarChar(7)
-  secondaryColor String  @default("#8b5cf6") @map("secondary_color") @db.VarChar(7)
-  accentColor   String   @default("#10b981") @map("accent_color") @db.VarChar(7)
-  companyName   String?  @map("company_name") @db.VarChar(255)
-  companyEmail  String?  @map("company_email") @db.VarChar(255)
-  companyPhone  String?  @map("company_phone") @db.VarChar(50)
-  
-  // Personalização da Página de Login
-  loginTitle        String?  @map("login_title") @db.VarChar(100)
-  loginSubtitle     String?  @map("login_subtitle") @db.VarChar(255)
-  loginMessage      String?  @map("login_message") @db.Text
-  loginShowMessage  Boolean  @default(false) @map("login_show_message")
-  loginBackgroundColor String? @map("login_background_color") @db.VarChar(7)
-  loginLogo         String?  @map("login_logo") @db.VarChar(500)
-  
-  // API Keys (armazenadas criptografadas)
-  openaiApiKey      String?  @map("openai_api_key") @db.VarChar(500)
-  googleMapsApiKey  String?  @map("google_maps_api_key") @db.VarChar(500)
-  googleAiApiKey    String?  @map("google_ai_api_key") @db.VarChar(500)
-  
-  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy     String?  @map("updated_by") @db.Uuid
+  id                   String   @id @default("system")
+  crmName              String   @default("Ymbale") @map("crm_name") @db.VarChar(100)
+  crmLogo              String?  @map("crm_logo") @db.VarChar(500)
+  crmFavicon           String?  @map("crm_favicon") @db.VarChar(500)
+  primaryColor         String   @default("#6366f1") @map("primary_color") @db.VarChar(7)
+  secondaryColor       String   @default("#8b5cf6") @map("secondary_color") @db.VarChar(7)
+  accentColor          String   @default("#10b981") @map("accent_color") @db.VarChar(7)
+  companyName          String?  @map("company_name") @db.VarChar(255)
+  companyEmail         String?  @map("company_email") @db.VarChar(255)
+  companyPhone         String?  @map("company_phone") @db.VarChar(50)
+  loginTitle           String?  @map("login_title") @db.VarChar(100)
+  loginSubtitle        String?  @map("login_subtitle") @db.VarChar(255)
+  loginMessage         String?  @map("login_message")
+  loginShowMessage     Boolean  @default(false) @map("login_show_message")
+  loginBackgroundColor String?  @map("login_background_color") @db.VarChar(7)
+  loginLogo            String?  @map("login_logo") @db.VarChar(500)
+  openaiApiKey         String?  @map("openai_api_key") @db.VarChar(500)
+  googleMapsApiKey     String?  @map("google_maps_api_key") @db.VarChar(500)
+  googleAiApiKey       String?  @map("google_ai_api_key") @db.VarChar(500)
+  updatedAt            DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy            String?  @map("updated_by") @db.Uuid
 
   @@map("system_settings")
 }
 
-// ========================================
-// AGENTES DE IA
-// ========================================
-
 model AIAgent {
   id                 String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  code               String   @unique @db.VarChar(50)  // "restaurant_analyzer", "email_generator", etc
+  code               String   @unique @db.VarChar(50)
   name               String   @db.VarChar(100)
-  description        String?  @db.Text
-  systemPrompt       String   @map("system_prompt") @db.Text
-  userPromptTemplate String   @map("user_prompt_template") @db.Text
+  description        String?
+  systemPrompt       String   @map("system_prompt")
+  userPromptTemplate String   @map("user_prompt_template")
   model              String   @default("gpt-4o-mini") @db.VarChar(50)
   temperature        Decimal  @default(0.7) @db.Decimal(2, 1)
   maxTokens          Int      @default(1000) @map("max_tokens")
   active             Boolean  @default(true)
-  isDefault          Boolean  @default(true) @map("is_default")  // Se é o prompt padrão do sistema
+  isDefault          Boolean  @default(true) @map("is_default")
   createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt          DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -66,33 +53,25 @@ model AIAgent {
   @@map("ai_agents")
 }
 
-// ========================================
-// SISTEMA DE AUTENTICAÇÃO
-// ========================================
-
 model User {
-  id                 String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  username           String    @unique @db.VarChar(50)
-  email              String?   @unique @db.VarChar(255)
-  password           String    @db.VarChar(255) // Hash bcrypt
-  name               String    @db.VarChar(255)
-  role               String    @default("user") @db.VarChar(20) // 'admin' ou 'user'
-  active             Boolean   @default(true)
-  mustChangePassword Boolean   @default(false) @map("must_change_password")
-  lastLogin          DateTime? @map("last_login") @db.Timestamptz(6)
-  loginAttempts      Int       @default(0) @map("login_attempts")
-  lockedUntil        DateTime? @map("locked_until") @db.Timestamptz(6)
-  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt          DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  createdBy          String?   @map("created_by") @db.Uuid
-
-  // Relação com o vendedor
-  sellerId      String?   @unique @map("seller_id") @db.Uuid
-  seller        Seller?   @relation(fields: [sellerId], references: [id], onDelete: SetNull)
-
-  // Sessões e permissões
-  sessions         Session[]
-  userPermissions  UserPermission[]
+  id                 String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  username           String           @unique @db.VarChar(50)
+  email              String?          @unique @db.VarChar(255)
+  password           String           @db.VarChar(255)
+  name               String           @db.VarChar(255)
+  role               String           @default("user") @db.VarChar(20)
+  active             Boolean          @default(true)
+  mustChangePassword Boolean          @default(false) @map("must_change_password")
+  lastLogin          DateTime?        @map("last_login") @db.Timestamptz(6)
+  loginAttempts      Int              @default(0) @map("login_attempts")
+  lockedUntil        DateTime?        @map("locked_until") @db.Timestamptz(6)
+  createdAt          DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy          String?          @map("created_by") @db.Uuid
+  sellerId           String?          @unique @map("seller_id") @db.Uuid
+  sessions           Session[]
+  userPermissions    UserPermission[]
+  seller             Seller?          @relation(fields: [sellerId], references: [id])
 
   @@index([username], map: "idx_users_username")
   @@index([email], map: "idx_users_email")
@@ -101,19 +80,14 @@ model User {
   @@map("users")
 }
 
-// ========================================
-// SISTEMA DE PERMISSÕES
-// ========================================
-
 model Permission {
-  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  code        String   @unique @db.VarChar(50)  // ex: "dashboard.view", "clients.create"
-  name        String   @db.VarChar(100)
-  description String?  @db.VarChar(255)
-  module      String   @db.VarChar(50)  // ex: "dashboard", "clients", "pipeline"
-  action      String   @db.VarChar(20)  // "view", "create", "edit", "delete"
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  
+  id              String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  code            String           @unique @db.VarChar(50)
+  name            String           @db.VarChar(100)
+  description     String?          @db.VarChar(255)
+  module          String           @db.VarChar(50)
+  action          String           @db.VarChar(20)
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
   userPermissions UserPermission[]
 
   @@index([module], map: "idx_permissions_module")
@@ -122,13 +96,12 @@ model Permission {
 }
 
 model UserPermission {
-  userId       String @map("user_id") @db.Uuid
-  permissionId String @map("permission_id") @db.Uuid
-  grantedAt    DateTime @default(now()) @map("granted_at") @db.Timestamptz(6)
-  grantedBy    String?  @map("granted_by") @db.Uuid
-  
-  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  userId       String     @map("user_id") @db.Uuid
+  permissionId String     @map("permission_id") @db.Uuid
+  grantedAt    DateTime   @default(now()) @map("granted_at") @db.Timestamptz(6)
+  grantedBy    String?    @map("granted_by") @db.Uuid
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([userId, permissionId])
   @@index([userId], map: "idx_user_permissions_user_id")
@@ -137,15 +110,14 @@ model UserPermission {
 }
 
 model Session {
-  id           String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  userId       String   @map("user_id") @db.Uuid
-  token        String   @unique @db.VarChar(500)
-  expiresAt    DateTime @map("expires_at") @db.Timestamptz(6)
-  ipAddress    String?  @map("ip_address") @db.VarChar(50)
-  userAgent    String?  @map("user_agent") @db.VarChar(500)
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  token     String   @unique @db.VarChar(500)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  ipAddress String?  @map("ip_address") @db.VarChar(50)
+  userAgent String?  @map("user_agent") @db.VarChar(500)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([token], map: "idx_sessions_token")
   @@index([userId], map: "idx_sessions_user_id")
@@ -153,73 +125,65 @@ model Session {
   @@map("sessions")
 }
 
-// ========================================
-// MODELOS EXISTENTES
-// ========================================
-
 model Seller {
-  user          User?
-  id            String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name          String    @db.VarChar(255)
-  email         String?   @db.VarChar(255)
-  phone         String?   @db.VarChar(50)
-  photoUrl      String?   @map("photo_url") @db.VarChar(500)
-  regions       Json?     @default("[]")
-  neighborhoods Json?     @default("[]")
-  active        Boolean?  @default(true)
-  createdAt     DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime? @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  // Campos de território geográfico
-  territorioTipo    String?   @default("cep_legado") @map("territorio_tipo") @db.VarChar(20) // 'raio', 'poligono', 'cep_legado'
-  baseCidade        String?   @map("base_cidade") @db.VarChar(200)
-  baseLatitude      Decimal?  @map("base_latitude") @db.Decimal(10, 8)
-  baseLongitude     Decimal?  @map("base_longitude") @db.Decimal(11, 8)
-  raioKm            Int?      @map("raio_km")
-  poligonoPontos    Json?     @map("poligono_pontos")
-  territorioAtivo   Boolean   @default(true) @map("territorio_ativo")
-  areasCobertura    Json?     @map("areas_cobertura") // Array de áreas: [{ cidade, lat, lng, raio }]
-
-  restaurants Restaurant[]
-  visits      Visit[]
-  fixedClients FixedClient[]
+  id              String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name            String        @db.VarChar(255)
+  email           String?       @db.VarChar(255)
+  phone           String?       @db.VarChar(50)
+  photoUrl        String?       @map("photo_url") @db.VarChar(500)
+  regions         Json?         @default("[]")
+  neighborhoods   Json?         @default("[]")
+  active          Boolean?      @default(true)
+  createdAt       DateTime?     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime?     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  territorioTipo  String?       @default("cep_legado") @map("territorio_tipo") @db.VarChar(20)
+  baseCidade      String?       @map("base_cidade") @db.VarChar(200)
+  baseLatitude    Decimal?      @map("base_latitude") @db.Decimal(10, 8)
+  baseLongitude   Decimal?      @map("base_longitude") @db.Decimal(11, 8)
+  raioKm          Int?          @map("raio_km")
+  poligonoPontos  Json?         @map("poligono_pontos")
+  territorioAtivo Boolean       @default(true) @map("territorio_ativo")
+  areasCobertura  Json?         @map("areas_cobertura")
+  fixedClients    FixedClient[]
+  restaurants     Restaurant[]
+  user            User?
+  visits          Visit[]
 
   @@map("sellers")
 }
 
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model Restaurant {
-  id                  String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name                String    @db.VarChar(255)
-  codigoCliente       Int?      @unique @map("codigo_cliente") // Código único do cliente (5 dígitos, começando em 10000)
-  rating              Decimal?  @default(0) @db.Decimal(3, 2)
-  reviewCount         Int?      @default(0) @map("review_count")
-  totalComments       Int?      @default(0) @map("total_comments")
-  projectedDeliveries Int?      @default(0) @map("projected_deliveries")
-  salesPotential      String?   @default("N/A") @map("sales_potential") @db.VarChar(50)
-  address             Json?     @default("{}")
-  lastCollectionDate  DateTime? @map("last_collection_date") @db.Date
-  status              String?   @default("A Analisar") @db.VarChar(50)
-  createdAt           DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt           DateTime? @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  sourceFile          String?   @map("source_file") @db.VarChar(255)
-  sellerId            String?   @map("seller_id") @db.Uuid
-  assignedAt          DateTime? @map("assigned_at") @db.Timestamptz(6)
-  latitude            Float?
-  longitude           Float?
-  geocodingData       Json?     @map("geocoding_data")
-  geocodingAtualizadoEm DateTime? @map("geocoding_atualizado_em") @db.Timestamptz(6)
-
-  seller    Seller?   @relation(fields: [sellerId], references: [id], onDelete: SetNull)
-  visits    Visit[]
-  comments  Comment[]
-  analyses  Analysis[]
-  notes     Note[]
-  followUps FollowUp[]
-  activityLog ActivityLog[]
-  campaignRecipients CampaignRecipient[]
-  workflowExecutions WorkflowExecution[]
-  fixedClients FixedClient[]
+  id                    String              @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name                  String              @db.VarChar(255)
+  codigoCliente         Int?                @unique @map("codigo_cliente")
+  rating                Decimal?            @default(0) @db.Decimal(3, 2)
+  reviewCount           Int?                @default(0) @map("review_count")
+  totalComments         Int?                @default(0) @map("total_comments")
+  projectedDeliveries   Int?                @default(0) @map("projected_deliveries")
+  salesPotential        String?             @default("N/A") @map("sales_potential") @db.VarChar(50)
+  address               Json?               @default("{}")
+  lastCollectionDate    DateTime?           @map("last_collection_date") @db.Date
+  status                String?             @default("A Analisar") @db.VarChar(50)
+  createdAt             DateTime?           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime?           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  sourceFile            String?             @map("source_file") @db.VarChar(255)
+  sellerId              String?             @map("seller_id") @db.Uuid
+  assignedAt            DateTime?           @map("assigned_at") @db.Timestamptz(6)
+  latitude              Float?
+  longitude             Float?
+  geocodingData         Json?               @map("geocoding_data")
+  geocodingAtualizadoEm DateTime?           @map("geocoding_atualizado_em") @db.Timestamptz(6)
+  activityLog           ActivityLog[]
+  analyses              Analysis[]
+  campaignRecipients    CampaignRecipient[]
+  comments              Comment[]
+  fixedClients          FixedClient[]
+  followUps             FollowUp[]
+  notes                 Note[]
+  seller                Seller?             @relation(fields: [sellerId], references: [id])
+  visits                Visit[]
+  workflowExecutions    WorkflowExecution[]
 
   @@index([createdAt(sort: Desc)], map: "idx_restaurants_created_at")
   @@index([rating(sort: Desc)], map: "idx_restaurants_rating")
@@ -232,12 +196,11 @@ model Restaurant {
 }
 
 model Comment {
-  id           String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  restaurantId String    @map("restaurant_id") @db.Uuid
+  id           String     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  restaurantId String     @map("restaurant_id") @db.Uuid
   content      String
-  createdAt    DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  createdAt    DateTime?  @default(now()) @map("created_at") @db.Timestamptz(6)
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
 
   @@index([createdAt(sort: Desc)], map: "idx_comments_created_at")
   @@index([restaurantId], map: "idx_comments_restaurant_id")
@@ -245,18 +208,17 @@ model Comment {
 }
 
 model Analysis {
-  id           String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  restaurantId String    @map("restaurant_id") @db.Uuid
+  id           String     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  restaurantId String     @map("restaurant_id") @db.Uuid
   score        Int
   summary      String
-  painPoints   Json?     @default("[]") @map("pain_points")
-  salesCopy    String?   @map("sales_copy")
+  painPoints   Json?      @default("[]") @map("pain_points")
+  salesCopy    String?    @map("sales_copy")
   strategy     String?
-  status       String?   @default("A Analisar") @db.VarChar(50)
-  createdAt    DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime? @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  status       String?    @default("A Analisar") @db.VarChar(50)
+  createdAt    DateTime?  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime?  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
 
   @@unique([restaurantId, createdAt])
   @@index([createdAt(sort: Desc)], map: "idx_analyses_created_at")
@@ -266,12 +228,11 @@ model Analysis {
 }
 
 model Note {
-  id           String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  restaurantId String    @map("restaurant_id") @db.Uuid
+  id           String     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  restaurantId String     @map("restaurant_id") @db.Uuid
   content      String
-  createdAt    DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  createdAt    DateTime?  @default(now()) @map("created_at") @db.Timestamptz(6)
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
 
   @@index([createdAt(sort: Desc)], map: "idx_notes_created_at")
   @@index([restaurantId], map: "idx_notes_restaurant_id")
@@ -279,21 +240,20 @@ model Note {
 }
 
 model FollowUp {
-  id            String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  restaurantId  String    @map("restaurant_id") @db.Uuid
-  type          String    @db.VarChar(20)
-  scheduledDate DateTime  @map("scheduled_date") @db.Timestamptz(6)
-  completed     Boolean?  @default(false)
-  completedDate DateTime? @map("completed_date") @db.Timestamptz(6)
+  id            String     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  restaurantId  String     @map("restaurant_id") @db.Uuid
+  type          String     @db.VarChar(20)
+  scheduledDate DateTime   @map("scheduled_date") @db.Timestamptz(6)
+  completed     Boolean?   @default(false)
+  completedDate DateTime?  @map("completed_date") @db.Timestamptz(6)
   notes         String?
-  emailSubject  String?   @map("email_subject") @db.VarChar(255)
-  emailBody     String?   @map("email_body")
-  emailSent     Boolean?  @default(false) @map("email_sent")
-  createdAt     DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime? @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  visits     Visit[]
+  emailSubject  String?    @map("email_subject") @db.VarChar(255)
+  emailBody     String?    @map("email_body")
+  emailSent     Boolean?   @default(false) @map("email_sent")
+  createdAt     DateTime?  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime?  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  restaurant    Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  visits        Visit[]
 
   @@index([completed], map: "idx_follow_ups_completed")
   @@index([restaurantId], map: "idx_follow_ups_restaurant_id")
@@ -350,15 +310,14 @@ model Notification {
 }
 
 model ActivityLog {
-  id           String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  type         String    @db.VarChar(50)
-  title        String    @db.VarChar(255)
+  id           String      @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  type         String      @db.VarChar(50)
+  title        String      @db.VarChar(255)
   description  String?
-  restaurantId String?   @map("restaurant_id") @db.Uuid
-  metadata     Json?     @default("{}")
-  createdAt    DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  restaurant Restaurant? @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  restaurantId String?     @map("restaurant_id") @db.Uuid
+  metadata     Json?       @default("{}")
+  createdAt    DateTime?   @default(now()) @map("created_at") @db.Timestamptz(6)
+  restaurant   Restaurant? @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
 
   @@index([createdAt(sort: Desc)], map: "idx_activity_log_created_at")
   @@index([restaurantId], map: "idx_activity_log_restaurant_id")
@@ -367,20 +326,19 @@ model ActivityLog {
 }
 
 model Visit {
-  id           String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  restaurantId String    @map("restaurant_id") @db.Uuid
-  sellerId     String    @map("seller_id") @db.Uuid
-  visitDate    DateTime  @map("visit_date") @db.Timestamptz(6)
-  feedback     String?   @db.Text
-  outcome      String?   @db.VarChar(50) // 'positive', 'neutral', 'negative', 'scheduled'
-  nextVisitDate DateTime? @map("next_visit_date") @db.Timestamptz(6)
-  followUpId   String?   @map("follow_up_id") @db.Uuid
-  createdAt    DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime? @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  seller     Seller     @relation(fields: [sellerId], references: [id], onDelete: Cascade)
-  followUp   FollowUp?  @relation(fields: [followUpId], references: [id], onDelete: SetNull)
+  id            String     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  restaurantId  String     @map("restaurant_id") @db.Uuid
+  sellerId      String     @map("seller_id") @db.Uuid
+  visitDate     DateTime   @map("visit_date") @db.Timestamptz(6)
+  feedback      String?
+  outcome       String?    @db.VarChar(50)
+  nextVisitDate DateTime?  @map("next_visit_date") @db.Timestamptz(6)
+  followUpId    String?    @map("follow_up_id") @db.Uuid
+  createdAt     DateTime?  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime?  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  followUp      FollowUp?  @relation(fields: [followUpId], references: [id])
+  restaurant    Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  seller        Seller     @relation(fields: [sellerId], references: [id], onDelete: Cascade)
 
   @@index([restaurantId], map: "idx_visits_restaurant_id")
   @@index([sellerId], map: "idx_visits_seller_id")
@@ -389,55 +347,35 @@ model Visit {
   @@map("visits")
 }
 
-// ========================================
-// CAMPANHAS E MARKETING
-// ========================================
-
 model Campaign {
-  id                String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name              String    @db.VarChar(255)
-  description       String?   @db.Text
-  type              String    @default("email") @db.VarChar(50) // 'email', 'sms', 'linkedin'
-  status            String    @default("draft") @db.VarChar(20) // 'draft', 'scheduled', 'active', 'paused', 'completed', 'cancelled'
-  
-  // Segmentação
-  segmentCriteria   Json?     @default("{}") @map("segment_criteria")
-  
-  // Conteúdo
-  subject           String?   @db.VarChar(255)
-  content           String?   @db.Text
-  templateId        String?   @map("template_id") @db.Uuid
-  
-  // Agendamento
-  scheduledAt       DateTime? @map("scheduled_at") @db.Timestamptz(6)
-  startedAt         DateTime? @map("started_at") @db.Timestamptz(6)
-  endedAt           DateTime? @map("ended_at") @db.Timestamptz(6)
-  
-  // Métricas
-  totalRecipients   Int       @default(0) @map("total_recipients")
-  sentCount         Int       @default(0) @map("sent_count")
-  deliveredCount    Int       @default(0) @map("delivered_count")
-  openedCount       Int       @default(0) @map("opened_count")
-  clickedCount      Int       @default(0) @map("clicked_count")
-  convertedCount    Int       @default(0) @map("converted_count")
-  
-  // Automação
-  autoFollowUp      Boolean   @default(false) @map("auto_follow_up")
-  followUpDays      Int       @default(7) @map("follow_up_days")
-  
-  // Workflow
-  workflowSteps     Json?     @default("[]") @map("workflow_steps")
-  
-  // IA
-  aiGenerated       Boolean   @default(false) @map("ai_generated")
-  aiPrompt          String?   @db.Text @map("ai_prompt")
-  
-  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  createdBy         String?   @map("created_by") @db.Uuid
-
-  recipients        CampaignRecipient[]
-  template          EmailTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  id              String              @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name            String              @db.VarChar(255)
+  description     String?
+  type            String              @default("email") @db.VarChar(50)
+  status          String              @default("draft") @db.VarChar(20)
+  segmentCriteria Json?               @default("{}") @map("segment_criteria")
+  subject         String?             @db.VarChar(255)
+  content         String?
+  templateId      String?             @map("template_id") @db.Uuid
+  scheduledAt     DateTime?           @map("scheduled_at") @db.Timestamptz(6)
+  startedAt       DateTime?           @map("started_at") @db.Timestamptz(6)
+  endedAt         DateTime?           @map("ended_at") @db.Timestamptz(6)
+  totalRecipients Int                 @default(0) @map("total_recipients")
+  sentCount       Int                 @default(0) @map("sent_count")
+  deliveredCount  Int                 @default(0) @map("delivered_count")
+  openedCount     Int                 @default(0) @map("opened_count")
+  clickedCount    Int                 @default(0) @map("clicked_count")
+  convertedCount  Int                 @default(0) @map("converted_count")
+  autoFollowUp    Boolean             @default(false) @map("auto_follow_up")
+  followUpDays    Int                 @default(7) @map("follow_up_days")
+  workflowSteps   Json?               @default("[]") @map("workflow_steps")
+  aiGenerated     Boolean             @default(false) @map("ai_generated")
+  aiPrompt        String?             @map("ai_prompt")
+  createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy       String?             @map("created_by") @db.Uuid
+  recipients      CampaignRecipient[]
+  template        EmailTemplate?      @relation(fields: [templateId], references: [id])
 
   @@index([status], map: "idx_campaigns_status")
   @@index([type], map: "idx_campaigns_type")
@@ -447,25 +385,20 @@ model Campaign {
 }
 
 model CampaignRecipient {
-  id            String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  campaignId    String    @map("campaign_id") @db.Uuid
-  restaurantId  String    @map("restaurant_id") @db.Uuid
-  
-  status        String    @default("pending") @db.VarChar(20) // 'pending', 'sent', 'delivered', 'opened', 'clicked', 'converted', 'bounced', 'unsubscribed'
-  
-  sentAt        DateTime? @map("sent_at") @db.Timestamptz(6)
-  deliveredAt   DateTime? @map("delivered_at") @db.Timestamptz(6)
-  openedAt      DateTime? @map("opened_at") @db.Timestamptz(6)
-  clickedAt     DateTime? @map("clicked_at") @db.Timestamptz(6)
-  convertedAt   DateTime? @map("converted_at") @db.Timestamptz(6)
-  
-  metadata      Json?     @default("{}")
-  
-  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  campaign      Campaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  restaurant    Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  id           String     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  campaignId   String     @map("campaign_id") @db.Uuid
+  restaurantId String     @map("restaurant_id") @db.Uuid
+  status       String     @default("pending") @db.VarChar(20)
+  sentAt       DateTime?  @map("sent_at") @db.Timestamptz(6)
+  deliveredAt  DateTime?  @map("delivered_at") @db.Timestamptz(6)
+  openedAt     DateTime?  @map("opened_at") @db.Timestamptz(6)
+  clickedAt    DateTime?  @map("clicked_at") @db.Timestamptz(6)
+  convertedAt  DateTime?  @map("converted_at") @db.Timestamptz(6)
+  metadata     Json?      @default("{}")
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  campaign     Campaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
 
   @@unique([campaignId, restaurantId])
   @@index([campaignId], map: "idx_campaign_recipients_campaign_id")
@@ -475,19 +408,17 @@ model CampaignRecipient {
 }
 
 model EmailTemplate {
-  id          String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name        String    @db.VarChar(255)
-  subject     String?   @db.VarChar(255)
-  content     String    @db.Text
-  variables   Json?     @default("[]")
-  category    String?   @db.VarChar(50) // 'prospecting', 'follow_up', 're_engagement', 'custom'
-  
-  isDefault   Boolean   @default(false) @map("is_default")
-  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  createdBy   String?   @map("created_by") @db.Uuid
-
-  campaigns   Campaign[]
+  id        String     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name      String     @db.VarChar(255)
+  subject   String?    @db.VarChar(255)
+  content   String
+  variables Json?      @default("[]")
+  category  String?    @db.VarChar(50)
+  isDefault Boolean    @default(false) @map("is_default")
+  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy String?    @map("created_by") @db.Uuid
+  campaigns Campaign[]
 
   @@index([category], map: "idx_email_templates_category")
   @@index([isDefault], map: "idx_email_templates_is_default")
@@ -495,22 +426,18 @@ model EmailTemplate {
 }
 
 model Workflow {
-  id                String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name              String    @db.VarChar(255)
-  description       String?   @db.Text
-  triggerType       String    @map("trigger_type") @db.VarChar(50) // 'status_change', 'new_lead', 'no_contact_days', 'rating_threshold', 'manual'
-  triggerConditions Json?     @default("{}") @map("trigger_conditions")
-  
-  steps             Json      @default("[]")
-  
-  active            Boolean   @default(true)
-  executionCount    Int       @default(0) @map("execution_count")
-  lastExecutedAt    DateTime? @map("last_executed_at") @db.Timestamptz(6)
-  
-  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  createdBy         String?   @map("created_by") @db.Uuid
-
+  id                String              @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name              String              @db.VarChar(255)
+  description       String?
+  triggerType       String              @map("trigger_type") @db.VarChar(50)
+  triggerConditions Json?               @default("{}") @map("trigger_conditions")
+  steps             Json                @default("[]")
+  active            Boolean             @default(true)
+  executionCount    Int                 @default(0) @map("execution_count")
+  lastExecutedAt    DateTime?           @map("last_executed_at") @db.Timestamptz(6)
+  createdAt         DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy         String?             @map("created_by") @db.Uuid
   executions        WorkflowExecution[]
 
   @@index([triggerType], map: "idx_workflows_trigger_type")
@@ -519,22 +446,18 @@ model Workflow {
 }
 
 model WorkflowExecution {
-  id            String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  workflowId    String    @map("workflow_id") @db.Uuid
-  restaurantId  String    @map("restaurant_id") @db.Uuid
-  
-  status        String    @default("running") @db.VarChar(20) // 'running', 'completed', 'failed', 'paused'
-  currentStep   Int       @default(0) @map("current_step")
-  stepsCompleted Json?    @default("[]") @map("steps_completed")
-  
-  startedAt     DateTime  @default(now()) @map("started_at") @db.Timestamptz(6)
-  completedAt   DateTime? @map("completed_at") @db.Timestamptz(6)
-  errorMessage  String?   @db.Text @map("error_message")
-  
-  metadata      Json?     @default("{}")
-
-  workflow      Workflow   @relation(fields: [workflowId], references: [id], onDelete: Cascade)
-  restaurant    Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  id             String     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  workflowId     String     @map("workflow_id") @db.Uuid
+  restaurantId   String     @map("restaurant_id") @db.Uuid
+  status         String     @default("running") @db.VarChar(20)
+  currentStep    Int        @default(0) @map("current_step")
+  stepsCompleted Json?      @default("[]") @map("steps_completed")
+  startedAt      DateTime   @default(now()) @map("started_at") @db.Timestamptz(6)
+  completedAt    DateTime?  @map("completed_at") @db.Timestamptz(6)
+  errorMessage   String?    @map("error_message")
+  metadata       Json?      @default("{}")
+  restaurant     Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  workflow       Workflow   @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 
   @@index([workflowId], map: "idx_workflow_executions_workflow_id")
   @@index([restaurantId], map: "idx_workflow_executions_restaurant_id")
@@ -542,36 +465,24 @@ model WorkflowExecution {
   @@map("workflow_executions")
 }
 
-// ========================================
 model FixedClient {
-  id            String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  sellerId      String   @map("seller_id") @db.Uuid
-  seller        Seller   @relation(fields: [sellerId], references: [id], onDelete: Cascade)
-  
-  // Cliente pode ser da base (restaurantId) ou cadastrado manualmente
-  restaurantId  String?  @map("restaurant_id") @db.Uuid
-  restaurant    Restaurant? @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  
-  // Dados do cliente fixo (para cadastro manual)
-  clientName    String?  @map("client_name") @db.VarChar(255)
-  clientAddress Json?    @map("client_address") // {street, neighborhood, city, state, zip}
-  
-  // Configuração de recorrência
-  recurrenceType String  @map("recurrence_type") @db.VarChar(20) // 'monthly_days' ou 'weekly_days'
-  monthlyDays    Json    @default("[]") @map("monthly_days") // [2, 14] - dias do mês (JSON array)
-  weeklyDays     Json    @default("[]") @map("weekly_days") // [1, 4] - 0=domingo, 1=segunda, etc. (JSON array)
-  
-  // Configuração de proximidade
-  radiusKm       Decimal  @default(15.0) @map("radius_km") @db.Decimal(5, 2) // Raio em km (padrão 15km)
+  id             String      @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  sellerId       String      @map("seller_id") @db.Uuid
+  restaurantId   String?     @map("restaurant_id") @db.Uuid
+  clientName     String?     @map("client_name") @db.VarChar(255)
+  clientAddress  Json?       @map("client_address")
+  recurrenceType String      @map("recurrence_type") @db.VarChar(20)
+  monthlyDays    Json        @default("[]") @map("monthly_days")
+  weeklyDays     Json        @default("[]") @map("weekly_days")
+  radiusKm       Decimal     @default(15.0) @map("radius_km") @db.Decimal(5, 2)
   latitude       Float?
   longitude      Float?
-  
-  // Status
-  active         Boolean  @default(true)
-  
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  
+  active         Boolean     @default(true)
+  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  restaurant     Restaurant? @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  seller         Seller      @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+
   @@index([sellerId])
   @@index([restaurantId])
   @@map("fixed_clients")

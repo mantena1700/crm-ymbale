@@ -59,9 +59,12 @@ const Sidebar = () => {
     const pathname = usePathname();
     const router = useRouter();
 
-    // Buscar informações do usuário
+    // Buscar informações do usuário - REFETCH on route change
     useEffect(() => {
-        fetch('/api/auth/session')
+        fetch('/api/auth/session', {
+            cache: 'no-store',
+            headers: { 'Cache-Control': 'no-cache' }
+        })
             .then(res => res.json())
             .then(data => {
                 if (data.authenticated) {
@@ -69,7 +72,7 @@ const Sidebar = () => {
                 }
             })
             .catch(() => { });
-    }, []);
+    }, [pathname]); // Refetch when route changes
 
     // Buscar configurações do sistema
     useEffect(() => {
