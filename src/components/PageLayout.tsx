@@ -42,9 +42,9 @@ export function PageLayout({ children, title, subtitle, icon, actions, className
     );
 }
 
-export function Card({ children, className, title, actions }: { 
-    children: ReactNode; 
-    className?: string; 
+export function Card({ children, className, title, actions }: {
+    children: ReactNode;
+    className?: string;
     title?: string;
     actions?: ReactNode;
 }) {
@@ -63,13 +63,13 @@ export function Card({ children, className, title, actions }: {
     );
 }
 
-export function Grid({ children, cols = 3, className }: { 
-    children: ReactNode; 
+export function Grid({ children, cols = 3, className }: {
+    children: ReactNode;
     cols?: number;
     className?: string;
 }) {
     return (
-        <div 
+        <div
             className={`${styles.grid} ${className || ''}`}
             style={{ gridTemplateColumns: `repeat(auto-fit, minmax(min(100%, ${300 / cols}px), 1fr))` }}
         >
@@ -105,8 +105,8 @@ export function StatCard({ icon, label, value, trend, trendValue, color }: {
     );
 }
 
-export function Badge({ children, variant = 'default' }: { 
-    children: ReactNode; 
+export function Badge({ children, variant = 'default' }: {
+    children: ReactNode;
     variant?: 'default' | 'success' | 'warning' | 'danger' | 'info';
 }) {
     return (
@@ -116,21 +116,22 @@ export function Badge({ children, variant = 'default' }: {
     );
 }
 
-export function Button({ children, variant = 'primary', onClick, disabled, className }: {
+export function Button({ children, variant = 'primary', onClick, disabled, className, style }: {
     children: ReactNode;
     variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
     onClick?: () => void;
     disabled?: boolean;
     className?: string;
+    style?: React.CSSProperties;
 }) {
     return (
         <button
             className={`${styles.button} ${styles[variant]} ${className || ''}`}
             onClick={onClick}
             disabled={disabled}
+            style={style}
         >
             {children}
         </button>
     );
 }
-

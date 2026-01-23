@@ -100,7 +100,7 @@ export default function CarteiraClient({ initialData }: Props) {
     const [showScheduleModal, setShowScheduleModal] = useState<string | null>(null);
     const [scheduleData, setScheduleData] = useState({ date: '', time: '', notes: '' });
     const [loading, setLoading] = useState(false);
-    const [activeTab, setActiveTab] = useState<'carteira-padrao' | 'carteira' | 'semana' | 'agenda' | 'mapa' | 'exportar-checkmob' | 'exportar-agendamento' | 'clientes-fixos'>('carteira-padrao');
+    const [activeTab, setActiveTab] = useState<'carteira-padrao' | 'agenda' | 'mapa' | 'exportar-checkmob'>('carteira-padrao');
     const [weekViewMode, setWeekViewMode] = useState<'list' | 'calendar'>('calendar');
     const [currentWeekStart, setCurrentWeekStart] = useState(() => {
         const today = new Date();
@@ -932,49 +932,31 @@ export default function CarteiraClient({ initialData }: Props) {
                 </div>
             )}
 
-            {/* Tabs */}
+            {/* Tabs - Simplificado */}
             <div className={styles.tabs}>
                 <button
                     className={`${styles.tab} ${activeTab === 'carteira-padrao' ? styles.active : ''}`}
                     onClick={() => setActiveTab('carteira-padrao')}
                 >
-                    💼 Carteira Padrão
-                </button>
-                <button
-                    className={`${styles.tab} ${activeTab === 'carteira' ? styles.active : ''}`}
-                    onClick={() => setActiveTab('carteira')}
-                >
-                    📋 Carteira Individual
-                </button>
-                <button
-                    className={`${styles.tab} ${activeTab === 'semana' ? styles.active : ''}`}
-                    onClick={() => setActiveTab('semana')}
-                >
-                    📅 Plano da Semana {weekPlan.length > 0 && <span className={styles.badge}>{weekPlan.length}</span>}
+                    📋 Carteira
                 </button>
                 <button
                     className={`${styles.tab} ${activeTab === 'agenda' ? styles.active : ''}`}
                     onClick={() => setActiveTab('agenda')}
                 >
-                    🗓️ Agenda Completa
+                    📅 Agenda {weekPlan.length > 0 && <span className={styles.badge}>{weekPlan.length}</span>}
                 </button>
                 <button
                     className={`${styles.tab} ${activeTab === 'mapa' ? styles.active : ''}`}
                     onClick={() => setActiveTab('mapa')}
                 >
-                    🗺️ Mapa da Região
+                    🗺️ Mapa
                 </button>
                 <button
                     className={`${styles.tab} ${activeTab === 'exportar-checkmob' ? styles.active : ''}`}
                     onClick={() => setActiveTab('exportar-checkmob')}
                 >
-                    📥 Exportar Checkmob
-                </button>
-                <button
-                    className={`${styles.tab} ${activeTab === 'clientes-fixos' ? styles.active : ''}`}
-                    onClick={() => setActiveTab('clientes-fixos')}
-                >
-                    📌 Clientes Fixos
+                    📥 Exportar
                 </button>
             </div>
 
