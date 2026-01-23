@@ -199,6 +199,38 @@ export default function ClientsClientNew({ initialRestaurants, availableSellers 
             )
         },
         {
+            key: 'analysisStrategy',
+            label: 'Estratégia',
+            width: '180px',
+            render: (value: string, row: Restaurant) => {
+                if (!row.analysisStrategy) return <span style={{ color: '#94a3b8' }}>-</span>;
+
+                const strategy = row.analysisStrategy;
+                let bg = '#e2e8f0';
+                let color = '#475569';
+
+                if (strategy.includes('DIAMANTE')) { bg = '#3b82f6'; color = 'white'; }
+                else if (strategy.includes('OURO')) { bg = '#f59e0b'; color = 'white'; }
+                else if (strategy.includes('PRATA')) { bg = '#94a3b8'; color = 'white'; }
+                else if (strategy.includes('BRONZE')) { bg = '#b45309'; color = 'white'; }
+                else if (strategy.includes('VERIFICADO')) { bg = '#10b981'; color = 'white'; }
+
+                return (
+                    <span style={{
+                        backgroundColor: bg,
+                        color: color,
+                        padding: '2px 8px',
+                        borderRadius: '12px',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        whiteSpace: 'nowrap'
+                    }}>
+                        {strategy.split('(')[0].trim()}
+                    </span>
+                );
+            }
+        },
+        {
             key: 'status',
             label: 'Status',
             width: '120px',
@@ -498,8 +530,8 @@ export default function ClientsClientNew({ initialRestaurants, availableSellers 
                     >
                         {allocating ? '⏳ Sincronizando...' : '🗺️ Sincronizar com Áreas'}
                     </Button>
-                    <Button variant="secondary" onClick={() => window.location.href = '/batch-analysis'}>
-                        🤖 Análise em Lote
+                    <Button variant="secondary" onClick={() => window.location.href = '/packaging-analysis'}>
+                        📦 Análise de Embalagens
                     </Button>
                     <Button variant="primary" onClick={() => window.location.href = '/clients/new'}>
                         ➕ Novo Cliente
@@ -750,6 +782,17 @@ export default function ClientsClientNew({ initialRestaurants, availableSellers 
                                 }>
                                     {restaurant.salesPotential}
                                 </Badge>
+                                {restaurant.analysisStrategy && (
+                                    <div style={{ marginTop: '0.5rem', display: 'flex', justifyContent: 'flex-end' }}>
+                                        <Badge variant={
+                                            restaurant.analysisStrategy.includes('DIAMANTE') ? 'info' :
+                                                restaurant.analysisStrategy.includes('OURO') ? 'warning' :
+                                                    restaurant.analysisStrategy.includes('VERIFICADO') ? 'success' : 'default'
+                                        } style={{ fontSize: '0.7rem' }}>
+                                            {restaurant.analysisStrategy}
+                                        </Badge>
+                                    </div>
+                                )}
                             </div>
 
                             <div className={styles.cardBody}>

@@ -16,13 +16,36 @@ export default async function UsersPage() {
     }
 
     const user = await validateSession(token);
-    
-    if (!user || user.role !== 'admin') {
+
+    if (!user) {
+        redirect('/login');
+    }
+
+    // Buscar permissões com tratamento de erro
+    let permissions: string[] = [];
+    try {
+        const { getUserPermissionsById } = await import('./permissions-actions');
+        permissions = await getUserPermissionsById(user.id);
+    } catch (error) {
+        console.error('Erro ao buscar permissões:', error);
+        // Em caso de erro, apenas admin passa
+    }
+
+    // Acesso permitido se for admin OU tiver permissão de visualizar usuários
+    const hasAccess = user.role === 'admin' || permissions.includes('users.view');
+
+    if (!hasAccess) {
         redirect('/');
     }
 
     const users = await getUsers();
 
-    return <UsersClient initialUsers={users} currentUserId={user.id} />;
+    // Filtrar: se não é admin, não vê admins
+    // Isso impede que um usuário com permissão de editar usuários edite o admin
+    const filteredUsers = user.role === 'admin'
+        ? users
+        : users.filter(u => u.role !== 'admin');
+
+    return <UsersClient initialUsers={filteredUsers} currentUserId={user.id} />;
 }
 

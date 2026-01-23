@@ -62,7 +62,7 @@ export default function DashboardClientNew({ stats }: DashboardClientProps) {
         };
     }, []);
 
-    const conversionRate = stats.totalLeads > 0 
+    const conversionRate = stats.totalLeads > 0
         ? ((stats.closedDeals / stats.totalLeads) * 100).toFixed(1)
         : '0';
 
@@ -88,9 +88,9 @@ export default function DashboardClientNew({ stats }: DashboardClientProps) {
             width: '120px',
             render: (value: string) => (
                 <Badge variant={
-                    value === 'ALTÍSSIMO' ? 'danger' : 
-                    value === 'ALTO' ? 'warning' : 
-                    value === 'MÉDIO' ? 'info' : 'default'
+                    value === 'ALTÍSSIMO' ? 'danger' :
+                        value === 'ALTO' ? 'warning' :
+                            value === 'MÉDIO' ? 'info' : 'default'
                 }>
                     {value}
                 </Badge>
@@ -140,7 +140,7 @@ export default function DashboardClientNew({ stats }: DashboardClientProps) {
                 const minutes = Math.floor(diff / 60000);
                 const hours = Math.floor(diff / 3600000);
                 const days = Math.floor(diff / 86400000);
-                
+
                 if (minutes < 60) return `${minutes}m atrás`;
                 if (hours < 24) return `${hours}h atrás`;
                 return `${days}d atrás`;
@@ -154,7 +154,7 @@ export default function DashboardClientNew({ stats }: DashboardClientProps) {
             subtitle={`Hora de fazer negócio • ${currentTime}`}
             actions={
                 <>
-                    <Button variant="secondary" onClick={() => window.location.href = '/batch-analysis'}>
+                    <Button variant="secondary" onClick={() => window.location.href = '/packaging-analysis'}>
                         🤖 Análise IA
                     </Button>
                     <Button variant="primary" onClick={() => window.location.href = '/clients'}>
@@ -207,12 +207,12 @@ export default function DashboardClientNew({ stats }: DashboardClientProps) {
                         <div className={styles.alertContent}>
                             <strong>{stats.pendingAnalysis}</strong> leads aguardando análise IA
                         </div>
-                        <Link href="/batch-analysis" className={styles.alertAction}>
+                        <Link href="/packaging-analysis" className={styles.alertAction}>
                             Analisar →
                         </Link>
                     </div>
                 </Card>
-                
+
                 <Card className={styles.alertCard} title={undefined}>
                     <div className={styles.alert} data-variant="info">
                         <span className={styles.alertIcon}>📅</span>
@@ -297,9 +297,9 @@ export default function DashboardClientNew({ stats }: DashboardClientProps) {
                                 <Badge variant="danger">ALTÍSSIMO</Badge>
                             </div>
                             <div className={styles.potentialBar}>
-                                <div 
+                                <div
                                     className={styles.potentialFill}
-                                    style={{ 
+                                    style={{
                                         width: `${(stats.byPotential.altissimo / stats.totalLeads) * 100}%`,
                                         background: '#ef4444'
                                     }}
@@ -313,9 +313,9 @@ export default function DashboardClientNew({ stats }: DashboardClientProps) {
                                 <Badge variant="warning">ALTO</Badge>
                             </div>
                             <div className={styles.potentialBar}>
-                                <div 
+                                <div
                                     className={styles.potentialFill}
-                                    style={{ 
+                                    style={{
                                         width: `${(stats.byPotential.alto / stats.totalLeads) * 100}%`,
                                         background: '#f59e0b'
                                     }}
@@ -329,9 +329,9 @@ export default function DashboardClientNew({ stats }: DashboardClientProps) {
                                 <Badge variant="info">MÉDIO</Badge>
                             </div>
                             <div className={styles.potentialBar}>
-                                <div 
+                                <div
                                     className={styles.potentialFill}
-                                    style={{ 
+                                    style={{
                                         width: `${(stats.byPotential.medio / stats.totalLeads) * 100}%`,
                                         background: '#3b82f6'
                                     }}
@@ -345,9 +345,9 @@ export default function DashboardClientNew({ stats }: DashboardClientProps) {
                                 <Badge>BAIXO</Badge>
                             </div>
                             <div className={styles.potentialBar}>
-                                <div 
+                                <div
                                     className={styles.potentialFill}
-                                    style={{ 
+                                    style={{
                                         width: `${(stats.byPotential.baixo / stats.totalLeads) * 100}%`,
                                         background: '#94a3b8'
                                     }}
@@ -367,9 +367,9 @@ export default function DashboardClientNew({ stats }: DashboardClientProps) {
                                 <div key={city} className={styles.regionItem}>
                                     <span className={styles.regionName}>{city}</span>
                                     <div className={styles.regionBar}>
-                                        <div 
+                                        <div
                                             className={styles.regionFill}
-                                            style={{ 
+                                            style={{
                                                 width: `${(count / stats.totalLeads) * 100}%`
                                             }}
                                         ></div>
@@ -382,7 +382,7 @@ export default function DashboardClientNew({ stats }: DashboardClientProps) {
             </Grid>
 
             {/* Top Leads */}
-            <Card 
+            <Card
                 title="🏆 Top Leads (Altíssimo Potencial)"
                 actions={
                     <Link href="/clients" className={styles.cardLink}>
@@ -427,7 +427,7 @@ export default function DashboardClientNew({ stats }: DashboardClientProps) {
                                         {followUp.description || 'Follow-up agendado'}
                                     </div>
                                 </div>
-                                <Link 
+                                <Link
                                     href={`/restaurant/${followUp.restaurantId}`}
                                     className={styles.followUpAction}
                                 >

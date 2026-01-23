@@ -43,7 +43,7 @@ export async function analyzePackagingComments(comments: string[], salesPotentia
 
     // Analisar cada comentário
     let totalIssues = 0;
-    
+
     // Normalizar comentários para string única para análise rápida ou iterar se precisar de contagem precisa
     // Aqui vamos iterar para ser mais preciso
     for (const comment of comments) {
@@ -85,7 +85,7 @@ export async function analyzePackagingComments(comments: string[], salesPotentia
         classification = 'SEM PROBLEMAS DETECTADOS';
     }
 
-    const summary = detectedPainPoints.length > 0 
+    const summary = detectedPainPoints.length > 0
         ? `Detectados ${totalIssues} problemas: ${detectedPainPoints.join(', ')}`
         : 'Nenhum problema grave de embalagem detectado nos comentários recentes.';
 
@@ -113,7 +113,7 @@ export async function calculateLeadPriority(classification: string, salesPotenti
     if (isHighPotential) {
         return 'PRATA 🥈 (Monitorar)';
     }
-    
+
     return 'BRONZE 🥉 (Baixa Prioridade)';
 }
 
@@ -134,49 +134,57 @@ export async function reprocessAllRestaurants() {
         for (const restaurant of restaurants) {
             // Extrair comentários em array de strings
             const commentTexts = restaurant.comments.map(c => c.content);
-            
+
             // Analisar
             const analysis = await analyzePackagingComments(commentTexts, restaurant.salesPotential || 'N/A');
-            
+
+            // Calcular prioridade (sempre, mesmo sem problemas)
+            let priority;
             if (analysis.totalIssues > 0) {
-                // Calcular prioridade
-                const priority = await calculateLeadPriority(analysis.classification, restaurant.salesPotential || 'N/A');
-                
-                // Atualizar/Criar análise
-                // Verifica se já tem análise recente
-                const existingAnalysis = restaurant.analyses[0]; // Simplificação: pega a primeira
+                priority = await calculateLeadPriority(analysis.classification, restaurant.salesPotential || 'N/A');
+            } else {
+                priority = 'VERIFICADO - OK';
+            }
 
-                if (!existingAnalysis) {
-                    await prisma.analysis.create({
-                        data: {
-                            restaurantId: restaurant.id,
-                            score: Math.min(analysis.totalIssues * 20, 100),
-                            summary: `[AUTO-REPROCESS] ${analysis.summary}`,
-                            painPoints: analysis.painPoints,
-                            salesCopy: `Focar em: ${analysis.summary}`,
-                            strategy: priority,
-                            status: 'Analisado'
-                        }
-                    });
-                    
-                    // Se for crítico, pode atualizar status do lead também
-                    if (priority.includes('DIAMANTE') && restaurant.status !== 'Qualificado' && restaurant.status !== 'Fechado' && restaurant.status !== 'Negociação') {
-                        await prisma.restaurant.update({
-                            where: { id: restaurant.id },
-                            data: { status: 'Qualificado' }
-                        });
+            // Atualizar/Criar análise
+            const existingAnalysis = restaurant.analyses[0];
+
+            // Se não tem análise OU se a análise existente é antiga/diferente (opcional, aqui focamos em quem não tem)
+            // Vamos criar para quem não tem, para "limpar" a fila de pendentes
+            if (!existingAnalysis) {
+                await prisma.analysis.create({
+                    data: {
+                        restaurantId: restaurant.id,
+                        score: Math.min(analysis.totalIssues * 20, 100),
+                        summary: `[AUTO-REPROCESS] ${analysis.summary}`,
+                        painPoints: analysis.painPoints,
+                        salesCopy: analysis.totalIssues > 0 ? `Focar em: ${analysis.summary}` : 'Abordagem padrão - sem reclamações recentes de embalagem.',
+                        strategy: priority,
+                        status: 'Analisado'
                     }
+                });
 
-                    updatedCount++;
+                // Se for crítico, pode atualizar status do lead também
+                if (priority.includes('DIAMANTE') && restaurant.status !== 'Qualificado' && restaurant.status !== 'Fechado' && restaurant.status !== 'Negociação') {
+                    await prisma.restaurant.update({
+                        where: { id: restaurant.id },
+                        data: { status: 'Qualificado' }
+                    });
                 }
+
+                updatedCount++;
+            } else if (existingAnalysis.summary.startsWith('[AUTO-REPROCESS]') && analysis.totalIssues > 0) {
+                // Opcional: Atualizar se já existe mas queremos garantir a tag correta? 
+                // Por enquanto, vamos manter simples. Se já tem, ignora. 
+                // A menos que queiramos forçar atualização. Vamos deixar assim para não duplicar.
             }
         }
 
         revalidatePath('/packaging-analysis');
         revalidatePath('/clients');
-        
+
         return { success: true, count: updatedCount, total: restaurants.length };
-        
+
     } catch (error) {
         console.error('Erro ao reprocessar:', error);
         throw new Error('Falha ao reprocessar base de dados');

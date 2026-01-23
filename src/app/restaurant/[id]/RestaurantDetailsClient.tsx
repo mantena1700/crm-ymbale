@@ -124,33 +124,33 @@ export default function RestaurantDetailsClient({ restaurant, initialAnalysis, i
 
     const getNextSteps = () => {
         const steps: string[] = [];
-        
+
         if (!restaurant.seller) {
             steps.push('Atribuir um executivo responsável');
         }
-        
+
         if (status === 'A Analisar') {
             steps.push('Analisar perfil com IA para qualificar');
         }
-        
+
         if (!initialAnalysis) {
             steps.push('Gerar análise de IA');
         }
-        
+
         if (status === 'Qualificado' && restaurant.seller) {
             steps.push('Agendar primeira visita');
             steps.push('Enviar email de apresentação');
         }
-        
+
         if (status === 'Contatado') {
             steps.push('Registrar feedback do contato');
             steps.push('Agendar follow-up');
         }
-        
+
         if (steps.length === 0) {
             steps.push('Lead bem encaminhado! Continue acompanhando');
         }
-        
+
         return steps.slice(0, 3);
     };
 
@@ -191,6 +191,29 @@ export default function RestaurantDetailsClient({ restaurant, initialAnalysis, i
                                 <span className={`${styles.statusBadge} ${getStatusClass(status)}`}>
                                     {status}
                                 </span>
+                                {restaurant.analysisStrategy && (
+                                    <span style={{
+                                        padding: '4px 12px',
+                                        borderRadius: '100px',
+                                        fontSize: '0.8rem',
+                                        fontWeight: 600,
+                                        backgroundColor: restaurant.analysisStrategy.includes('DIAMANTE') ? '#3b82f6' :
+                                            restaurant.analysisStrategy.includes('OURO') ? '#f59e0b' :
+                                                restaurant.analysisStrategy.includes('PRATA') ? '#94a3b8' :
+                                                    restaurant.analysisStrategy.includes('BRONZE') ? '#b45309' :
+                                                        restaurant.analysisStrategy.includes('VERIFICADO') ? '#10b981' : '#e2e8f0',
+                                        color: 'white',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '4px'
+                                    }}>
+                                        {restaurant.analysisStrategy.includes('DIAMANTE') ? '💎' :
+                                            restaurant.analysisStrategy.includes('OURO') ? '🏆' :
+                                                restaurant.analysisStrategy.includes('PRATA') ? '🥈' :
+                                                    restaurant.analysisStrategy.includes('BRONZE') ? '🥉' : '✅'}
+                                        {restaurant.analysisStrategy.split('(')[0].trim()}
+                                    </span>
+                                )}
                                 <span className={styles.location}>
                                     📍 {safeAddress.city}, {safeAddress.state}
                                 </span>
@@ -253,19 +276,19 @@ export default function RestaurantDetailsClient({ restaurant, initialAnalysis, i
                 {/* Tabs Container */}
                 <div className={styles.tabsContainer}>
                     <div className={styles.tabs}>
-                        <button 
+                        <button
                             className={`${styles.tab} ${activeTab === 'overview' ? styles.active : ''}`}
                             onClick={() => setActiveTab('overview')}
                         >
                             📋 Visão Geral
                         </button>
-                        <button 
+                        <button
                             className={`${styles.tab} ${activeTab === 'analysis' ? styles.active : ''}`}
                             onClick={() => setActiveTab('analysis')}
                         >
                             🤖 Análise IA
                         </button>
-                        <button 
+                        <button
                             className={`${styles.tab} ${activeTab === 'notes' ? styles.active : ''}`}
                             onClick={() => setActiveTab('notes')}
                         >
@@ -295,9 +318,9 @@ export default function RestaurantDetailsClient({ restaurant, initialAnalysis, i
                                 <div className={styles.scoreSection}>
                                     <div className={`${styles.scoreCircle} ${getScoreClass(safeSalesPotential)}`}>
                                         <span className={styles.scoreValue}>
-                                            {safeSalesPotential === 'ALTÍSSIMO' ? '🔥' : 
-                                             safeSalesPotential === 'ALTO' ? '⚡' :
-                                             safeSalesPotential === 'MÉDIO' ? '📊' : '📉'}
+                                            {safeSalesPotential === 'ALTÍSSIMO' ? '🔥' :
+                                                safeSalesPotential === 'ALTO' ? '⚡' :
+                                                    safeSalesPotential === 'MÉDIO' ? '📊' : '📉'}
                                         </span>
                                         <span className={styles.scoreLabel}>Score</span>
                                     </div>
@@ -349,8 +372,8 @@ export default function RestaurantDetailsClient({ restaurant, initialAnalysis, i
                             <>
                                 <div className={styles.sellerInfo}>
                                     {restaurant.seller.photoUrl ? (
-                                        <img 
-                                            src={restaurant.seller.photoUrl} 
+                                        <img
+                                            src={restaurant.seller.photoUrl}
                                             alt={restaurant.seller.name}
                                             className={styles.sellerPhotoLarge}
                                         />
@@ -366,7 +389,7 @@ export default function RestaurantDetailsClient({ restaurant, initialAnalysis, i
                                         )}
                                     </div>
                                 </div>
-                                
+
                                 <div className={styles.sellerTags}>
                                     {restaurant.seller.regions?.includes(safeAddress.city) && (
                                         <span className={styles.regionTag}>📍 Área da Cidade</span>

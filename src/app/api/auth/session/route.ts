@@ -21,9 +21,16 @@ export async function GET() {
             return NextResponse.json({ authenticated: false });
         }
 
+        // Buscar permissões
+        const { getUserPermissionsById } = await import('@/app/users/permissions-actions');
+        const permissions = await getUserPermissionsById(user.id);
+
         return NextResponse.json({
             authenticated: true,
-            user,
+            user: {
+                ...user,
+                permissions
+            },
             mustChangePassword: user.mustChangePassword
         });
     } catch (error) {

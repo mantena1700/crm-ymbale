@@ -35,6 +35,7 @@ interface UserInfo {
     username: string;
     name: string;
     role: 'admin' | 'user';
+    permissions?: string[];
 }
 
 interface SystemSettings {
@@ -310,7 +311,20 @@ const Sidebar = () => {
                     {navSections.map((section) => {
                         // Filtrar itens baseado na permissão do usuário
                         const filteredItems = section.items.filter(item => {
-                            if (item.adminOnly && user?.role !== 'admin') return false;
+                            // Se usuário não carregado, esconde tudo
+                            if (!user) return false;
+
+                            // Admin vê tudo
+                            if (user.role === 'admin') return true;
+
+                            // Verificar permissão específica (se definida)
+                            if (item.permission) {
+                                return user.permissions?.includes(item.permission);
+                            }
+
+                            // Se é adminOnly e chegou aqui (não é admin), esconde
+                            if (item.adminOnly) return false;
+
                             return true;
                         });
 

@@ -31,6 +31,8 @@ export interface Restaurant {
     assignedAt?: string;
     zonaId?: string;
     zonaNome?: string;
+    analyses?: AnalysisResult[];
+    analysisStrategy?: string;
 }
 
 export interface AnalysisResult {

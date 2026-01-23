@@ -2,6 +2,7 @@
 
 import { prisma } from '@/lib/db';
 import { ALL_PERMISSIONS, PermissionCode, ROLE_PERMISSIONS } from '@/lib/permissions';
+import { revalidatePath } from 'next/cache';
 
 export interface UserWithPermissions {
     id: string;
@@ -72,7 +73,7 @@ export async function getUserPermissionsById(userId: string): Promise<string[]> 
 
 // Atualizar permissões de um usuário
 export async function updateUserPermissions(
-    userId: string, 
+    userId: string,
     permissions: string[],
     grantedBy?: string
 ): Promise<{ success: boolean; message: string }> {
@@ -115,6 +116,8 @@ export async function updateUserPermissions(
             });
         }
 
+        revalidatePath('/users');
+        revalidatePath('/'); // Revalida dashboard para atualizar sidebar
         return { success: true, message: 'Permissões atualizadas com sucesso!' };
     } catch (error) {
         console.error('Erro ao atualizar permissões:', error);
@@ -124,7 +127,7 @@ export async function updateUserPermissions(
 
 // Atualizar role do usuário
 export async function updateUserRole(
-    userId: string, 
+    userId: string,
     role: 'admin' | 'user'
 ): Promise<{ success: boolean; message: string }> {
     try {
@@ -133,6 +136,8 @@ export async function updateUserRole(
             data: { role }
         });
 
+        revalidatePath('/users');
+        revalidatePath('/');
         return { success: true, message: 'Cargo atualizado com sucesso!' };
     } catch (error) {
         console.error('Erro ao atualizar cargo:', error);

@@ -34,6 +34,7 @@ export async function getRestaurants(): Promise<Restaurant[]> {
             include: {
                 comments: true,
                 seller: true,
+                analyses: true,
             },
             orderBy: { createdAt: 'desc' }
         });
@@ -99,7 +100,19 @@ export async function getRestaurants(): Promise<Restaurant[]> {
                     neighborhoods: (r.seller.neighborhoods as string[]) || [],
                     active: r.seller.active || false
                 } : undefined,
-                assignedAt: r.assignedAt?.toISOString()
+                assignedAt: r.assignedAt?.toISOString(),
+                analyses: (r as any).analyses?.map((a: any) => ({
+                    restaurantId: a.restaurantId,
+                    score: a.score,
+                    summary: a.summary,
+                    painPoints: a.painPoints as string[],
+                    salesCopy: a.salesCopy || '',
+                    strategy: a.strategy,
+                    status: a.status
+                })) || [],
+                analysisStrategy: (r as any).analyses?.length > 0
+                    ? (r as any).analyses.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0].strategy
+                    : undefined
             };
         });
     } catch (error) {
@@ -369,7 +382,14 @@ export async function getDashboardStats() {
             prisma.restaurant.count({ where: { status: 'Contatado' } }),
             prisma.restaurant.count({ where: { status: 'Negociação' } }),
             prisma.restaurant.count({ where: { status: 'Fechado' } }),
-            prisma.restaurant.count({ where: { status: 'A Analisar' } }),
+            prisma.restaurant.count({
+                where: {
+                    status: 'A Analisar',
+                    analyses: {
+                        none: {}
+                    }
+                }
+            }),
             prisma.restaurant.findMany({
                 where: { salesPotential: 'ALTÍSSIMO' },
                 take: 10,
