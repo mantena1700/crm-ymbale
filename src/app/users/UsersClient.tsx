@@ -501,6 +501,7 @@ export default function UsersClient({ initialUsers, currentUserId, currentUserRo
                     userId={editingPermissions.id}
                     userName={editingPermissions.name}
                     userRole={editingPermissions.role}
+                    currentUserRole={currentUserRole}
                     onClose={() => setEditingPermissions(null)}
                     onSave={() => {
                         // Atualizar a lista de usuários se o role mudar

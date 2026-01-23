@@ -9,6 +9,7 @@ interface PermissionsEditorProps {
     userId: string;
     userName: string;
     userRole: string;
+    currentUserRole: 'admin' | 'user'; // Role of the user making the edit
     onClose: () => void;
     onSave: () => void;
 }
@@ -72,7 +73,7 @@ const PERMISSION_GROUPS: Record<string, { label: string; icon: string; permissio
     }
 };
 
-export default function PermissionsEditor({ userId, userName, userRole, onClose, onSave }: PermissionsEditorProps) {
+export default function PermissionsEditor({ userId, userName, userRole, currentUserRole, onClose, onSave }: PermissionsEditorProps) {
     const [selectedPermissions, setSelectedPermissions] = useState<Set<string>>(new Set());
     const [role, setRole] = useState(userRole);
     const [loading, setLoading] = useState(true);
@@ -97,7 +98,7 @@ export default function PermissionsEditor({ userId, userName, userRole, onClose,
 
     const handleTogglePermission = (code: string) => {
         if (role === 'admin') return; // Admin tem todas
-        
+
         const newPerms = new Set(selectedPermissions);
         if (newPerms.has(code)) {
             newPerms.delete(code);
@@ -109,10 +110,10 @@ export default function PermissionsEditor({ userId, userName, userRole, onClose,
 
     const handleToggleGroup = (permissions: PermissionCode[]) => {
         if (role === 'admin') return;
-        
+
         const newPerms = new Set(selectedPermissions);
         const allSelected = permissions.every(p => newPerms.has(p));
-        
+
         if (allSelected) {
             permissions.forEach(p => newPerms.delete(p));
         } else {
@@ -139,7 +140,7 @@ export default function PermissionsEditor({ userId, userName, userRole, onClose,
         try {
             // Atualizar role
             if (role !== userRole) {
-                const roleResult = await updateUserRole(userId, role as 'admin' | 'user');
+                const roleResult = await updateUserRole(userId, role as 'admin' | 'user', currentUserRole);
                 if (!roleResult.success) {
                     setMessage({ type: 'error', text: roleResult.message });
                     setSaving(false);
@@ -202,12 +203,12 @@ export default function PermissionsEditor({ userId, userName, userRole, onClose,
                 </div>
 
                 {message && (
-                    <div style={{ 
-                        padding: '0.75rem', 
-                        borderRadius: '6px', 
-                        margin: '1rem', 
-                        background: message.type === 'success' ? '#10b98120' : '#ef444420', 
-                        color: message.type === 'success' ? '#10b981' : '#ef4444' 
+                    <div style={{
+                        padding: '0.75rem',
+                        borderRadius: '6px',
+                        margin: '1rem',
+                        background: message.type === 'success' ? '#10b98120' : '#ef444420',
+                        color: message.type === 'success' ? '#10b981' : '#ef4444'
                     }}>
                         {message.type === 'success' ? '✅' : '❌'} {message.text}
                     </div>
@@ -235,23 +236,26 @@ export default function PermissionsEditor({ userId, userName, userRole, onClose,
                                 <div style={{ fontWeight: 600 }}>Usuário</div>
                                 <div style={{ fontSize: '0.85rem', opacity: 0.7 }}>Acesso limitado conforme permissões</div>
                             </button>
-                            <button
-                                onClick={() => handleRoleChange('admin')}
-                                style={{
-                                    flex: 1,
-                                    padding: '1rem',
-                                    border: '2px solid',
-                                    borderColor: role === 'admin' ? 'var(--primary-color)' : 'transparent',
-                                    borderRadius: '8px',
-                                    background: role === 'admin' ? 'var(--primary-color)20' : 'var(--bg-primary)',
-                                    cursor: 'pointer',
-                                    textAlign: 'left'
-                                }}
-                            >
-                                <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>👑</div>
-                                <div style={{ fontWeight: 600 }}>Administrador</div>
-                                <div style={{ fontSize: '0.85rem', opacity: 0.7 }}>Acesso total ao sistema</div>
-                            </button>
+                            {/* Apenas admins podem definir outros usuários como admin */}
+                            {currentUserRole === 'admin' && (
+                                <button
+                                    onClick={() => handleRoleChange('admin')}
+                                    style={{
+                                        flex: 1,
+                                        padding: '1rem',
+                                        border: '2px solid',
+                                        borderColor: role === 'admin' ? 'var(--primary-color)' : 'transparent',
+                                        borderRadius: '8px',
+                                        background: role === 'admin' ? 'var(--primary-color)20' : 'var(--bg-primary)',
+                                        cursor: 'pointer',
+                                        textAlign: 'left'
+                                    }}
+                                >
+                                    <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>👑</div>
+                                    <div style={{ fontWeight: 600 }}>Administrador</div>
+                                    <div style={{ fontSize: '0.85rem', opacity: 0.7 }}>Acesso total ao sistema</div>
+                                </button>
+                            )}
                         </div>
                     </div>
 
@@ -261,20 +265,20 @@ export default function PermissionsEditor({ userId, userName, userRole, onClose,
                             <h3 style={{ marginBottom: '1rem' }}>Permissões por Módulo</h3>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
                                 {Object.entries(PERMISSION_GROUPS).map(([key, group]) => (
-                                    <div 
-                                        key={key} 
-                                        style={{ 
-                                            background: 'var(--bg-secondary)', 
-                                            borderRadius: '8px', 
+                                    <div
+                                        key={key}
+                                        style={{
+                                            background: 'var(--bg-secondary)',
+                                            borderRadius: '8px',
                                             padding: '1rem',
                                             border: isGroupFullySelected(group.permissions) ? '2px solid var(--primary-color)' : '2px solid transparent'
                                         }}
                                     >
-                                        <div 
-                                            style={{ 
-                                                display: 'flex', 
-                                                alignItems: 'center', 
-                                                gap: '0.5rem', 
+                                        <div
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '0.5rem',
                                                 marginBottom: '0.75rem',
                                                 cursor: 'pointer'
                                             }}
@@ -295,11 +299,11 @@ export default function PermissionsEditor({ userId, userName, userRole, onClose,
                                             {group.permissions.map(code => {
                                                 const perm = ALL_PERMISSIONS[code];
                                                 return (
-                                                    <label 
-                                                        key={code} 
-                                                        style={{ 
-                                                            display: 'flex', 
-                                                            alignItems: 'center', 
+                                                    <label
+                                                        key={code}
+                                                        style={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
                                                             gap: '0.5rem',
                                                             cursor: 'pointer',
                                                             fontSize: '0.9rem'

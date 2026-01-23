@@ -128,9 +128,21 @@ export async function updateUserPermissions(
 // Atualizar role do usuário
 export async function updateUserRole(
     userId: string,
-    role: 'admin' | 'user'
+    role: 'admin' | 'user',
+    currentUserRole?: 'admin' | 'user' // Role do usuário fazendo a alteração
 ): Promise<{ success: boolean; message: string }> {
     try {
+        // SEGURANÇA: Apenas admins podem alterar roles para admin
+        if (role === 'admin' && currentUserRole !== 'admin') {
+            return { success: false, message: 'Apenas administradores podem definir outros usuários como administrador' };
+        }
+
+        // SEGURANÇA: Apenas admins podem alterar o role de outros admins
+        const targetUser = await prisma.user.findUnique({ where: { id: userId } });
+        if (targetUser?.role === 'admin' && currentUserRole !== 'admin') {
+            return { success: false, message: 'Apenas administradores podem alterar o cargo de outros administradores' };
+        }
+
         await prisma.user.update({
             where: { id: userId },
             data: { role }
