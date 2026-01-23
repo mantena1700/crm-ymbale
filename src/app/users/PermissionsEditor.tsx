@@ -276,68 +276,75 @@ export default function PermissionsEditor({ userId, userName, userRole, currentU
                         <div>
                             <h3 style={{ marginBottom: '1rem' }}>Permissões por Módulo</h3>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
-                                {Object.entries(PERMISSION_GROUPS).map(([key, group]) => (
-                                    <div
-                                        key={key}
-                                        style={{
-                                            background: 'var(--bg-secondary)',
-                                            borderRadius: '8px',
-                                            padding: '1rem',
-                                            border: isGroupFullySelected(group.permissions) ? '2px solid var(--primary-color)' : '2px solid transparent'
-                                        }}
-                                    >
-                                        <div
-                                            style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '0.5rem',
-                                                marginBottom: '0.75rem',
-                                                cursor: 'pointer'
-                                            }}
-                                            onClick={() => handleToggleGroup(group.permissions)}
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                checked={isGroupFullySelected(group.permissions)}
-                                                ref={input => {
-                                                    if (input) input.indeterminate = isGroupPartiallySelected(group.permissions);
-                                                }}
-                                                onChange={() => handleToggleGroup(group.permissions)}
-                                            />
-                                            <span style={{ fontSize: '1.2rem' }}>{group.icon}</span>
-                                            <span style={{ fontWeight: 600 }}>{group.label}</span>
-                                        </div>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', paddingLeft: '1.5rem' }}>
-                                            {group.permissions.map(code => {
-                                                // Filtrar permissões restritas se não for admin
-                                                if (currentUserRole !== 'admin' && RESTRICTED_FOR_NON_ADMINS.includes(code)) {
-                                                    return null;
-                                                }
+                                {Object.entries(PERMISSION_GROUPS).map(([key, group]) => {
+                                    // Filtrar permissões que o usuário atual pode ver
+                                    const visiblePermissions = group.permissions.filter(code =>
+                                        currentUserRole === 'admin' || !RESTRICTED_FOR_NON_ADMINS.includes(code)
+                                    );
 
-                                                const perm = ALL_PERMISSIONS[code];
-                                                return (
-                                                    <label
-                                                        key={code}
-                                                        style={{
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            gap: '0.5rem',
-                                                            cursor: 'pointer',
-                                                            fontSize: '0.9rem'
-                                                        }}
-                                                    >
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={isPermissionSelected(code)}
-                                                            onChange={() => handleTogglePermission(code)}
-                                                        />
-                                                        <span>{perm.name}</span>
-                                                    </label>
-                                                );
-                                            })}
+                                    // Se não tem permissões visíveis neste grupo, não renderizar o grupo
+                                    if (visiblePermissions.length === 0) {
+                                        return null;
+                                    }
+
+                                    return (
+                                        <div
+                                            key={key}
+                                            style={{
+                                                background: 'var(--bg-secondary)',
+                                                borderRadius: '8px',
+                                                padding: '1rem',
+                                                border: isGroupFullySelected(visiblePermissions) ? '2px solid var(--primary-color)' : '2px solid transparent'
+                                            }}
+                                        >
+                                            <div
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '0.5rem',
+                                                    marginBottom: '0.75rem',
+                                                    cursor: 'pointer'
+                                                }}
+                                                onClick={() => handleToggleGroup(visiblePermissions)}
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isGroupFullySelected(visiblePermissions)}
+                                                    ref={input => {
+                                                        if (input) input.indeterminate = isGroupPartiallySelected(visiblePermissions);
+                                                    }}
+                                                    onChange={() => handleToggleGroup(visiblePermissions)}
+                                                />
+                                                <span style={{ fontSize: '1.2rem' }}>{group.icon}</span>
+                                                <span style={{ fontWeight: 600 }}>{group.label}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', paddingLeft: '1.5rem' }}>
+                                                {visiblePermissions.map(code => {
+                                                    const perm = ALL_PERMISSIONS[code];
+                                                    return (
+                                                        <label
+                                                            key={code}
+                                                            style={{
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: '0.5rem',
+                                                                cursor: 'pointer',
+                                                                fontSize: '0.9rem'
+                                                            }}
+                                                        >
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={isPermissionSelected(code)}
+                                                                onChange={() => handleTogglePermission(code)}
+                                                            />
+                                                            <span>{perm.name}</span>
+                                                        </label>
+                                                    );
+                                                })}
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </div>
                     )}
