@@ -311,14 +311,16 @@ export default function UsersClient({ initialUsers, currentUserId, currentUserRo
                                                 >
                                                     ✏️
                                                 </button>
-                                                <button
-                                                    className={styles.actionBtn}
-                                                    onClick={() => setEditingPermissions(user)}
-                                                    title="Gerenciar Permissões"
-                                                    style={{ background: '#6366f120' }}
-                                                >
-                                                    🔐
-                                                </button>
+                                                {currentUserRole === 'admin' && (
+                                                    <button
+                                                        className={styles.actionBtn}
+                                                        onClick={() => setEditingPermissions(user)}
+                                                        title="Gerenciar Permissões"
+                                                        style={{ background: '#6366f120' }}
+                                                    >
+                                                        🔐
+                                                    </button>
+                                                )}
                                                 <button
                                                     className={styles.actionBtn}
                                                     onClick={() => setShowResetPassword(user.id)}
