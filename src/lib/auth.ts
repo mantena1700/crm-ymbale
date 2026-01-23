@@ -9,6 +9,7 @@ export interface UserSession {
     email: string | null;
     role: 'admin' | 'user';
     mustChangePassword?: boolean;
+    sellerId?: string | null;
 }
 
 export interface AuthResult {
@@ -52,9 +53,9 @@ export async function authenticateUser(username: string, password: string): Prom
 
         // Verificar se está bloqueado permanentemente (lockedUntil = data muito no futuro)
         if (user.lockedUntil) {
-            return { 
-                success: false, 
-                error: 'Conta bloqueada. Contate o administrador para desbloquear.' 
+            return {
+                success: false,
+                error: 'Conta bloqueada. Contate o administrador para desbloquear.'
             };
         }
 
@@ -64,24 +65,24 @@ export async function authenticateUser(username: string, password: string): Prom
         if (!isValid) {
             // Incrementar tentativas de login
             const newAttempts = user.loginAttempts + 1;
-            
+
             await prisma.user.update({
                 where: { id: user.id },
                 data: { loginAttempts: newAttempts }
             });
 
             const attemptsLeft = MAX_LOGIN_ATTEMPTS - newAttempts;
-            
+
             if (attemptsLeft > 0) {
-                return { 
-                    success: false, 
-                    error: `Senha incorreta. ${attemptsLeft} tentativa(s) restante(s).` 
+                return {
+                    success: false,
+                    error: `Senha incorreta. ${attemptsLeft} tentativa(s) restante(s).`
                 };
             } else {
                 // Bloquear conta permanentemente e notificar admin
                 await prisma.user.update({
                     where: { id: user.id },
-                    data: { 
+                    data: {
                         lockedUntil: new Date('2099-12-31'), // Bloqueio permanente
                         loginAttempts: newAttempts
                     }
@@ -101,9 +102,9 @@ export async function authenticateUser(username: string, password: string): Prom
                     }
                 });
 
-                return { 
-                    success: false, 
-                    error: 'Conta bloqueada após muitas tentativas. Contate o administrador.' 
+                return {
+                    success: false,
+                    error: 'Conta bloqueada após muitas tentativas. Contate o administrador.'
                 };
             }
         }
@@ -130,7 +131,8 @@ export async function authenticateUser(username: string, password: string): Prom
                 name: user.name,
                 email: user.email,
                 role: user.role as 'admin' | 'user',
-                mustChangePassword
+                mustChangePassword,
+                sellerId: user.sellerId
             }
         };
 
@@ -185,7 +187,8 @@ export async function validateSession(token: string): Promise<UserSession | null
             username: session.user.username,
             name: session.user.name,
             email: session.user.email,
-            role: session.user.role as 'admin' | 'user'
+            role: session.user.role as 'admin' | 'user',
+            sellerId: session.user.sellerId
         };
     } catch (error) {
         console.error('Erro ao validar sessão:', error);
@@ -226,26 +229,26 @@ export function generateRandomPassword(length: number = 12): string {
     const numbers = '0123456789';
     const special = '!@#$%&*';
     const allChars = uppercase + lowercase + numbers + special;
-    
+
     // Função auxiliar para obter índice aleatório seguro
     const getSecureRandomIndex = (max: number): number => {
         const array = new Uint32Array(1);
         crypto.getRandomValues(array);
         return array[0] % max;
     };
-    
+
     // Garantir pelo menos um de cada tipo
     let password = '';
     password += uppercase.charAt(getSecureRandomIndex(uppercase.length));
     password += lowercase.charAt(getSecureRandomIndex(lowercase.length));
     password += numbers.charAt(getSecureRandomIndex(numbers.length));
     password += special.charAt(getSecureRandomIndex(special.length));
-    
+
     // Completar o resto
     for (let i = 4; i < length; i++) {
         password += allChars.charAt(getSecureRandomIndex(allChars.length));
     }
-    
+
     // Embaralhar usando Fisher-Yates com crypto
     const arr = password.split('');
     for (let i = arr.length - 1; i > 0; i--) {

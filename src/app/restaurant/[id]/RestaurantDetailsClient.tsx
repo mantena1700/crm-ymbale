@@ -26,6 +26,7 @@ export default function RestaurantDetailsClient({ restaurant, initialAnalysis, i
     const [loadingVisits, setLoadingVisits] = useState(false);
     const [status, setStatus] = useState(restaurant?.status || 'A Analisar');
     const [isUpdating, setIsUpdating] = useState(false);
+    const [currentUser, setCurrentUser] = useState<any>(null);
     const [activeTab, setActiveTab] = useState<'overview' | 'analysis' | 'notes'>('overview');
     const [error, setError] = useState<string | null>(null);
 
@@ -74,6 +75,17 @@ export default function RestaurantDetailsClient({ restaurant, initialAnalysis, i
             loadVisits();
         }
     }, [restaurant?.id]);
+
+    useEffect(() => {
+        fetch('/api/auth/session')
+            .then(res => res.json())
+            .then(data => {
+                if (data.authenticated && data.user) {
+                    setCurrentUser(data.user);
+                }
+            })
+            .catch(err => console.error('Erro ao buscar sessão:', err));
+    }, []);
 
     const handleStatusChange = async (newStatus: string) => {
         setIsUpdating(true);
@@ -514,20 +526,21 @@ export default function RestaurantDetailsClient({ restaurant, initialAnalysis, i
                 analysis={initialAnalysis}
             />
 
-            {restaurant.seller && (
-                <VisitModal
-                    isOpen={isVisitOpen}
-                    onClose={() => setIsVisitOpen(false)}
-                    restaurantId={restaurant.id}
-                    restaurantName={restaurant.name}
-                    sellerId={restaurant.seller.id}
-                    sellerName={restaurant.seller.name}
-                    onVisitCreated={() => {
-                        loadVisits();
-                        setIsVisitOpen(false);
-                    }}
-                />
-            )}
+            {/* Visit Modal - Now renders even if no seller is assigned, if user is a seller */}
+            <VisitModal
+                isOpen={isVisitOpen}
+                onClose={() => setIsVisitOpen(false)}
+                restaurantId={restaurant.id}
+                restaurantName={restaurant.name}
+                sellerId={restaurant.seller?.id || ''}
+                sellerName={restaurant.seller?.name || 'Não atribuído'}
+                currentUserSellerId={currentUser?.sellerId}
+                currentUserName={currentUser?.name}
+                onVisitCreated={() => {
+                    loadVisits();
+                    setIsVisitOpen(false);
+                }}
+            />
         </div>
     );
 }

@@ -11,10 +11,12 @@ interface VisitModalProps {
     restaurantName: string;
     sellerId: string;
     sellerName: string;
+    currentUserSellerId?: string;
+    currentUserName?: string;
     onVisitCreated: () => void;
 }
 
-export default function VisitModal({ isOpen, onClose, restaurantId, restaurantName, sellerId, sellerName, onVisitCreated }: VisitModalProps) {
+export default function VisitModal({ isOpen, onClose, restaurantId, restaurantName, sellerId, sellerName, currentUserSellerId, currentUserName, onVisitCreated }: VisitModalProps) {
     const [visitDate, setVisitDate] = useState(new Date().toISOString().split('T')[0]);
     const [feedback, setFeedback] = useState('');
     const [outcome, setOutcome] = useState<'positive' | 'neutral' | 'negative' | 'scheduled'>('positive');
@@ -24,6 +26,9 @@ export default function VisitModal({ isOpen, onClose, restaurantId, restaurantNa
 
     if (!isOpen) return null;
 
+    const activeSellerId = currentUserSellerId || sellerId;
+    const activeSellerName = currentUserSellerId ? (currentUserName ? `${currentUserName} (Você)` : 'Você') : sellerName;
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
@@ -31,17 +36,17 @@ export default function VisitModal({ isOpen, onClose, restaurantId, restaurantNa
         try {
             await createVisit({
                 restaurantId,
-                sellerId,
+                sellerId: activeSellerId,
                 visitDate,
                 feedback,
                 outcome,
                 nextVisitDate: nextVisitDate || undefined,
                 createFollowUp
             });
-            
+
             onVisitCreated();
             onClose();
-            
+
             // Reset form
             setVisitDate(new Date().toISOString().split('T')[0]);
             setFeedback('');
@@ -66,7 +71,12 @@ export default function VisitModal({ isOpen, onClose, restaurantId, restaurantNa
                 <form onSubmit={handleSubmit} className={styles.form}>
                     <div className={styles.infoBox}>
                         <p><strong>Restaurante:</strong> {restaurantName}</p>
-                        <p><strong>Vendedor:</strong> {sellerName}</p>
+                        <p><strong>Quem está visitando:</strong> {activeSellerName}</p>
+                        {!activeSellerId && (
+                            <p style={{ color: 'red', marginTop: '0.5rem', fontSize: '0.875rem' }}>
+                                ⚠️ Atenção: Ninguém está atribuído a esta visita. Você precisa ser um executivo ou o restaurante precisa ter um executivo atribuído.
+                            </p>
+                        )}
                     </div>
 
                     <div className={styles.formGroup}>
@@ -129,7 +139,7 @@ export default function VisitModal({ isOpen, onClose, restaurantId, restaurantNa
                         <button type="button" onClick={onClose} className={styles.cancelButton}>
                             Cancelar
                         </button>
-                        <button type="submit" disabled={loading} className={styles.submitButton}>
+                        <button type="submit" disabled={loading || !activeSellerId} className={styles.submitButton}>
                             {loading ? 'Salvando...' : '✅ Registrar Visita'}
                         </button>
                     </div>

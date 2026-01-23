@@ -1025,8 +1025,17 @@ export async function createVisit(data: {
 
         return { success: true, visitId: visit.id };
     } catch (error: any) {
-        console.error('Erro ao criar visita:', error);
-        throw new Error(`Erro ao criar visita: ${error.message}`);
+        console.error('Erro detalhado ao criar visita:', error);
+
+        // Verificar erros específicos do Prisma
+        if (error.code === 'P2003') {
+            // Foreign key constraint failed
+            console.error('Erro de chave estrangeira (P2003):', error.meta);
+            throw new Error(`Erro de relacionamento: Verifique se o Restaurante e o Vendedor existem. Detalhes: ${error.message}`);
+        }
+
+        // Erro genérico com stack para debug
+        throw new Error(`Erro ao salvar ponto: ${error.message} (Code: ${error.code || 'N/A'})`);
     }
 }
 
