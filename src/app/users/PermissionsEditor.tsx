@@ -73,6 +73,18 @@ const PERMISSION_GROUPS: Record<string, { label: string; icon: string; permissio
     }
 };
 
+// Permissões que usuários comuns (não-admins) NÃO podem ver nem atribuir
+const RESTRICTED_FOR_NON_ADMINS = [
+    'sellers.delete',              // Excluir Executivos
+    'campaigns.create',            // Criar Campanhas
+    'campaigns.edit',              // Editar Campanhas
+    'campaigns.delete',            // Excluir Campanhas
+    'settings.view',               // Ver Configurações
+    'settings.edit',               // Editar Configurações
+    'users.edit',                  // Editar Usuários
+    'users.delete'                 // Excluir Usuários
+];
+
 export default function PermissionsEditor({ userId, userName, userRole, currentUserRole, onClose, onSave }: PermissionsEditorProps) {
     const [selectedPermissions, setSelectedPermissions] = useState<Set<string>>(new Set());
     const [role, setRole] = useState(userRole);
@@ -150,7 +162,7 @@ export default function PermissionsEditor({ userId, userName, userRole, currentU
 
             // Atualizar permissões (apenas se não for admin)
             if (role !== 'admin') {
-                const permsResult = await updateUserPermissions(userId, Array.from(selectedPermissions));
+                const permsResult = await updateUserPermissions(userId, Array.from(selectedPermissions), undefined, currentUserRole);
                 if (!permsResult.success) {
                     setMessage({ type: 'error', text: permsResult.message });
                     setSaving(false);
@@ -297,6 +309,11 @@ export default function PermissionsEditor({ userId, userName, userRole, currentU
                                         </div>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', paddingLeft: '1.5rem' }}>
                                             {group.permissions.map(code => {
+                                                // Filtrar permissões restritas se não for admin
+                                                if (currentUserRole !== 'admin' && RESTRICTED_FOR_NON_ADMINS.includes(code)) {
+                                                    return null;
+                                                }
+
                                                 const perm = ALL_PERMISSIONS[code];
                                                 return (
                                                     <label

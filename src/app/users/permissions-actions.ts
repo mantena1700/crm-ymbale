@@ -72,14 +72,39 @@ export async function getUserPermissionsById(userId: string): Promise<string[]> 
 }
 
 // Atualizar permissões de um usuário
+// Permissões restritas para não-admins (DEVE estar sincronizado com o frontend)
+const RESTRICTED_FOR_NON_ADMINS = [
+    'sellers.delete',
+    'campaigns.create',
+    'campaigns.edit',
+    'campaigns.delete',
+    'settings.view',
+    'settings.edit',
+    'users.edit',
+    'users.delete'
+];
+
 export async function updateUserPermissions(
     userId: string,
     permissions: string[],
-    grantedBy?: string
+    grantedBy?: string,
+    currentUserRole?: 'admin' | 'user'
 ): Promise<{ success: boolean; message: string }> {
     try {
+        // SEGURANÇA: Se não for admin, remover permissões restritas da lista
+        // Isso impede que um usuário comum atribua permissões poderosas a si mesmo ou a outros
+        let permsToSave = permissions;
+        if (currentUserRole !== 'admin') {
+            permsToSave = permissions.filter(p => !RESTRICTED_FOR_NON_ADMINS.includes(p));
+
+            // Logar tentativa de violação (opcional)
+            if (permsToSave.length !== permissions.length) {
+                console.warn(`[SECURITY] Usuário (role=${currentUserRole}) tentou atribuir permissões restritas. Permissões filtradas.`);
+            }
+        }
+
         // Primeiro, garantir que todas as permissões existam no banco
-        for (const code of permissions) {
+        for (const code of permsToSave) {
             const permDef = ALL_PERMISSIONS[code as PermissionCode];
             if (permDef) {
                 await prisma.permission.upsert({
@@ -102,7 +127,7 @@ export async function updateUserPermissions(
 
         // Buscar IDs das permissões
         const permissionRecords = await prisma.permission.findMany({
-            where: { code: { in: permissions } }
+            where: { code: { in: permsToSave } }
         });
 
         // Adicionar novas permissões
