@@ -47,9 +47,9 @@ interface WeeklyScheduleData {
  */
 export async function createWeeklyScheduleExcel(data: WeeklyScheduleData): Promise<Buffer> {
     const workbook = new ExcelJS.Workbook();
-    
+
     // Metadados da planilha
-    workbook.creator = 'CRM Ymbale - Sistema Inteligente de Gestão';
+    workbook.creator = 'DOM Seven - Sistema Inteligente de Gestão';
     workbook.lastModifiedBy = 'Sistema Automático';
     workbook.created = new Date();
     workbook.modified = new Date();
@@ -140,7 +140,7 @@ async function createDashboardSheet(workbook: ExcelJS.Workbook, data: WeeklySche
     const completedVisits = data.followUps.filter(f => f.completed).length;
     const pendingVisits = totalVisits - completedVisits;
     const completionRate = totalVisits > 0 ? (completedVisits / totalVisits * 100).toFixed(1) : '0.0';
-    
+
     const restaurantsByPotential = {
         ALTISSIMO: data.restaurants.filter(r => r.salesPotential === 'ALTISSIMO').length,
         ALTO: data.restaurants.filter(r => r.salesPotential === 'ALTO').length,
@@ -220,7 +220,7 @@ async function createDashboardSheet(workbook: ExcelJS.Workbook, data: WeeklySche
     currentRow++;
     const daysOfWeek = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
     const visitsByDay = new Array(7).fill(0);
-    
+
     data.followUps.forEach(f => {
         const dayIndex = new Date(f.scheduledDate).getDay();
         const adjustedIndex = dayIndex === 0 ? 6 : dayIndex - 1; // Ajustar domingo para o fim
@@ -247,12 +247,12 @@ async function createDashboardSheet(workbook: ExcelJS.Workbook, data: WeeklySche
         const row = currentRow + index;
         sheet.getCell(`B${row}`).value = day;
         sheet.getCell(`C${row}`).value = visitsByDay[index];
-        
+
         // Barra de progresso visual
         const maxVisits = Math.max(...visitsByDay, 1);
         const percentage = (visitsByDay[index] / maxVisits * 100).toFixed(0);
         sheet.getCell(`D${row}`).value = '█'.repeat(Math.floor(Number(percentage) / 10)) + ` ${visitsByDay[index]}`;
-        
+
         // Colorir baseado na quantidade
         const color = visitsByDay[index] >= 8 ? 'FF10B981' : visitsByDay[index] >= 5 ? 'FFFBBF24' : 'FFEF4444';
         sheet.getCell(`C${row}`).fill = {
@@ -301,11 +301,11 @@ async function createCalendarSheet(workbook: ExcelJS.Workbook, data: WeeklySched
 
     // Horários
     const timeSlots = ['08:00', '09:15', '10:30', '11:45', '13:00', '14:15', '15:30', '16:45'];
-    
+
     // Header com dias da semana
     const daysOfWeek = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
     let currentRow = 4;
-    
+
     sheet.getCell(`B${currentRow}`).value = 'Horário';
     daysOfWeek.forEach((day, index) => {
         const date = new Date(data.weekStart);
@@ -321,7 +321,7 @@ async function createCalendarSheet(workbook: ExcelJS.Workbook, data: WeeklySched
         };
         cell.font = { color: { argb: 'FFFFFFFF' }, bold: true };
     });
-    
+
     // Horário header
     const hourCell = sheet.getCell(`B${currentRow}`);
     hourCell.font = { bold: true };
@@ -348,7 +348,7 @@ async function createCalendarSheet(workbook: ExcelJS.Workbook, data: WeeklySched
         daysOfWeek.forEach((day, dayIndex) => {
             const date = new Date(data.weekStart);
             date.setDate(date.getDate() + dayIndex);
-            
+
             // Buscar follow-up para este horário
             const followUp = data.followUps.find(f => {
                 const fDate = new Date(f.scheduledDate);
@@ -367,19 +367,19 @@ async function createCalendarSheet(workbook: ExcelJS.Workbook, data: WeeklySched
                         { text: `⭐ ${followUp.restaurant.rating ? followUp.restaurant.rating.toFixed(1) : 'N/D'} | 🎯 ${followUp.restaurant.salesPotential || 'N/A'}`, font: { size: 8, color: { argb: 'FF6B7280' } } },
                     ]
                 };
-                
+
                 // Colorir baseado no potencial
                 let color = 'FFF3F4F6';
                 if (followUp.restaurant.salesPotential === 'ALTISSIMO') color = 'FFEF4444';
                 else if (followUp.restaurant.salesPotential === 'ALTO') color = 'FFFBBF24';
                 else if (followUp.restaurant.salesPotential === 'MEDIO') color = 'FF3B82F6';
-                
+
                 cell.fill = {
                     type: 'pattern',
                     pattern: 'solid',
                     fgColor: { argb: color }
                 };
-                
+
                 if (followUp.completed) {
                     cell.font = { strikethrough: true };
                 }
@@ -392,7 +392,7 @@ async function createCalendarSheet(workbook: ExcelJS.Workbook, data: WeeklySched
                     fgColor: { argb: 'FFFAFAFA' }
                 };
             }
-            
+
             cell.alignment = { wrapText: true, vertical: 'middle', horizontal: 'center' };
             cell.border = {
                 top: { style: 'thin', color: { argb: 'FFD1D5DB' } },
@@ -413,7 +413,7 @@ async function createCalendarSheet(workbook: ExcelJS.Workbook, data: WeeklySched
     legendTitle.value = 'LEGENDA DE CORES';
     legendTitle.font = { bold: true, size: 12 };
     legendTitle.alignment = { horizontal: 'center' };
-    
+
     currentRow++;
     const legends = [
         { label: '🔥 Altíssimo Potencial', color: 'FFEF4444' },
@@ -486,7 +486,7 @@ async function createDetailedVisitsSheet(workbook: ExcelJS.Workbook, data: Weekl
     ];
 
     // Ordenar follow-ups por data
-    const sortedFollowUps = [...data.followUps].sort((a, b) => 
+    const sortedFollowUps = [...data.followUps].sort((a, b) =>
         new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime()
     );
 
@@ -494,7 +494,7 @@ async function createDetailedVisitsSheet(workbook: ExcelJS.Workbook, data: Weekl
     sortedFollowUps.forEach((followUp, index) => {
         const row = index + 3;
         const date = new Date(followUp.scheduledDate);
-        
+
         sheet.getCell(`A${row}`).value = index + 1;
         sheet.getCell(`B${row}`).value = date.toLocaleDateString('pt-BR');
         sheet.getCell(`C${row}`).value = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
@@ -530,7 +530,7 @@ async function createDetailedVisitsSheet(workbook: ExcelJS.Workbook, data: Weekl
         if (followUp.restaurant.salesPotential === 'ALTISSIMO') color = 'FFEF4444';
         else if (followUp.restaurant.salesPotential === 'ALTO') color = 'FFFBBF24';
         else if (followUp.restaurant.salesPotential === 'MEDIO') color = 'FF3B82F6';
-        
+
         potentialCell.fill = {
             type: 'pattern',
             pattern: 'solid',
@@ -613,7 +613,7 @@ async function createPerformanceSheet(workbook: ExcelJS.Workbook, data: WeeklySc
         sheet.getCell(`B${currentRow}`).value = label;
         sheet.getCell(`D${currentRow}`).value = value;
         sheet.getCell(`E${currentRow}`).value = unit;
-        
+
         ['B', 'C', 'D', 'E', 'F'].forEach(col => {
             const cell = sheet.getCell(`${col}${currentRow}`);
             cell.border = {
@@ -621,11 +621,11 @@ async function createPerformanceSheet(workbook: ExcelJS.Workbook, data: WeeklySc
                 bottom: { style: 'thin', color: { argb: 'FFD1D5DB' } }
             };
         });
-        
+
         sheet.getCell(`B${currentRow}`).font = { bold: true };
         sheet.getCell(`D${currentRow}`).font = { bold: true, size: 14, color: { argb: 'FF6366F1' } };
         sheet.getCell(`D${currentRow}`).alignment = { horizontal: 'center' };
-        
+
         currentRow++;
     });
 
@@ -644,7 +644,7 @@ async function createPerformanceSheet(workbook: ExcelJS.Workbook, data: WeeklySc
 
     currentRow++;
     const potentials = ['ALTISSIMO', 'ALTO', 'MEDIO', 'BAIXO'];
-    const potentialCounts = potentials.map(p => 
+    const potentialCounts = potentials.map(p =>
         data.followUps.filter(f => f.restaurant.salesPotential === p).length
     );
 
@@ -667,25 +667,25 @@ async function createPerformanceSheet(workbook: ExcelJS.Workbook, data: WeeklySc
     potentials.forEach((potential, index) => {
         const count = potentialCounts[index];
         const percentage = totalVisits > 0 ? ((count / totalVisits) * 100).toFixed(1) : '0.0';
-        
+
         sheet.getCell(`B${currentRow}`).value = potential;
         sheet.getCell(`C${currentRow}`).value = count;
         sheet.getCell(`D${currentRow}`).value = `${percentage}%`;
         sheet.getCell(`E${currentRow}`).value = '█'.repeat(Math.floor(Number(percentage) / 5)) + ` ${count}`;
-        
+
         // Colorir
         let color = 'FFF3F4F6';
         if (potential === 'ALTISSIMO') color = 'FFEF4444';
         else if (potential === 'ALTO') color = 'FFFBBF24';
         else if (potential === 'MEDIO') color = 'FF3B82F6';
-        
+
         sheet.getCell(`B${currentRow}`).fill = {
             type: 'pattern',
             pattern: 'solid',
             fgColor: { argb: color }
         };
         sheet.getCell(`B${currentRow}`).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-        
+
         currentRow++;
     });
 }
@@ -748,7 +748,7 @@ async function createHeatmapSheet(workbook: ExcelJS.Workbook, data: WeeklySchedu
         const time = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
         const dayIndex = date.getDay() === 0 ? 6 : date.getDay() - 1;
         const timeIndex = timeSlots.indexOf(time);
-        
+
         if (timeIndex !== -1 && dayIndex >= 0 && dayIndex < 7) {
             heatmapData[timeIndex][dayIndex]++;
         }
@@ -768,19 +768,19 @@ async function createHeatmapSheet(workbook: ExcelJS.Workbook, data: WeeklySchedu
             const cell = sheet.getCell(row, 2 + dayIndex);
             cell.value = count;
             cell.alignment = { horizontal: 'center', vertical: 'middle' };
-            
+
             // Gradiente de cores baseado na intensidade
             const intensity = maxCount > 0 ? count / maxCount : 0;
             const red = Math.round(239 + (16 - 239) * intensity);
             const green = Math.round(68 + (185 - 68) * (1 - intensity));
             const blue = Math.round(68 + (129 - 68) * (1 - intensity));
-            
+
             cell.fill = {
                 type: 'pattern',
                 pattern: 'solid',
                 fgColor: { argb: `FF${red.toString(16).padStart(2, '0')}${green.toString(16).padStart(2, '0')}${blue.toString(16).padStart(2, '0')}` }
             };
-            
+
             cell.font = { bold: true, color: { argb: intensity > 0.5 ? 'FFFFFFFF' : 'FF000000' } };
             cell.border = {
                 top: { style: 'thin', color: { argb: 'FFFFFFFF' } },
@@ -851,16 +851,16 @@ async function createPrioritizedRestaurantsSheet(workbook: ExcelJS.Workbook, dat
     // Calcular score e ordenar
     const scoredRestaurants = data.restaurants.map(r => {
         let score = 0;
-        
+
         if (r.salesPotential === 'ALTISSIMO') score += 100;
         else if (r.salesPotential === 'ALTO') score += 75;
         else if (r.salesPotential === 'MEDIO') score += 50;
         else if (r.salesPotential === 'BAIXO') score += 25;
-        
+
         score += r.rating * 10;
         score += Math.min(r.reviewCount, 100) * 0.5;
         score += Math.min(r.projectedDeliveries / 100, 50);
-        
+
         return { restaurant: r, score: Math.round(score) };
     }).sort((a, b) => b.score - a.score);
 
@@ -868,7 +868,7 @@ async function createPrioritizedRestaurantsSheet(workbook: ExcelJS.Workbook, dat
     scoredRestaurants.forEach((item, index) => {
         const row = index + 3;
         const r = item.restaurant;
-        
+
         sheet.getCell(`A${row}`).value = index + 1;
         sheet.getCell(`B${row}`).value = r.name;
         sheet.getCell(`C${row}`).value = r.address?.neighborhood || 'N/A';
@@ -908,7 +908,7 @@ async function createPrioritizedRestaurantsSheet(workbook: ExcelJS.Workbook, dat
         if (r.salesPotential === 'ALTISSIMO') color = 'FFEF4444';
         else if (r.salesPotential === 'ALTO') color = 'FFFBBF24';
         else if (r.salesPotential === 'MEDIO') color = 'FF3B82F6';
-        
+
         potentialCell.fill = {
             type: 'pattern',
             pattern: 'solid',
@@ -976,10 +976,10 @@ async function createExecutiveSummarySheet(workbook: ExcelJS.Workbook, data: Wee
     summaryData.forEach(([label, value]) => {
         sheet.getCell(`B${currentRow}`).value = label;
         sheet.getCell(`C${currentRow}`).value = value;
-        
+
         sheet.getCell(`B${currentRow}`).font = { bold: true, size: 12 };
         sheet.getCell(`C${currentRow}`).font = { size: 12 };
-        
+
         ['B', 'C'].forEach(col => {
             const cell = sheet.getCell(`${col}${currentRow}`);
             cell.fill = {
@@ -993,7 +993,7 @@ async function createExecutiveSummarySheet(workbook: ExcelJS.Workbook, data: Wee
             };
             cell.alignment = { vertical: 'middle' };
         });
-        
+
         sheet.getRow(currentRow).height = 25;
         currentRow++;
     });
@@ -1014,7 +1014,7 @@ async function createExecutiveSummarySheet(workbook: ExcelJS.Workbook, data: Wee
 
     currentRow++;
     const totalVisits = data.followUps.length;
-    const highPotential = data.followUps.filter(f => 
+    const highPotential = data.followUps.filter(f =>
         f.restaurant.salesPotential === 'ALTISSIMO' || f.restaurant.salesPotential === 'ALTO'
     ).length;
 
@@ -1041,7 +1041,7 @@ async function createExecutiveSummarySheet(workbook: ExcelJS.Workbook, data: Wee
     currentRow += 2;
     sheet.mergeCells(`B${currentRow}:C${currentRow}`);
     const footerCell = sheet.getCell(`B${currentRow}`);
-    footerCell.value = `Documento gerado automaticamente por CRM Ymbale em ${new Date().toLocaleString('pt-BR')}`;
+    footerCell.value = `Documento gerado automaticamente por DOM Seven em ${new Date().toLocaleString('pt-BR')}`;
     footerCell.font = { italic: true, size: 9, color: { argb: 'FF6B7280' } };
     footerCell.alignment = { horizontal: 'center' };
 }

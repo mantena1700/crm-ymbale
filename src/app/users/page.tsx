@@ -46,6 +46,6 @@ export default async function UsersPage() {
         ? users
         : users.filter(u => u.role !== 'admin');
 
-    return <UsersClient initialUsers={filteredUsers} currentUserId={user.id} />;
+    return <UsersClient initialUsers={filteredUsers} currentUserId={user.id} currentUserRole={user.role as 'admin' | 'user'} />;
 }
 

@@ -8,9 +8,10 @@ import styles from './page.module.css';
 interface Props {
     initialUsers: UserData[];
     currentUserId: string;
+    currentUserRole: 'admin' | 'user';
 }
 
-export default function UsersClient({ initialUsers, currentUserId }: Props) {
+export default function UsersClient({ initialUsers, currentUserId, currentUserRole }: Props) {
     const [users, setUsers] = useState<UserData[]>(initialUsers);
     const [showModal, setShowModal] = useState(false);
     const [editingUser, setEditingUser] = useState<UserData | null>(null);
@@ -71,11 +72,11 @@ export default function UsersClient({ initialUsers, currentUserId }: Props) {
                     email: formData.email || undefined,
                     role: formData.role,
                     password: formData.password || undefined
-                });
+                }, currentUserRole);
 
                 if (result.success) {
-                    setUsers(prev => prev.map(u => 
-                        u.id === editingUser.id 
+                    setUsers(prev => prev.map(u =>
+                        u.id === editingUser.id
                             ? { ...u, name: formData.name, email: formData.email || null, role: formData.role }
                             : u
                     ));
@@ -98,7 +99,7 @@ export default function UsersClient({ initialUsers, currentUserId }: Props) {
                     email: formData.email || undefined,
                     password: formData.password,
                     role: formData.role
-                });
+                }, currentUserRole);
 
                 if (result.success && result.user) {
                     setUsers(prev => [...prev, {
@@ -139,12 +140,12 @@ export default function UsersClient({ initialUsers, currentUserId }: Props) {
     const handleToggleStatus = async (user: UserData) => {
         const result = await toggleUserStatus(user.id, currentUserId);
         if (result.success) {
-            setUsers(prev => prev.map(u => 
+            setUsers(prev => prev.map(u =>
                 u.id === user.id ? { ...u, active: result.active! } : u
             ));
-            setMessage({ 
-                type: 'success', 
-                text: `Usuário ${result.active ? 'ativado' : 'desativado'} com sucesso!` 
+            setMessage({
+                type: 'success',
+                text: `Usuário ${result.active ? 'ativado' : 'desativado'} com sucesso!`
             });
         } else {
             setMessage({ type: 'error', text: result.error || 'Erro ao alterar status' });
@@ -156,7 +157,7 @@ export default function UsersClient({ initialUsers, currentUserId }: Props) {
 
         setLoading(true);
         const result = await resetPassword(showResetPassword, newPassword);
-        
+
         if (result.success) {
             setMessage({ type: 'success', text: 'Senha redefinida com sucesso!' });
             setShowResetPassword(null);
@@ -172,15 +173,15 @@ export default function UsersClient({ initialUsers, currentUserId }: Props) {
 
         setLoading(true);
         const result = await unlockUserAndResetPassword(user.id, currentUserId);
-        
+
         if (result.success && result.newPassword) {
-            setUsers(prev => prev.map(u => 
+            setUsers(prev => prev.map(u =>
                 u.id === user.id ? { ...u, locked: false, loginAttempts: 0, mustChangePassword: true } : u
             ));
-            
+
             // Mostrar a nova senha em um alert para o admin copiar
             alert(`✅ Conta desbloqueada!\n\nNova senha temporária:\n\n${result.newPassword}\n\nO usuário será obrigado a trocar a senha no próximo login.`);
-            
+
             setMessage({ type: 'success', text: 'Conta desbloqueada com sucesso!' });
         } else {
             setMessage({ type: 'error', text: result.error || 'Erro ao desbloquear' });
@@ -293,7 +294,7 @@ export default function UsersClient({ initialUsers, currentUserId }: Props) {
                                 <td>
                                     <div className={styles.actions}>
                                         {user.locked ? (
-                                            <button 
+                                            <button
                                                 className={`${styles.actionBtn} ${styles.unlock}`}
                                                 onClick={() => handleUnlock(user)}
                                                 title="Desbloquear e Gerar Nova Senha"
@@ -303,14 +304,14 @@ export default function UsersClient({ initialUsers, currentUserId }: Props) {
                                             </button>
                                         ) : (
                                             <>
-                                                <button 
+                                                <button
                                                     className={styles.actionBtn}
                                                     onClick={() => openEditModal(user)}
                                                     title="Editar"
                                                 >
                                                     ✏️
                                                 </button>
-                                                <button 
+                                                <button
                                                     className={styles.actionBtn}
                                                     onClick={() => setEditingPermissions(user)}
                                                     title="Gerenciar Permissões"
@@ -318,14 +319,14 @@ export default function UsersClient({ initialUsers, currentUserId }: Props) {
                                                 >
                                                     🔐
                                                 </button>
-                                                <button 
+                                                <button
                                                     className={styles.actionBtn}
                                                     onClick={() => setShowResetPassword(user.id)}
                                                     title="Redefinir Senha"
                                                 >
                                                     🔑
                                                 </button>
-                                                <button 
+                                                <button
                                                     className={`${styles.actionBtn} ${user.active ? styles.deactivate : styles.activate}`}
                                                     onClick={() => handleToggleStatus(user)}
                                                     title={user.active ? 'Desativar' : 'Ativar'}
@@ -335,7 +336,7 @@ export default function UsersClient({ initialUsers, currentUserId }: Props) {
                                                 </button>
                                             </>
                                         )}
-                                        <button 
+                                        <button
                                             className={`${styles.actionBtn} ${styles.delete}`}
                                             onClick={() => handleDelete(user)}
                                             title="Excluir"
@@ -367,8 +368,8 @@ export default function UsersClient({ initialUsers, currentUserId }: Props) {
                                     <input
                                         type="text"
                                         value={formData.username}
-                                        onChange={e => setFormData(prev => ({ 
-                                            ...prev, 
+                                        onChange={e => setFormData(prev => ({
+                                            ...prev,
                                             username: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '')
                                         }))}
                                         placeholder="usuario123"
@@ -418,26 +419,28 @@ export default function UsersClient({ initialUsers, currentUserId }: Props) {
                                 <label>Função *</label>
                                 <select
                                     value={formData.role}
-                                    onChange={e => setFormData(prev => ({ 
-                                        ...prev, 
-                                        role: e.target.value as 'admin' | 'user' 
+                                    onChange={e => setFormData(prev => ({
+                                        ...prev,
+                                        role: e.target.value as 'admin' | 'user'
                                     }))}
                                 >
                                     <option value="user">👤 Usuário</option>
-                                    <option value="admin">👑 Administrador</option>
+                                    {currentUserRole === 'admin' && (
+                                        <option value="admin">👑 Administrador</option>
+                                    )}
                                 </select>
                             </div>
 
                             <div className={styles.formActions}>
-                                <button 
-                                    type="button" 
+                                <button
+                                    type="button"
                                     className={styles.cancelBtn}
                                     onClick={() => setShowModal(false)}
                                 >
                                     Cancelar
                                 </button>
-                                <button 
-                                    type="submit" 
+                                <button
+                                    type="submit"
                                     className={styles.submitBtn}
                                     disabled={loading}
                                 >
@@ -471,15 +474,15 @@ export default function UsersClient({ initialUsers, currentUserId }: Props) {
                             </div>
 
                             <div className={styles.formActions}>
-                                <button 
-                                    type="button" 
+                                <button
+                                    type="button"
                                     className={styles.cancelBtn}
                                     onClick={() => setShowResetPassword(null)}
                                 >
                                     Cancelar
                                 </button>
-                                <button 
-                                    type="button" 
+                                <button
+                                    type="button"
                                     className={styles.submitBtn}
                                     onClick={handleResetPassword}
                                     disabled={loading || newPassword.length < 4}

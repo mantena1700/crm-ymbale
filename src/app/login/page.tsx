@@ -36,7 +36,7 @@ export default function LoginPage() {
                     loginShowMessage: data.loginShowMessage || false,
                     loginBackgroundColor: data.loginBackgroundColor,
                     loginLogo: data.loginLogo,
-                    crmName: data.crmName || 'CRM Ymbale',
+                    crmName: data.crmName || 'DOM Seven',
                     crmLogo: data.crmLogo,
                 });
             })
@@ -49,7 +49,7 @@ export default function LoginPage() {
                     loginShowMessage: false,
                     loginBackgroundColor: null,
                     loginLogo: null,
-                    crmName: 'CRM Ymbale',
+                    crmName: 'DOM Seven',
                     crmLogo: null,
                 });
             });
@@ -83,13 +83,13 @@ export default function LoginPage() {
     };
 
     const bgColor = loginSettings?.loginBackgroundColor || undefined;
-    const title = loginSettings?.loginTitle || loginSettings?.crmName || 'CRM Ymbale';
+    const title = loginSettings?.loginTitle || loginSettings?.crmName || 'DOM Seven';
     const subtitle = loginSettings?.loginSubtitle || 'Sistema de Gestão Comercial';
     const logoUrl = loginSettings?.loginLogo || loginSettings?.crmLogo;
     const showMessage = loginSettings?.loginShowMessage && loginSettings?.loginMessage;
 
     return (
-        <div 
+        <div
             className={styles.container}
             style={bgColor ? { background: bgColor } : undefined}
         >
@@ -102,8 +102,8 @@ export default function LoginPage() {
                 <div className={styles.logoSection}>
                     <div className={styles.logo}>
                         {logoUrl ? (
-                            <img 
-                                src={logoUrl} 
+                            <img
+                                src={logoUrl}
                                 alt={title}
                                 style={{ width: '48px', height: '48px', objectFit: 'contain' }}
                             />

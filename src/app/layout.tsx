@@ -10,13 +10,13 @@ import MobileOptimizations from "@/components/MobileOptimizations";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "CRM Ymbale",
+  title: "DOM Seven",
   description: "Sistema de Gestão de Prospecção de Restaurantes",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "CRM Ymbale",
+    title: "DOM Seven",
     startupImage: "/icon-512.png",
   },
   formatDetection: {

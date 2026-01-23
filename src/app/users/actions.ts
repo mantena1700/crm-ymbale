@@ -52,8 +52,13 @@ export async function createUser(data: {
     email?: string;
     password: string;
     role: 'admin' | 'user';
-}) {
+}, currentUserRole: 'admin' | 'user') {
     try {
+        // SEGURANÇA: Apenas admins podem criar outros admins
+        if (data.role === 'admin' && currentUserRole !== 'admin') {
+            return { success: false, error: 'Apenas administradores podem criar outros administradores' };
+        }
+
         // Verificar se username já existe
         const existing = await prisma.user.findUnique({
             where: { username: data.username.toLowerCase() }
@@ -90,8 +95,8 @@ export async function createUser(data: {
 
         revalidatePath('/users');
 
-        return { 
-            success: true, 
+        return {
+            success: true,
             user: {
                 id: user.id,
                 username: user.username,
@@ -110,15 +115,26 @@ export async function updateUser(id: string, data: {
     role?: 'admin' | 'user';
     active?: boolean;
     password?: string;
-}) {
+}, currentUserRole: 'admin' | 'user') {
     try {
+        // SEGURANÇA: Apenas admins podem alterar para role admin
+        if (data.role === 'admin' && currentUserRole !== 'admin') {
+            return { success: false, error: 'Apenas administradores podem definir role de administrador' };
+        }
+
+        // SEGURANÇA: Apenas admins podem editar outros admins
+        const targetUser = await prisma.user.findUnique({ where: { id } });
+        if (targetUser?.role === 'admin' && currentUserRole !== 'admin') {
+            return { success: false, error: 'Apenas administradores podem editar outros administradores' };
+        }
+
         const updateData: any = {};
 
         if (data.name) updateData.name = data.name;
         if (data.email !== undefined) updateData.email = data.email?.toLowerCase() || null;
         if (data.role) updateData.role = data.role;
         if (data.active !== undefined) updateData.active = data.active;
-        
+
         if (data.password) {
             updateData.password = await hashPassword(data.password);
         }
@@ -232,7 +248,7 @@ export async function resetPassword(id: string, newPassword: string) {
 
         await prisma.user.update({
             where: { id },
-            data: { 
+            data: {
                 password: hashedPassword,
                 loginAttempts: 0,
                 lockedUntil: null
@@ -308,8 +324,8 @@ export async function unlockUserAndResetPassword(id: string, currentUserId: stri
         revalidatePath('/users');
         revalidatePath('/notifications');
 
-        return { 
-            success: true, 
+        return {
+            success: true,
             newPassword,
             message: `Conta desbloqueada! Nova senha: ${newPassword}`
         };

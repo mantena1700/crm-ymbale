@@ -35,14 +35,14 @@ export default function ReportsClient({ initialMetrics }: ReportsClientProps) {
         setExportingExcel(true);
         try {
             const data = await getExportData();
-            
+
             // Create workbook
             const wb = XLSX.utils.book_new();
-            
+
             // Sheet 1: All Restaurants
             const ws1 = XLSX.utils.json_to_sheet(data.restaurants);
             XLSX.utils.book_append_sheet(wb, ws1, 'Restaurantes');
-            
+
             // Sheet 2: Summary
             const summaryData = [
                 { 'Métrica': 'Total de Leads', 'Valor': metrics.totalRestaurants },
@@ -56,28 +56,28 @@ export default function ReportsClient({ initialMetrics }: ReportsClientProps) {
             ];
             const ws2 = XLSX.utils.json_to_sheet(summaryData);
             XLSX.utils.book_append_sheet(wb, ws2, 'Resumo');
-            
+
             // Sheet 3: By Status
             const ws3 = XLSX.utils.json_to_sheet(metrics.byStatus.map(s => ({
                 'Status': s.status,
                 'Quantidade': s.count
             })));
             XLSX.utils.book_append_sheet(wb, ws3, 'Por Status');
-            
+
             // Sheet 4: By Region
             const ws4 = XLSX.utils.json_to_sheet(metrics.byRegion.map(r => ({
                 'Região': r.region,
                 'Quantidade': r.count
             })));
             XLSX.utils.book_append_sheet(wb, ws4, 'Por Região');
-            
+
             // Sheet 5: By City
             const ws5 = XLSX.utils.json_to_sheet(metrics.byCity.map(c => ({
                 'Cidade': c.city,
                 'Quantidade': c.count
             })));
             XLSX.utils.book_append_sheet(wb, ws5, 'Por Cidade');
-            
+
             // Sheet 6: Top Restaurants
             const ws6 = XLSX.utils.json_to_sheet(metrics.topRestaurants.map(r => ({
                 'Nome': r.name,
@@ -85,7 +85,7 @@ export default function ReportsClient({ initialMetrics }: ReportsClientProps) {
                 'Potencial': r.potential
             })));
             XLSX.utils.book_append_sheet(wb, ws6, 'Top Restaurantes');
-            
+
             // Sheet 7: Funnel
             const ws7 = XLSX.utils.json_to_sheet(metrics.conversionFunnel.map(f => ({
                 'Etapa': f.stage,
@@ -93,11 +93,11 @@ export default function ReportsClient({ initialMetrics }: ReportsClientProps) {
                 'Percentual': `${f.percentage}%`
             })));
             XLSX.utils.book_append_sheet(wb, ws7, 'Funil de Conversão');
-            
+
             // Download
             const date = new Date().toISOString().split('T')[0];
             XLSX.writeFile(wb, `relatorio_crm_${date}.xlsx`);
-            
+
         } catch (error) {
             console.error('Error exporting to Excel:', error);
             alert('Erro ao exportar para Excel');
@@ -114,7 +114,7 @@ export default function ReportsClient({ initialMetrics }: ReportsClientProps) {
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Relatório CRM Ymbale</title>
+    <title>Relatório DOM Seven</title>
     <style>
         body { font-family: Arial, sans-serif; padding: 40px; color: #333; }
         h1 { color: #6366f1; border-bottom: 2px solid #6366f1; padding-bottom: 10px; }
@@ -130,7 +130,7 @@ export default function ReportsClient({ initialMetrics }: ReportsClientProps) {
     </style>
 </head>
 <body>
-    <h1>📊 Relatório CRM Ymbale</h1>
+    <h1>📊 Relatório DOM Seven</h1>
     <p>Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}</p>
     
     <h2>📈 Métricas Principais</h2>
@@ -186,12 +186,12 @@ export default function ReportsClient({ initialMetrics }: ReportsClientProps) {
     </table>
     
     <div class="footer">
-        <p>Relatório gerado automaticamente pelo CRM Ymbale</p>
+        <p>Relatório gerado automaticamente pelo DOM Seven</p>
     </div>
 </body>
 </html>
             `;
-            
+
             const printWindow = window.open('', '_blank');
             if (printWindow) {
                 printWindow.document.write(reportContent);
@@ -234,14 +234,14 @@ export default function ReportsClient({ initialMetrics }: ReportsClientProps) {
                         <p>Análise completa do seu pipeline de vendas</p>
                     </div>
                     <div className={styles.headerActions}>
-                        <button 
+                        <button
                             className={styles.refreshButton}
                             onClick={refreshMetrics}
                             disabled={loading}
                         >
                             {loading ? '🔄 Atualizando...' : '🔄 Atualizar Dados'}
                         </button>
-                        <button 
+                        <button
                             className={styles.aiButton}
                             onClick={generateInsights}
                             disabled={generatingInsights}
@@ -295,7 +295,7 @@ export default function ReportsClient({ initialMetrics }: ReportsClientProps) {
             <div className={styles.exportSection}>
                 <h3>📥 Exportar Relatórios</h3>
                 <div className={styles.exportButtons}>
-                    <button 
+                    <button
                         className={styles.exportButton}
                         onClick={exportToExcel}
                         disabled={exportingExcel}
@@ -308,7 +308,7 @@ export default function ReportsClient({ initialMetrics }: ReportsClientProps) {
                             <span className={styles.exportDesc}>Planilha completa com todas as abas</span>
                         </div>
                     </button>
-                    <button 
+                    <button
                         className={styles.exportButton}
                         onClick={exportToPDF}
                         disabled={exportingPDF}
@@ -321,10 +321,10 @@ export default function ReportsClient({ initialMetrics }: ReportsClientProps) {
                             <span className={styles.exportDesc}>Relatório formatado para impressão</span>
                         </div>
                     </button>
-                    <button 
+                    <button
                         className={styles.exportButton}
                         onClick={() => {
-                            const csv = metrics.topRestaurants.map(r => 
+                            const csv = metrics.topRestaurants.map(r =>
                                 `${r.name},${r.score},${r.potential}`
                             ).join('\n');
                             const blob = new Blob([`Nome,Score,Potencial\n${csv}`], { type: 'text/csv' });
@@ -346,31 +346,31 @@ export default function ReportsClient({ initialMetrics }: ReportsClientProps) {
 
             {/* Tabs */}
             <div className={styles.tabs}>
-                <button 
+                <button
                     className={`${styles.tab} ${activeTab === 'overview' ? styles.tabActive : ''}`}
                     onClick={() => setActiveTab('overview')}
                 >
                     📊 Visão Geral
                 </button>
-                <button 
+                <button
                     className={`${styles.tab} ${activeTab === 'funnel' ? styles.tabActive : ''}`}
                     onClick={() => setActiveTab('funnel')}
                 >
                     🎯 Funil
                 </button>
-                <button 
+                <button
                     className={`${styles.tab} ${activeTab === 'regions' ? styles.tabActive : ''}`}
                     onClick={() => setActiveTab('regions')}
                 >
                     📍 Regiões
                 </button>
-                <button 
+                <button
                     className={`${styles.tab} ${activeTab === 'categories' ? styles.tabActive : ''}`}
                     onClick={() => setActiveTab('categories')}
                 >
                     🍽️ Categorias
                 </button>
-                <button 
+                <button
                     className={`${styles.tab} ${activeTab === 'ai' ? styles.tabActive : ''}`}
                     onClick={() => setActiveTab('ai')}
                 >
@@ -392,9 +392,9 @@ export default function ReportsClient({ initialMetrics }: ReportsClientProps) {
                                         <span>{metrics.highPotentialCount}</span>
                                     </div>
                                     <div className={styles.potentialBar}>
-                                        <div 
-                                            className={styles.potentialFill} 
-                                            style={{ 
+                                        <div
+                                            className={styles.potentialFill}
+                                            style={{
                                                 width: getProgressWidth((metrics.highPotentialCount / metrics.totalRestaurants) * 100),
                                                 background: 'linear-gradient(90deg, #10b981, #059669)'
                                             }}
@@ -407,9 +407,9 @@ export default function ReportsClient({ initialMetrics }: ReportsClientProps) {
                                         <span>{metrics.mediumPotentialCount}</span>
                                     </div>
                                     <div className={styles.potentialBar}>
-                                        <div 
-                                            className={styles.potentialFill} 
-                                            style={{ 
+                                        <div
+                                            className={styles.potentialFill}
+                                            style={{
                                                 width: getProgressWidth((metrics.mediumPotentialCount / metrics.totalRestaurants) * 100),
                                                 background: 'linear-gradient(90deg, #f59e0b, #d97706)'
                                             }}
@@ -422,9 +422,9 @@ export default function ReportsClient({ initialMetrics }: ReportsClientProps) {
                                         <span>{metrics.lowPotentialCount}</span>
                                     </div>
                                     <div className={styles.potentialBar}>
-                                        <div 
-                                            className={styles.potentialFill} 
-                                            style={{ 
+                                        <div
+                                            className={styles.potentialFill}
+                                            style={{
                                                 width: getProgressWidth((metrics.lowPotentialCount / metrics.totalRestaurants) * 100),
                                                 background: 'linear-gradient(90deg, #6b7280, #4b5563)'
                                             }}
@@ -443,7 +443,7 @@ export default function ReportsClient({ initialMetrics }: ReportsClientProps) {
                                         <span className={styles.statusName}>{s.status}</span>
                                         <span className={styles.statusCount}>{s.count}</span>
                                         <div className={styles.statusBarContainer}>
-                                            <div 
+                                            <div
                                                 className={styles.statusBar}
                                                 style={{ width: getProgressWidth((s.count / metrics.totalRestaurants) * 100) }}
                                             />
@@ -477,10 +477,10 @@ export default function ReportsClient({ initialMetrics }: ReportsClientProps) {
                         <h3>🎯 Funil de Conversão</h3>
                         <div className={styles.funnel}>
                             {metrics.conversionFunnel.map((stage, i) => (
-                                <div 
-                                    key={stage.stage} 
+                                <div
+                                    key={stage.stage}
                                     className={styles.funnelStage}
-                                    style={{ 
+                                    style={{
                                         width: `${100 - (i * 15)}%`,
                                         opacity: 1 - (i * 0.1)
                                     }}
@@ -510,9 +510,9 @@ export default function ReportsClient({ initialMetrics }: ReportsClientProps) {
                                         <span className={styles.regionCount}>{r.count}</span>
                                     </div>
                                     <div className={styles.regionBar}>
-                                        <div 
+                                        <div
                                             className={styles.regionFill}
-                                            style={{ 
+                                            style={{
                                                 width: getProgressWidth((r.count / Math.max(...metrics.byRegion.map(x => x.count))) * 100)
                                             }}
                                         />
@@ -536,9 +536,9 @@ export default function ReportsClient({ initialMetrics }: ReportsClientProps) {
                                     <span className={styles.categoryName}>{c.city}</span>
                                     <span className={styles.categoryCount}>{c.count} leads</span>
                                     <div className={styles.categoryBar}>
-                                        <div 
+                                        <div
                                             className={styles.categoryFill}
-                                            style={{ 
+                                            style={{
                                                 width: getProgressWidth((c.count / Math.max(...metrics.byCity.map(x => x.count))) * 100)
                                             }}
                                         />
@@ -553,7 +553,7 @@ export default function ReportsClient({ initialMetrics }: ReportsClientProps) {
                     <div className={styles.aiContainer}>
                         <div className={styles.aiHeader}>
                             <h3>🤖 Insights Gerados por IA</h3>
-                            <button 
+                            <button
                                 className={styles.regenerateButton}
                                 onClick={generateInsights}
                                 disabled={generatingInsights}
@@ -563,9 +563,9 @@ export default function ReportsClient({ initialMetrics }: ReportsClientProps) {
                         </div>
                         {aiInsights ? (
                             <div className={styles.aiContent}>
-                                <div 
+                                <div
                                     className={styles.markdown}
-                                    dangerouslySetInnerHTML={{ 
+                                    dangerouslySetInnerHTML={{
                                         __html: aiInsights
                                             .replace(/## (.*)/g, '<h2>$1</h2>')
                                             .replace(/### (.*)/g, '<h3>$1</h3>')
@@ -579,7 +579,7 @@ export default function ReportsClient({ initialMetrics }: ReportsClientProps) {
                         ) : (
                             <div className={styles.aiEmpty}>
                                 <p>Clique em "🤖 Insights com IA" para gerar uma análise inteligente dos seus dados.</p>
-                                <button 
+                                <button
                                     className={styles.generateButton}
                                     onClick={generateInsights}
                                     disabled={generatingInsights}
