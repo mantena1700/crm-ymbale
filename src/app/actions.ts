@@ -128,6 +128,7 @@ export async function performAnalysis(id: string) {
 
         revalidatePath(`/restaurant/${id}`);
         revalidatePath('/clients');
+        revalidatePath('/'); // Update dashboard stats
         return analysis;
     }
 }
@@ -186,6 +187,22 @@ export async function completeFollowUp(followUpId: string) {
 
     revalidatePath('/pipeline');
     return { success: true };
+}
+
+export async function deleteFollowUp(followUpId: string) {
+    const { prisma } = await import('@/lib/db');
+    try {
+        await prisma.followUp.delete({
+            where: { id: followUpId }
+        });
+        revalidatePath('/agenda');
+        revalidatePath('/pipeline');
+        revalidatePath('/');
+        return { success: true };
+    } catch (error) {
+        console.error('Failed to delete follow-up:', error);
+        return { success: false, error: 'Failed to delete' };
+    }
 }
 
 export async function updateGoal(goalId: string, current: number) {

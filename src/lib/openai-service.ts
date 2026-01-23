@@ -53,42 +53,47 @@ export async function analyzeRestaurantWithOpenAI(restaurant: Restaurant, apiKey
 CONTEXTO DA EMPRESA:
 - Vendemos embalagens premium para restaurantes de delivery
 - Nossas embalagens são: à prova de vazamento, mantêm temperatura, apresentação premium
-- Nosso objetivo é identificar restaurantes com problemas de embalagem para oferecer nossa solução
+- Nosso objetivo é identificar restaurantes com ALTO POTENCIAL DE VENDA.
+
+O Score de Oportunidade deve ser composto por:
+1. POTENCIAL DE VENDA (Volume):
+   - ALTÍSSIMO: Base 60 pontos
+   - ALTO: Base 50 pontos
+   - MÉDIO: Base 30 pontos
+   - BAIXO: Base 10 pontos
+
+2. PROBLEMAS DE EMBALAGEM (Dor):
+   - Muitos problemas graves: +30 a 40 pontos
+   - Alguns problemas: +15 a 25 pontos
+   - Poucos/Nenhum problema: +0 a 10 pontos
 
 SUA TAREFA:
-Analisar CADA comentário fornecido e identificar PROBLEMAS ESPECÍFICOS relacionados a:
-1. VAZAMENTO - molho vazando, embalagem molhada, comida derramada
-2. TEMPERATURA - comida fria, morna, perdeu calor
-3. EMBALAGEM - amassada, aberta, frágil, mal fechada
-4. APRESENTAÇÃO - bagunçada, misturada, mal apresentada
-
-IMPORTANTE:
-- Cite TRECHOS EXATOS dos comentários como evidência
-- Seja específico - mencione quais comentários indicam cada problema
-- Score alto (70-100) = muitos problemas de embalagem identificados = oportunidade de venda
-- Score baixo (0-30) = poucos problemas = menor oportunidade
+Analisar os dados e gerar um "Score de Oportunidade" (0-100) que reflita o quão bom é este lead.
+Um restaurante com ALTO volume deve ter score ALTO, mesmo que tenha poucos problemas (pois podemos vender melhoria/branding).
+Um restaurante com MUITOS problemas também deve ter score ALTO (pois a dor é grande).
 
 Responda APENAS com JSON válido.`
                 },
                 {
                     role: 'user',
                     content: `RESTAURANTE: ${restaurant.name}
+POTENCIAL DE VENDAS: ${restaurant.salesPotential || 'MÉDIO'}
 AVALIAÇÃO: ${restaurant.rating} estrelas
 TOTAL AVALIAÇÕES: ${restaurant.reviewCount}
 
-COMENTÁRIOS REAIS DOS CLIENTES (analise CADA um):
+COMENTÁRIOS REAIS DOS CLIENTES (analise CADA um buscando dores):
 
 ${formattedComments}
 
-Baseado EXCLUSIVAMENTE nos comentários acima, retorne JSON:
+Baseado nos comentários E no potencial de vendas, retorne JSON:
 {
-  "score": <0-100 baseado em quantos problemas de EMBALAGEM você encontrou>,
-  "summary": "<resumo de 2-3 frases citando problemas ESPECÍFICOS encontrados nos comentários acima>",
-  "painPoints": ["<problema específico 1 com citação>", "<problema específico 2 com citação>", "<problema específico 3 com citação>"],
-  "evidences": ["<trecho exato do comentário 1>", "<trecho exato do comentário 2>"],
-  "salesCopy": "<abordagem comercial PERSONALIZADA mencionando os problemas específicos deste restaurante>",
-  "strategy": "<estratégia específica baseada nos problemas identificados>",
-  "status": "Qualificado" (se score >= 60) ou "A Analisar" (se score < 40) ou "Negociação" (se entre 40-60)
+  "score": <0-100 Score de Oportunidade (Soma de Potencial + Problemas)>,
+  "summary": "<resumo citando o potencial do cliente E quaisquer problemas encontrados>",
+  "painPoints": ["<problema 1>", "<problema 2>"],
+  "evidences": ["<trecho 1>", "<trecho 2>"],
+  "salesCopy": "<abordagem considerando o potencial E os problemas>",
+  "strategy": "<estratégia específica>",
+  "status": "Qualificado" (se score >= 60) ou "A Analisar"
 }`
                 }
             ],

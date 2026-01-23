@@ -26,6 +26,8 @@ interface AgendaClientProps {
     availableSellers?: Seller[];
 }
 
+import { completeFollowUp, deleteFollowUp } from '@/app/actions';
+
 export default function AgendaClient({ initialFollowUps, restaurants, availableSellers = [] }: AgendaClientProps) {
     const [followUps, setFollowUps] = useState(initialFollowUps);
     const [view, setView] = useState<'calendar' | 'list' | 'kanban'>('list');
@@ -226,10 +228,36 @@ export default function AgendaClient({ initialFollowUps, restaurants, availableS
         return days;
     }, [selectedDate, filteredFollowUps]);
 
-    const toggleComplete = (id: string) => {
+    const toggleComplete = async (id: string) => {
+        // Optimistic update
         setFollowUps(prev => prev.map(f =>
             f.id === id ? { ...f, completed: !f.completed } : f
         ));
+
+        try {
+            await completeFollowUp(id);
+        } catch (error) {
+            console.error('Failed to complete follow-up', error);
+            // Revert on error
+            setFollowUps(prev => prev.map(f =>
+                f.id === id ? { ...f, completed: !f.completed } : f
+            ));
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!confirm('Tem certeza que deseja excluir este follow-up?')) return;
+
+        // Optimistic update
+        setFollowUps(prev => prev.filter(f => f.id !== id));
+
+        try {
+            await deleteFollowUp(id);
+        } catch (error) {
+            console.error('Failed to delete follow-up', error);
+            // Reload page or handle error appropriately as we can't easily revert a filter without refetching
+            window.location.reload();
+        }
     };
 
     const getTypeIcon = (type: string) => {
@@ -531,10 +559,19 @@ export default function AgendaClient({ initialFollowUps, restaurants, availableS
                                                         <Link
                                                             href={`/restaurant/${item.restaurant.id}`}
                                                             className={styles.actionButton}
+                                                            title="Ver Restaurante"
                                                         >
                                                             👁️
                                                         </Link>
                                                     )}
+                                                    <button
+                                                        className={styles.actionButton}
+                                                        onClick={() => handleDelete(item.id)}
+                                                        title="Excluir"
+                                                        style={{ color: '#ef4444' }}
+                                                    >
+                                                        🗑️
+                                                    </button>
                                                 </div>
                                             </div>
                                         ))}
@@ -587,6 +624,9 @@ export default function AgendaClient({ initialFollowUps, restaurants, availableS
                                                     key={f.id}
                                                     className={`${styles.dayEvent} ${f.completed ? styles.completed : ''}`}
                                                     title={f.restaurant?.name}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation(); // Prevent bubbling if needed
+                                                    }}
                                                 >
                                                     {getTypeIcon(f.type)}
                                                 </div>
