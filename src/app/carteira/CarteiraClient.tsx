@@ -1844,6 +1844,17 @@ export default function CarteiraClient({ initialData }: Props) {
                                     {loading ? '⏳ Gerando...' : 'Exportar Excel'}
                                 </span>
                             </button>
+                            <button
+                                className={styles.actionBtnPurple}
+                                onClick={handleExportAgendamento}
+                                disabled={agendamentoExporting}
+                                title="Exportar agenda semanal para template de agendamento"
+                            >
+                                <span className={styles.actionIcon}>📅</span>
+                                <span className={styles.actionText}>
+                                    {agendamentoExporting ? '⏳ Exportando...' : 'Exportar Agendamento'}
+                                </span>
+                            </button>
                             {/* Botão de Excluir Selecionados */}
                             {selectedAgendaItems.size > 0 && (
                                 <button
