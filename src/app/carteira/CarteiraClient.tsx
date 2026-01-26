@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import styles from './page.module.css';
-import { scheduleVisit, updateClientPriority, updateClientStatus, addNote, autoFillWeeklySchedule, exportWeeklyScheduleToExcel, getWeeklySchedule, exportWeeklyScheduleToAgendamentoTemplate } from './actions';
+import { scheduleVisit, updateClientPriority, updateClientStatus, addNote, autoFillWeeklySchedule, exportWeeklyScheduleToExcel, getWeeklySchedule, exportWeeklyScheduleToAgendamentoTemplate, deleteMultipleScheduleSlots } from './actions';
 import { exportRestaurantsToCheckmob } from '@/app/actions';
 import { analyzeIntelligentFill, type FillSuggestion, type UserDecision } from './actions-intelligent';
 import WeeklyCalendar from './WeeklyCalendar';
@@ -732,6 +732,8 @@ export default function CarteiraClient({ initialData }: Props) {
 
     // Exportar agenda semanal para template de agendamento
     const [agendamentoExporting, setAgendamentoExporting] = useState(false);
+    const [selectedAgendaItems, setSelectedAgendaItems] = useState<Set<string>>(new Set());
+    const [isDeletingItems, setIsDeletingItems] = useState(false);
     const handleExportAgendamento = async () => {
         console.log('🚀 Iniciando exportação de agendamento...');
         console.log('   selectedSellerId:', selectedSellerId);
@@ -790,6 +792,41 @@ export default function CarteiraClient({ initialData }: Props) {
         } finally {
             setAgendamentoExporting(false);
             console.log('🏁 Exportação finalizada');
+        }
+    };
+
+    const handleToggleAgendaItem = (id: string) => {
+        const newSelected = new Set(selectedAgendaItems);
+        if (newSelected.has(id)) {
+            newSelected.delete(id);
+        } else {
+            newSelected.add(id);
+        }
+        setSelectedAgendaItems(newSelected);
+    };
+
+    const handleDeleteSelectedAgendaItems = async () => {
+        if (selectedAgendaItems.size === 0) return;
+
+        if (!confirm(`Tem certeza que deseja excluir ${selectedAgendaItems.size} agendamento(s)?`)) {
+            return;
+        }
+
+        setIsDeletingItems(true);
+        try {
+            const result = await deleteMultipleScheduleSlots(Array.from(selectedAgendaItems));
+
+            if (result.success) {
+                alert('deleted' in result ? result.message : 'Agendamentos excluídos com sucesso');
+                setSelectedAgendaItems(new Set()); // Limpar seleção
+                loadWeeklySchedule(); // Recarregar
+            } else {
+                alert(`Erro ao excluir: ${result.error}`);
+            }
+        } catch (error: any) {
+            alert(`Erro ao excluir: ${error.message}`);
+        } finally {
+            setIsDeletingItems(false);
         }
     };
 
@@ -1783,7 +1820,7 @@ export default function CarteiraClient({ initialData }: Props) {
                     </div>
 
                     {/* Barra de Ações */}
-                    <div className={styles.actionBar} style={{ marginBottom: '1.5rem' }}>
+                    <div className={styles.actionBar} style={{ marginBottom: '1.5rem', display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
                         <div className={styles.primaryActions}>
                             <button
                                 className={styles.actionBtnPrimary}
@@ -1807,17 +1844,20 @@ export default function CarteiraClient({ initialData }: Props) {
                                     {loading ? '⏳ Gerando...' : 'Exportar Excel'}
                                 </span>
                             </button>
-                            <button
-                                className={styles.actionBtnPurple}
-                                onClick={handleExportAgendamento}
-                                disabled={agendamentoExporting}
-                                title="Exportar agenda semanal para template de agendamento"
-                            >
-                                <span className={styles.actionIcon}>📅</span>
-                                <span className={styles.actionText}>
-                                    {agendamentoExporting ? '⏳ Exportando...' : 'Exportar Agendamento'}
-                                </span>
-                            </button>
+                            {/* Botão de Excluir Selecionados */}
+                            {selectedAgendaItems.size > 0 && (
+                                <button
+                                    className={styles.actionBtnDanger}
+                                    onClick={handleDeleteSelectedAgendaItems}
+                                    disabled={isDeletingItems}
+                                    style={{ backgroundColor: '#ef4444', color: 'white' }}
+                                >
+                                    <span className={styles.actionIcon}>🗑️</span>
+                                    <span className={styles.actionText}>
+                                        {isDeletingItems ? 'Excluindo...' : `Excluir (${selectedAgendaItems.size})`}
+                                    </span>
+                                </button>
+                            )}
                         </div>
                     </div>
 
@@ -1847,18 +1887,50 @@ export default function CarteiraClient({ initialData }: Props) {
                                                 .sort((a, b) => {
                                                     const timeA = new Date(a.scheduledDate).getTime();
                                                     const timeB = new Date(b.scheduledDate).getTime();
+                                                    // Se mesmo horário, ordenar por nome
+                                                    if (timeA === timeB) {
+                                                        const nameA = restaurants.find(r => r.id === a.restaurantId)?.name || '';
+                                                        const nameB = restaurants.find(r => r.id === b.restaurantId)?.name || '';
+                                                        return nameA.localeCompare(nameB);
+                                                    }
                                                     return timeA - timeB;
                                                 })
                                                 .map(followUp => {
+                                                    // Determinar se está selecionado
+                                                    const isSelected = selectedAgendaItems.has(followUp.id);
+
                                                     const restaurant = restaurants.find(r => r.id === followUp.restaurantId);
                                                     if (!restaurant) return null;
-                                                    const scheduledTime = new Date(followUp.scheduledDate);
-                                                    const timeStr = scheduledTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
                                                     const priority = getPriorityBadge(restaurant.salesPotential);
 
                                                     return (
-                                                        <div key={followUp.id} className={styles.agendaItem}>
-                                                            <div className={styles.agendaItemTime}>{timeStr}</div>
+                                                        <div
+                                                            key={followUp.id}
+                                                            className={`${styles.agendaItem} ${isSelected ? styles.selectedItem : ''}`}
+                                                            style={{
+                                                                cursor: 'pointer',
+                                                                borderLeft: isSelected ? '4px solid #3b82f6' : '4px solid transparent',
+                                                                backgroundColor: isSelected ? '#eff6ff' : 'white',
+                                                                position: 'relative'
+                                                            }}
+                                                            onClick={(e) => {
+                                                                // Permite clicar no card para selecionar
+                                                                if ((e.target as HTMLElement).tagName !== 'INPUT') {
+                                                                    handleToggleAgendaItem(followUp.id);
+                                                                }
+                                                            }}
+                                                        >
+                                                            {/* Checkbox de Seleção */}
+                                                            <div style={{ marginRight: '10px', display: 'flex', alignItems: 'center' }}>
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={isSelected}
+                                                                    onChange={() => handleToggleAgendaItem(followUp.id)}
+                                                                    style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                                                                />
+                                                            </div>
+
                                                             <div className={styles.agendaItemContent}>
                                                                 <strong>{restaurant.name}</strong>
                                                                 <span>📍 {restaurant.address?.neighborhood || 'N/D'}</span>
@@ -1917,8 +1989,6 @@ export default function CarteiraClient({ initialData }: Props) {
                     </div>
                 </div>
             )}
-
-            {/* Mapa Tab */}
             {activeTab === 'mapa' && (
                 <MapaTecnologico
                     restaurants={carteiraRestaurants}
