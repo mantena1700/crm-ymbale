@@ -70,6 +70,11 @@ const PERMISSION_GROUPS: Record<string, { label: string; icon: string; permissio
         label: 'Usuários',
         icon: '🔐',
         permissions: ['users.view', 'users.create', 'users.edit', 'users.delete']
+    },
+    carteira: {
+        label: 'Carteira',
+        icon: '🗺️',
+        permissions: ['carteira.view', 'carteira.edit']
     }
 };
 
