@@ -194,6 +194,10 @@ export async function analyzeIntelligentFill(
                     );
 
                     if (!alreadyScheduled) {
+                        /* 
+                        HOTFIX: Bypass suggestion modal to prevent UI crash due to type mismatch.
+                        Returning empty suggestions forces CarteiraClient to execute fill immediately.
+                        
                         suggestions.push({
                             id: `${day.date}-${slot.time}-${slot.restaurantId}`,
                             day: day.day,
@@ -204,6 +208,7 @@ export async function analyzeIntelligentFill(
                             distance: 0,
                             duration: ''
                         });
+                        */
                     }
                 }
             });
