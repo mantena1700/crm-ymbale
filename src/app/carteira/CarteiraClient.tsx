@@ -43,6 +43,8 @@ interface Restaurant {
     commentsCount: number;
     createdAt: string;
     assignedAt: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
 }
 
 interface FollowUp {
@@ -452,7 +454,9 @@ export default function CarteiraClient({ initialData }: Props) {
                     rating: r.rating,
                     status: r.status,
                     projectedDeliveries: r.projectedDeliveries || 0,
-                    reviewCount: r.reviewCount || 0
+                    reviewCount: r.reviewCount || 0,
+                    latitude: r.latitude,
+                    longitude: r.longitude
                 })),
                 selectedSellerId,
                 currentWeekStart,
@@ -495,7 +499,9 @@ export default function CarteiraClient({ initialData }: Props) {
                     rating: r.rating,
                     status: r.status,
                     projectedDeliveries: r.projectedDeliveries || 0,
-                    reviewCount: r.reviewCount || 0
+                    reviewCount: r.reviewCount || 0,
+                    latitude: r.latitude,
+                    longitude: r.longitude
                 })),
                 currentWeekStart.toISOString(),
                 decisions
@@ -1774,6 +1780,45 @@ export default function CarteiraClient({ initialData }: Props) {
                     <div className={styles.agendaHeader}>
                         <h2>🗓️ Agenda Completa da Semana</h2>
                         <p>Visualização completa de todos os agendamentos da semana</p>
+                    </div>
+
+                    {/* Barra de Ações */}
+                    <div className={styles.actionBar} style={{ marginBottom: '1.5rem' }}>
+                        <div className={styles.primaryActions}>
+                            <button
+                                className={styles.actionBtnPrimary}
+                                onClick={handleIntelligentAutoFill}
+                                disabled={loading || carteiraRestaurants.length === 0}
+                                title="Preencher automaticamente a semana priorizando os melhores restaurantes"
+                            >
+                                <span className={styles.actionIcon}>🤖</span>
+                                <span className={styles.actionText}>
+                                    {loading ? '⏳ Gerando...' : 'Preenchimento Inteligente'}
+                                </span>
+                            </button>
+                            <button
+                                className={styles.actionBtnSuccess}
+                                onClick={handleExportExcel}
+                                disabled={loading}
+                                title="Exportar agenda semanal para planilha Excel profissional"
+                            >
+                                <span className={styles.actionIcon}>📊</span>
+                                <span className={styles.actionText}>
+                                    {loading ? '⏳ Gerando...' : 'Exportar Excel'}
+                                </span>
+                            </button>
+                            <button
+                                className={styles.actionBtnPurple}
+                                onClick={handleExportAgendamento}
+                                disabled={agendamentoExporting}
+                                title="Exportar agenda semanal para template de agendamento"
+                            >
+                                <span className={styles.actionIcon}>📅</span>
+                                <span className={styles.actionText}>
+                                    {agendamentoExporting ? '⏳ Exportando...' : 'Exportar Agendamento'}
+                                </span>
+                            </button>
+                        </div>
                     </div>
 
                     {/* Agenda Semanal Completa */}

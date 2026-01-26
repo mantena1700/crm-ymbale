@@ -58,10 +58,10 @@ async function getData() {
                 let areasNomes: string[] = [];
                 if (s.areasCobertura) {
                     try {
-                        const areas = typeof s.areasCobertura === 'string' 
-                            ? JSON.parse(s.areasCobertura) 
+                        const areas = typeof s.areasCobertura === 'string'
+                            ? JSON.parse(s.areasCobertura)
                             : s.areasCobertura;
-                        
+
                         if (Array.isArray(areas)) {
                             areasNomes = areas.map((area: any) => {
                                 if (typeof area === 'string') {
@@ -85,7 +85,7 @@ async function getData() {
                     // Fallback: usar cidade base se não tiver áreas configuradas
                     areasNomes = [s.baseCidade];
                 }
-                
+
                 return {
                     id: s.id,
                     name: s.name,
@@ -109,7 +109,9 @@ async function getData() {
                 sellerName: r.seller?.name || null,
                 commentsCount: r.comments.length,
                 createdAt: r.createdAt?.toISOString() || new Date().toISOString(),
-                assignedAt: r.assignedAt?.toISOString() || null
+                assignedAt: r.assignedAt?.toISOString() || null,
+                latitude: r.latitude ? Number(r.latitude) : null,
+                longitude: r.longitude ? Number(r.longitude) : null
             })),
             followUps: followUps.map(f => ({
                 id: f.id,

@@ -319,6 +319,8 @@ const Sidebar = () => {
 
                             // Verificar permissão específica (se definida)
                             if (item.permission) {
+                                // Fallback: se não tiver lista de permissões, permitir acesso (para dev/migração)
+                                if (!user.permissions || user.permissions.length === 0) return true;
                                 return user.permissions?.includes(item.permission);
                             }
 
