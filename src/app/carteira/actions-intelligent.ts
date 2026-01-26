@@ -23,6 +23,7 @@ function deg2rad(deg: number) { return deg * (Math.PI / 180); }
 async function getGoogleTravelTimesBatch(origin: { lat: number, lng: number }, destinations: any[]) {
     if (!GOOGLE_API_KEY || destinations.length === 0) return null;
 
+    console.log(`google_api: requesting matrix for ${destinations.length} destinations...`);
     const results = new Map();
     const CHUNK_SIZE = 25;
 
@@ -33,7 +34,13 @@ async function getGoogleTravelTimesBatch(origin: { lat: number, lng: number }, d
         const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${originStr}&destinations=${destStr}&key=${GOOGLE_API_KEY}&mode=driving`;
 
         try {
-            const response = await fetch(url);
+            // Timeout de 2 segundos para não travar
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 2000);
+
+            const response = await fetch(url, { signal: controller.signal });
+            clearTimeout(timeoutId);
+
             const data = await response.json();
 
             if (data.status === 'OK' && data.rows?.[0]?.elements) {
@@ -47,7 +54,8 @@ async function getGoogleTravelTimesBatch(origin: { lat: number, lng: number }, d
                 });
             }
         } catch (err) {
-            console.error('Erro Google API:', err);
+            console.warn('Erro/Timeout Google API (usando dist linear):', err);
+            // Não dar throw, apenas continuar (vai usar fallback de distância linear)
         }
     }
     return results;
