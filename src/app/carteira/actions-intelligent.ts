@@ -109,11 +109,6 @@ export async function getFixedClientsForWeek(sellerId: string, weekStart: string
 
                     if (targetDayIndex !== -1) {
                         // Encontrar a data correspondente nesta semana
-                        const startDayIndex = startDate.getDay();
-                        const diff = targetDayIndex - startDayIndex + (targetDayIndex < startDayIndex ? 7 : 0); // Ajuste simples
-                        // Mas 'startDate' pode ser qualquer dia. O correto é encontrar o dia na semana que corresponde.
-                        // Assumindo que 'startDate' é o início da visualização (ex: Segunda).
-
                         // Melhor abordagem: Iterar pelos dias da semana (map byDay) e ver qual bate
                         Object.keys(byDay).forEach(dateStr => {
                             const d = new Date(dateStr);
@@ -222,34 +217,42 @@ export async function generateIntelligentWeeklySchedule(
     fixedClientsByDayArg: Record<string, any[]> | null = null // Argumento opcional
 ) {
     try {
-        console.log('🚀 GERAÇÃO V9: OTIMIZAÇÃO GLOBAL (Semana Inteira)...');
+        console.log('🚀 GERAÇÃO V10: CLUSTERING DINÂMICO...');
 
-        // 1. LISTA MESTRA DE RESTAURANTES E NORMALIZAÇÃO DE COORDENADAS
+        // 1. LISTA MESTRA e COORDENADAS
         const availableRestaurants = restaurants
             .filter(r => r.id && r.name && r.status !== 'Descartado')
             .map(r => {
-                // Tenta pegar lat/lng da raiz ou do JSON de geocoding
                 let lat = Number(r.lat || r.latitude || 0);
                 let lng = Number(r.lng || r.longitude || 0);
 
-                // Se for 0, tenta pegar do address se for objeto
-                if (lat === 0 && lng === 0 && r.address && typeof r.address === 'object') {
-                    // Lógica de fallback se coordenadas estiverem no address 
-                    // (poderia implementar aqui, mas o re-fetch no actions.ts já deve trazer se estiver na raiz)
+                // Tentar extrair do address se não tiver na raiz
+                if ((lat === 0 || isNaN(lat)) && r.address) {
+                    try {
+                        const addr = typeof r.address === 'string' ? JSON.parse(r.address) : r.address;
+                        if (addr.lat && addr.lng) {
+                            lat = Number(addr.lat);
+                            lng = Number(addr.lng);
+                        } else if (addr.latitude && addr.longitude) {
+                            lat = Number(addr.latitude);
+                            lng = Number(addr.longitude);
+                        }
+                    } catch (e) { }
                 }
 
                 return {
                     id: r.id,
                     name: r.name,
-                    lat: lat,
-                    lng: lng,
+                    lat: isNaN(lat) ? 0 : lat,
+                    lng: isNaN(lng) ? 0 : lng,
                     score: (r.salesPotential === 'ALTISSIMO' ? 100 : r.salesPotential === 'ALTO' ? 75 : 50)
                 };
             });
 
-        console.log(`   📍 ${availableRestaurants.filter(r => r.lat !== 0).length} restaurantes com GPS válido de ${availableRestaurants.length}`);
+        const withCoords = availableRestaurants.filter(r => r.lat !== 0);
+        console.log(`   📍 ${withCoords.length} com GPS válido de ${availableRestaurants.length}`);
 
-        // 2. SETUP DA SEMANA (SEG-SEX)
+        // 2. SETUP DA SEMANA e ANCORAS INICIAIS
         let fixedClientsByDay = fixedClientsByDayArg;
         if (!fixedClientsByDay) {
             try { fixedClientsByDay = await getFixedClientsForWeek(sellerId, weekStart.toISOString()) || {}; } catch (e) { fixedClientsByDay = {}; }
@@ -259,179 +262,164 @@ export async function generateIntelligentWeeklySchedule(
         const weekDays: any[] = [];
         const usedIds = new Set<string>();
 
-        // Marcar IDs já agendados na semana atual (para não repetir)
-        existingSchedule.forEach(ex => {
-            if (ex.restaurantId) {
-                usedIds.add(ex.restaurantId);
-            }
-        });
+        existingSchedule.forEach(ex => { if (ex.restaurantId) usedIds.add(ex.restaurantId); });
 
-        // Montar estrutura e identificar âncoras
+        // Inicializar dias
         for (let i = 0; i < 5; i++) {
             const d = new Date(weekStart);
             d.setDate(weekStart.getDate() + i);
             const dateStr = d.toISOString().split('T')[0];
-            const fixedToday = fixedClientsByDay?.[dateStr] || [];
 
-            // Verificar agendamentos existentes manuais neste dia
+            const fixedToday = fixedClientsByDay?.[dateStr] || [];
             const manualToday = existingSchedule.filter(ex =>
                 new Date(ex.scheduledDate).toISOString().split('T')[0] === dateStr
             );
 
-            const slots = [];
-            let fixedIdx = 0;
+            // Identificar âncora inicial (Fixo ou Manual de hoje)
             let anchor = null;
 
-            // Se tiver manuais com lat/lng, podem servir de âncora também
-            manualToday.forEach(m => {
-                const r = availableRestaurants.find(ar => ar.id === m.restaurantId);
-                if (r && r.lat !== 0 && !anchor) {
+            // Fixo é a melhor âncora
+            const fixedWithCoords = fixedToday.find((fc: any) => fc.latitude && fc.longitude);
+            if (fixedWithCoords) {
+                anchor = { lat: Number(fixedWithCoords.latitude), lng: Number(fixedWithCoords.longitude), name: fixedWithCoords.restaurantName };
+            }
+
+            // Se não tiver fixo, tenta manual
+            if (!anchor) {
+                const manualWithCoords = manualToday.find(m => {
+                    const r = availableRestaurants.find(ar => ar.id === m.restaurantId);
+                    return r && r.lat !== 0;
+                });
+                if (manualWithCoords) {
+                    const r = availableRestaurants.find(ar => ar.id === manualWithCoords.restaurantId)!;
                     anchor = { lat: r.lat, lng: r.lng, name: r.name };
+                }
+            }
+
+            // Ocupar slots
+            const slots = [];
+            let currentSlotIdx = 1;
+
+            // Arrojar fixos
+            fixedToday.forEach((fc: any) => {
+                if (currentSlotIdx <= MAX_VISITS_PER_DAY) {
+                    slots.push({ time: String(currentSlotIdx++), restaurantId: fc.restaurantId, restaurantName: fc.restaurantName, isFixedClient: true, details: 'Cliente Fixo' });
+                    usedIds.add(fc.restaurantId);
                 }
             });
 
-            for (let j = 1; j <= MAX_VISITS_PER_DAY; j++) {
-                // Se tem fixo, ocupa o slot
-                if (fixedIdx < fixedToday.length) {
-                    const fc = fixedToday[fixedIdx];
-                    slots.push({ time: String(j), restaurantId: fc.restaurantId, restaurantName: fc.restaurantName, isFixedClient: true, details: 'Fixo' });
-                    usedIds.add(fc.restaurantId);
-
-                    if (!anchor && fc.latitude && fc.longitude) {
-                        anchor = { lat: Number(fc.latitude), lng: Number(fc.longitude), name: fc.restaurantName };
-                    }
-                    fixedIdx++;
-                } else {
-                    // Preenchimento de slots CONSIDERANDO manuais existentes
-                    // A "quantidade" de manuais ocupa slots lógicos
-
-                    const manualCount = manualToday.length;
-
-                    // Se o índice atual 'j' for maior que (fixos + manuais), é um slot livre
-                    // (Lógica simples de balde, não de horário exato)
-
-                    if (j <= fixedToday.length + manualCount) {
-                        // É um slot ocupado por manual (abstração)
-                        // Não tentamos exibir o manual específico no slot específico aqui, 
-                        // apenas "queimamos" o slot para que a IA não use.
-                        // MAS, se quisermos mostrar na preview, seria bom.
-
-                        const m = manualToday[j - fixedToday.length - 1];
-                        if (m) {
-                            slots.push({
-                                time: String(j),
-                                restaurantId: m.restaurantId,
-                                restaurantName: m.restaurant.name,
-                                isFixedClient: false,
-                                details: 'Agendado Manualmente'
-                            });
-                        } else {
-                            slots.push({ time: String(j), restaurantId: null, restaurantName: null });
-                        }
-                    } else {
-                        // Slot livre para IA
-                        slots.push({ time: String(j), restaurantId: null, restaurantName: null });
-                    }
+            // Arrojar manuais (abstração de ocupação)
+            manualToday.forEach(m => {
+                if (currentSlotIdx <= MAX_VISITS_PER_DAY) {
+                    slots.push({ time: String(currentSlotIdx++), restaurantId: m.restaurantId, restaurantName: m.restaurant?.name || 'Manual', isFixedClient: false, details: 'Agendado Manualmente' });
+                    usedIds.add(m.restaurantId);
                 }
+            });
+
+            // Criar vagas vazias
+            while (currentSlotIdx <= MAX_VISITS_PER_DAY) {
+                slots.push({ time: String(currentSlotIdx++), restaurantId: null, restaurantName: null });
             }
 
             weekDays.push({ day: daysOfWeek[i], date: dateStr, slots, anchor, index: i });
         }
 
-        // =================================================================================
-        // FASE 1: OTIMIZAÇÃO GLOBAL (TODOS OS DIAS AO MESMO TEMPO)
-        // =================================================================================
-        console.log('\n🌎 FASE 1: Calculando Matriz Global de Tempos...');
 
-        let allMatches: any[] = [];
+        // ===================================
+        // FASE 3: AUTO-ANCORAGEM e CLUSTERING
+        // ===================================
+        // Se um dia não tem âncora (fixo/manual), escolhemos o MELHOR restaurante disponível para ser a âncora
+        // E preenchemos o dia ao redor dele.
 
         for (const day of weekDays) {
-            if (!day.anchor) continue;
+            // Se o dia já está cheio, pula
+            if (!day.slots.some((s: any) => !s.restaurantId)) continue;
+            // Se não tem GPS suficiente, pula
+            if (withCoords.length === 0) continue;
 
-            // 1. Pré-filtro Matemático (Raio 20km da âncora)
-            let candidates = availableRestaurants.filter(r => !usedIds.has(r.id) && r.lat !== 0);
-            candidates = candidates.filter(r => {
-                const dist = getDistanceFromLatLonInKm(day.anchor.lat, day.anchor.lng, r.lat, r.lng);
-                return dist <= 20; // 20km
-            });
+            // Se não tem âncora, criar uma!
+            if (!day.anchor) {
+                // Pegar o restaurante disponível com maior score (Altíssimo potencial) que tenha GPS
+                const bestCandidate = availableRestaurants
+                    .filter(r => !usedIds.has(r.id) && r.lat !== 0)
+                    .sort((a, b) => b.score - a.score)[0]; // Maior score primeiro
 
-            if (candidates.length === 0) continue;
+                if (bestCandidate) {
+                    // Eleger como Âncora Virtual
+                    day.anchor = { lat: bestCandidate.lat, lng: bestCandidate.lng, name: bestCandidate.name };
 
-            // 2. Consulta Google
-            console.log(`   📡 Consultando Google para ${day.day} (${candidates.length} candidatos)...`);
-            const googleResults = await getGoogleTravelTimesBatch(day.anchor, candidates);
-
-            if (googleResults) {
-                candidates.forEach(r => {
-                    const data = googleResults.get(r.id);
-                    if (data) {
-                        allMatches.push({
-                            dayIndex: day.index,
-                            dayName: day.day,
-                            restaurant: r,
-                            seconds: data.seconds,
-                            text: data.text
-                        });
+                    // Colocar ele no primeiro slot vazio
+                    const slot = day.slots.find((s: any) => !s.restaurantId);
+                    if (slot) {
+                        slot.restaurantId = bestCandidate.id;
+                        slot.restaurantName = bestCandidate.name;
+                        slot.details = 'Ponto de Partida (Sugerido)';
+                        usedIds.add(bestCandidate.id);
+                        console.log(`⚓ Novo Ponto de Partida para ${day.day}: ${bestCandidate.name}`);
                     }
-                });
+                }
+            }
+
+            // Agora preencher o resto do dia com vizinhos da âncora (se existir)
+            if (day.anchor) {
+                let neighbors = availableRestaurants
+                    .filter(r => !usedIds.has(r.id) && r.lat !== 0)
+                    .map(r => ({
+                        ...r,
+                        dist: getDistanceFromLatLonInKm(day.anchor.lat, day.anchor.lng, r.lat, r.lng)
+                    }))
+                    .filter(r => r.dist < 25) // Raio de 25km
+                    .sort((a, b) => a.dist - b.dist); // Mais próximos primeiro
+
+                // Preencher slots vazios com vizinhos
+                for (const slot of day.slots) {
+                    if (!slot.restaurantId && neighbors.length > 0) {
+                        const neighbor = neighbors.shift(); // Pega o mais próximo e remove da lista
+                        if (neighbor) {
+                            slot.restaurantId = neighbor.id;
+                            slot.restaurantName = neighbor.name;
+                            slot.details = `📍 ${neighbor.dist.toFixed(1)}km de ${day.anchor.name}`;
+                            usedIds.add(neighbor.id);
+                        }
+                    }
+                }
             }
         }
 
-        // 3. ORDENAÇÃO E ATRIBUIÇÃO GLOBAL
-        // O match mais rápido da semana inteira ganha primeiro
-        allMatches.sort((a, b) => a.seconds - b.seconds);
-
-        console.log(`   🏆 Processando ${allMatches.length} rotas possíveis...`);
-
-        for (const match of allMatches) {
-            const r = match.restaurant;
-            const day = weekDays[match.dayIndex];
-
-            if (usedIds.has(r.id)) continue;
-
-            const emptySlot = day.slots.find((s: any) => !s.restaurantId);
-
-            // Só agenda se o tempo for bom (< 20 min) para não fazer viagens longas
-            if (emptySlot && match.seconds < 1200) {
-                emptySlot.restaurantId = r.id;
-                emptySlot.restaurantName = r.name;
-                emptySlot.details = `🚗 ${match.text} do ponto de ref.`;
-                usedIds.add(r.id);
-                console.log(`      ✅ ${r.name} -> ${day.day} (${match.text})`);
-            }
-        }
-
-        // =================================================================================
-        // FASE 2: PREENCHIMENTO DAS SOBRAS (ROUND ROBIN PURO)
-        // =================================================================================
-        console.log('\n📊 FASE 2: Distribuindo o restante (Round Robin)...');
-
+        // ===================================
+        // FASE 4: SOBRAS (LAST RESORT)
+        // ===================================
+        // Se ainda sobraram slots e restaurantes, preenche sequencialmente
         const leftovers = availableRestaurants.filter(r => !usedIds.has(r.id)).sort((a, b) => b.score - a.score);
-        let dayIdx = 0;
+        let currentDayIdx = 0;
 
         for (const r of leftovers) {
-            // Acha dias com vaga
-            const activeDays = weekDays.filter(d => d.slots.some((s: any) => !s.restaurantId));
-            if (activeDays.length === 0) break;
+            // Achar um dia com vaga (começando de currentDayIdx para distribuir)
+            let foundSlot = false;
+            for (let k = 0; k < 5; k++) {
+                const dayIdx = (currentDayIdx + k) % 5;
+                const targetDay = weekDays[dayIdx];
+                const slot = targetDay.slots.find((s: any) => !s.restaurantId);
 
-            // Round Robin: Garante que muda de dia a cada inserção
-            const targetDay = activeDays[dayIdx % activeDays.length];
-            const slot = targetDay.slots.find((s: any) => !s.restaurantId);
-
-            if (slot) {
-                slot.restaurantId = r.id;
-                slot.restaurantName = r.name;
-                slot.details = r.lat ? 'Preenchimento (GPS Distante)' : 'Sem Localização (Aleatório)';
-                usedIds.add(r.id);
-                dayIdx++; // <--- ISSO IMPEDE DE ENCHER SÓ A SEGUNDA
+                if (slot) {
+                    slot.restaurantId = r.id;
+                    slot.restaurantName = r.name;
+                    slot.details = r.lat ? 'Preenchimento Extra' : 'Sem GPS (Aleatório)';
+                    usedIds.add(r.id);
+                    foundSlot = true;
+                    // Avançar ponteiro do dia só se achou, pra tentar equilibrar
+                    currentDayIdx = (dayIdx + 1) % 5;
+                    break;
+                }
             }
+            if (!foundSlot && leftovers.length > 100) break; // Otimização para não rodar infinito se tudo cheio
         }
 
         return weekDays;
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('❌ ERRO:', error);
-        throw error;
+        throw new Error(error.message || 'Erro ao gerar agenda inteligente'); // Re-throw para o client ver
     }
 }
 
