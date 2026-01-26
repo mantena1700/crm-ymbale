@@ -1,4 +1,6 @@
 import ExcelJS from 'exceljs';
+import path from 'path';
+
 
 interface RestaurantAddress {
     street: string | null;
@@ -381,7 +383,7 @@ async function createCalendarSheet(workbook: ExcelJS.Workbook, data: WeeklySched
                 };
 
                 if (followUp.completed) {
-                    cell.font = { strikethrough: true };
+                    cell.font = { strike: true };
                 }
             } else {
                 cell.value = '—';
@@ -1044,5 +1046,88 @@ async function createExecutiveSummarySheet(workbook: ExcelJS.Workbook, data: Wee
     footerCell.value = `Documento gerado automaticamente por DOM Seven em ${new Date().toLocaleString('pt-BR')}`;
     footerCell.font = { italic: true, size: 9, color: { argb: 'FF6B7280' } };
     footerCell.alignment = { horizontal: 'center' };
+}
+
+/**
+ * Preenche o template de agendamento do CheckMob
+ */
+export async function fillAgendamentoTemplate(data: WeeklyScheduleData): Promise<Buffer> {
+    const workbook = new ExcelJS.Workbook();
+    const templatePath = path.join(process.cwd(), 'public', 'Template Agendamento CheckMob - Jan.26.xlsx');
+
+    try {
+        await workbook.xlsx.readFile(templatePath);
+    } catch (error) {
+        console.error('Erro ao ler arquivo de template:', error);
+        throw new Error('Template de agendamento não encontrado no servidor.');
+    }
+
+    // Assumindo que a planilha de dados é a primeira ou se chama "Registros"
+    const sheet = workbook.getWorksheet('Registros') || workbook.getWorksheet(1);
+
+    if (!sheet) {
+        throw new Error('Aba "Registros" não encontrada no template.');
+    }
+
+    // Começar a preencher da linha 2 (cabeçalho na linha 1)
+    let currentRow = 2;
+
+    // Ordenar follow-ups por data
+    const sortedFollowUps = [...data.followUps].sort((a, b) =>
+        new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime()
+    );
+
+    sortedFollowUps.forEach(f => {
+        const row = sheet.getRow(currentRow);
+        const date = new Date(f.scheduledDate);
+        const dateStr = date.toLocaleDateString('pt-BR'); // DD/MM/YYYY
+
+        // 1. Código Cliente
+        row.getCell(1).value = f.restaurant.id.substring(0, 8).toUpperCase();
+
+        // 2. Cliente
+        row.getCell(2).value = f.restaurant.name;
+
+        // 3. Segmento (Bairro ou Geral)
+        row.getCell(3).value = f.restaurant.address?.neighborhood || 'Geral';
+
+        // 4. Contato
+        row.getCell(4).value = 'Gerente';
+
+        // 5. Data prevista de início
+        row.getCell(5).value = dateStr;
+
+        // 6. Hora prevista de início
+        row.getCell(6).value = '08:00';
+
+        // 7. Data esperada de conclusão
+        row.getCell(7).value = dateStr;
+
+        // 8. Hora prevista de conclusão
+        row.getCell(8).value = '18:00';
+
+        // 9. Objetivo
+        row.getCell(9).value = 'Visita Comercial';
+
+        // 10. Checklists
+        row.getCell(10).value = 'Padrão';
+
+        // 11. Equipe
+        row.getCell(11).value = 'Vendas';
+
+        // 12. Nome do Usuário
+        row.getCell(12).value = data.seller.name;
+
+        // 13. Ativo
+        row.getCell(13).value = 'Sim';
+
+        // Commit da linha
+        row.commit();
+
+        currentRow++;
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    return Buffer.from(buffer);
 }
 

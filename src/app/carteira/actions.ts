@@ -895,13 +895,134 @@ export async function exportWeeklyScheduleToExcel(
 }
 
 // Exportar agenda para template de agendamento (similar ao Excel mas com formato específico)
+// Exportar agenda para template de agendamento (CheckMob)
 export async function exportWeeklyScheduleToAgendamentoTemplate(
     sellerId: string,
     weekStart: string
 ) {
     'use server';
-    // Por enquanto, usa a mesma lógica do Excel, mas no futuro pode ter um template diferente
-    return exportWeeklyScheduleToExcel(sellerId, weekStart);
+
+    try {
+        console.log('Iniciando exportação para Template Agendamento CheckMob...', { sellerId, weekStart });
+
+        const weekStartDate = new Date(weekStart);
+        const weekEndDate = new Date(weekStartDate);
+        weekEndDate.setDate(weekEndDate.getDate() + 7);
+
+        // Buscar dados do vendedor
+        const seller = await prisma.seller.findUnique({
+            where: { id: sellerId },
+        });
+
+        if (!seller) {
+            return { success: false, error: 'Vendedor não encontrado' };
+        }
+
+        // Buscar restaurantes da carteira do vendedor
+        const restaurantsRaw = await prisma.restaurant.findMany({
+            where: {
+                sellerId: sellerId,
+            },
+        });
+
+        // Montar restaurantes
+        const restaurants = restaurantsRaw.map(r => ({
+            id: r.id,
+            name: r.name,
+            salesPotential: r.salesPotential,
+            rating: r.rating ? Number(r.rating) : 0,
+            status: r.status,
+            projectedDeliveries: r.projectedDeliveries || 0,
+            reviewCount: r.reviewCount || 0,
+            address: r.address as any,
+        }));
+
+        // Obter IDs dos restaurantes
+        const restaurantIds = restaurants.map(r => r.id);
+
+        // Buscar follow-ups da semana
+        const followUpsRaw = await prisma.followUp.findMany({
+            where: {
+                scheduledDate: {
+                    gte: weekStartDate,
+                    lt: weekEndDate,
+                },
+                restaurantId: { in: restaurantIds },
+            },
+            orderBy: {
+                scheduledDate: 'asc',
+            },
+        });
+
+        // Montar follow-ups com restaurantes
+        const restaurantMap = new Map(restaurants.map(r => [r.id, r]));
+        const followUps = followUpsRaw.map(f => ({
+            ...f,
+            restaurant: restaurantMap.get(f.restaurantId) || {
+                id: f.restaurantId,
+                name: 'Desconhecido',
+                salesPotential: null,
+                rating: 0,
+                status: 'unknown',
+                projectedDeliveries: 0,
+                reviewCount: 0,
+                address: null,
+            },
+        }));
+
+        // Importar o serviço de exportação
+        const { fillAgendamentoTemplate } = await import('@/lib/excel-export-service');
+
+        // Preparar dados
+        const data = {
+            seller: {
+                id: seller.id,
+                name: seller.name,
+                email: seller.email || '',
+                regions: (seller.regions as string[]) || [],
+                neighborhoods: (seller.neighborhoods as string[]) || [],
+            },
+            weekStart: weekStartDate,
+            followUps: followUps.map(f => ({
+                id: f.id,
+                scheduledDate: f.scheduledDate,
+                completed: f.completed || false,
+                notes: f.notes,
+                restaurant: {
+                    id: f.restaurant.id,
+                    name: f.restaurant.name,
+                    address: f.restaurant.address || { street: null, neighborhood: null, city: null, state: null },
+                    salesPotential: f.restaurant.salesPotential,
+                    rating: f.restaurant.rating ? Number(f.restaurant.rating) : 0,
+                    status: f.restaurant.status,
+                    projectedDeliveries: f.restaurant.projectedDeliveries || 0,
+                    reviewCount: f.restaurant.reviewCount || 0,
+                },
+            })),
+            restaurants: restaurants,
+            // Stats não são necessários para esse template, mas passamos para manter tipagem se precisar
+            stats: {
+                totalScheduled: followUps.length,
+                pending: 0,
+                completed: 0,
+                byStatus: {},
+                byPotential: {}
+            }
+        };
+
+        const result = await fillAgendamentoTemplate(data);
+
+        const filename = `Agendamento_CheckMob_${data.seller.name.replace(/\s+/g, '_')}_${weekStartDate.toISOString().split('T')[0]}.xlsx`;
+
+        return {
+            success: true,
+            data: result.toString('base64'),
+            filename: filename
+        };
+    } catch (error: any) {
+        console.error('Erro ao exportar para template:', error);
+        return { success: false, error: error.message || 'Erro ao exportar para template' };
+    }
 }
 
 // --- GERENCIAMENTO DE CLIENTES FIXOS ---
