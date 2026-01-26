@@ -805,6 +805,25 @@ export default function CarteiraClient({ initialData }: Props) {
         setSelectedAgendaItems(newSelected);
     };
 
+    const handleSelectAll = () => {
+        const allIds = new Set<string>();
+        weekDays.forEach(day => {
+            const dayFollowUps = sellerFollowUps.filter(f => {
+                const followUpDate = new Date(f.scheduledDate).toISOString().split('T')[0];
+                return followUpDate === day.date;
+            });
+            dayFollowUps.forEach(f => allIds.add(f.id));
+        });
+
+        const allSelected = Array.from(allIds).length > 0 && Array.from(allIds).every(id => selectedAgendaItems.has(id));
+
+        if (allSelected) {
+            setSelectedAgendaItems(new Set());
+        } else {
+            setSelectedAgendaItems(allIds);
+        }
+    };
+
     const handleDeleteSelectedAgendaItems = async () => {
         if (selectedAgendaItems.size === 0) return;
 
@@ -1855,6 +1874,33 @@ export default function CarteiraClient({ initialData }: Props) {
                                     {agendamentoExporting ? '⏳ Exportando...' : 'Exportar Agendamento'}
                                 </span>
                             </button>
+                            <button
+                                className={styles.actionBtnSecondary}
+                                onClick={handleSelectAll}
+                                style={{
+                                    backgroundColor: selectedAgendaItems.size > 0 ? '#3b82f6' : 'rgba(30, 41, 59, 0.5)',
+                                    color: 'white',
+                                    border: '1px solid #3b82f6',
+                                    padding: '0.5rem 1rem',
+                                    borderRadius: '0.375rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.5rem',
+                                    cursor: 'pointer',
+                                    height: '38px' // Alinhamento com outros botões
+                                }}
+                            >
+                                <span>
+                                    {selectedAgendaItems.size > 0 && selectedAgendaItems.size >= sellerFollowUps.filter(f => {
+                                        const d = new Date(f.scheduledDate).toISOString().split('T')[0];
+                                        return weekDays.some(wd => wd.date === d);
+                                    }).length ? '☑️' : '☐'}
+                                </span>
+                                <span>
+                                    {selectedAgendaItems.size > 0 ? 'Desmarcar Todos' : 'Selecionar Todos'}
+                                </span>
+                            </button>
+
                             {/* Botão de Excluir Selecionados */}
                             {selectedAgendaItems.size > 0 && (
                                 <button
@@ -1921,9 +1967,10 @@ export default function CarteiraClient({ initialData }: Props) {
                                                             className={`${styles.agendaItem} ${isSelected ? styles.selectedItem : ''}`}
                                                             style={{
                                                                 cursor: 'pointer',
-                                                                borderLeft: isSelected ? '4px solid #3b82f6' : '4px solid transparent',
-                                                                backgroundColor: isSelected ? '#eff6ff' : 'white',
-                                                                position: 'relative'
+                                                                border: isSelected ? '1px solid #3b82f6' : '1px solid rgba(59, 130, 246, 0.1)',
+                                                                backgroundColor: isSelected ? 'rgba(59, 130, 246, 0.15)' : 'var(--card-bg, rgba(30, 41, 59, 0.4))',
+                                                                position: 'relative',
+                                                                color: 'var(--foreground, #f8fafc)'
                                                             }}
                                                             onClick={(e) => {
                                                                 // Permite clicar no card para selecionar
