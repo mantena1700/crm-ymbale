@@ -446,7 +446,7 @@ export default function CarteiraClient({ initialData }: Props) {
             const existingSchedule = await getWeeklySchedule(selectedSellerId, currentWeekStart.toISOString());
 
             const analyzedSuggestions = await analyzeIntelligentFill(
-                carteiraRestaurants.map(r => ({
+                (carteiraRestaurants || []).map(r => ({
                     id: r.id,
                     name: r.name,
                     address: r.address,
@@ -460,7 +460,7 @@ export default function CarteiraClient({ initialData }: Props) {
                 })),
                 selectedSellerId,
                 currentWeekStart,
-                existingSchedule // Passar agendamentos existentes
+                existingSchedule || [] // Passar agendamentos existentes
             );
 
             console.log(`📋 Encontradas ${analyzedSuggestions.length} sugestões que precisam de confirmação`);
