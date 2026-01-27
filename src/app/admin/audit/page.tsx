@@ -4,43 +4,131 @@ import { validateSession } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import styles from './page.module.css';
 
+// Funções de Backfill para popular histórico
 async function backfillLegacyData() {
     try {
-        // Check if we have logs
         const count = await prisma.systemAuditLog.count();
-        if (count > 0) return;
+        if (count > 50) return; // Se já tem dados (mais que o básico), não faz nada
 
-        // If empty, find users with access logs or create from basic user data if available
-        // Note: Prisma model might not have lastLogin if not defined in schema.
-        // We will try safe access or skip if field doesn't exist to prevent crash.
+        console.log("Iniciando backfill de dados históricos...");
 
-        // Dynamic check for lastLogin field existence is hard with strong typing, 
-        // so we trust the schema has it or we wrap in try-catch.
-        // If lastLogin is not in schema, this query might fail at runtime if not caught.
-
-        // Let's try to fetch users. If Schema doesn't match, this will throw.
-        // casting to any to avoid TS error if field is missing in generated client but present in DB
+        // 1. Log de Criação de Usuários
         const users = await prisma.user.findMany();
-
         for (const u of users) {
-            // @ts-ignore - Check if lastLogin exists dynamically
-            if (u.lastLogin) {
+            // Evitar duplicatas (check simples)
+            const exists = await prisma.systemAuditLog.findFirst({
+                where: { userId: u.id, action: 'USER_CREATED' }
+            });
+
+            if (!exists) {
                 await prisma.systemAuditLog.create({
                     data: {
                         userId: u.id,
-                        action: 'LOGIN',
-                        resourceType: 'AUTH',
-                        details: 'Login registrado antes da ativação da auditoria (Histórico recuperado)',
-                        ipAddress: 'Sistema',
-                        userAgent: 'Migration-Script',
-                        // @ts-ignore
-                        createdAt: u.lastLogin
+                        action: 'USER_CREATED',
+                        resourceType: 'User',
+                        resourceId: u.id,
+                        details: `Usuário ${u.name} criado no sistema`,
+                        ipAddress: 'System-Migration',
+                        createdAt: u.createdAt
+                    }
+                });
+            }
+
+            // Last Login Log (se ainda não existir)
+            // @ts-ignore
+            if (u.lastLogin) {
+                const loginExists = await prisma.systemAuditLog.findFirst({
+                    where: { userId: u.id, action: 'LOGIN', createdAt: u.lastLogin }
+                });
+
+                if (!loginExists) {
+                    await prisma.systemAuditLog.create({
+                        data: {
+                            userId: u.id,
+                            action: 'LOGIN',
+                            resourceType: 'AUTH',
+                            details: 'Último login registrado (Histórico recuperado)',
+                            ipAddress: 'System',
+                            // @ts-ignore
+                            createdAt: u.lastLogin
+                        }
+                    });
+                }
+            }
+        }
+
+        // 2. Mapear Vendedores para Usuários (para atribuir visitas/leads)
+        const sellers = await prisma.seller.findMany({
+            where: { user: { isNot: null } },
+            include: { user: true }
+        });
+
+        const sellerUserMap = new Map();
+        sellers.forEach(s => {
+            if (s.user) sellerUserMap.set(s.id, s.user.id);
+        });
+
+        // 3. Importar Visitas Recentes (Limitado para não demorar)
+        const recentVisits = await prisma.visit.findMany({
+            take: 200,
+            orderBy: { visitDate: 'desc' },
+            include: { restaurant: true }
+        });
+
+        for (const visit of recentVisits) {
+            const userId = sellerUserMap.get(visit.sellerId);
+            if (!userId) continue;
+
+            const exists = await prisma.systemAuditLog.findFirst({
+                where: { resourceId: visit.id, resourceType: 'Visit' }
+            });
+
+            if (!exists) {
+                await prisma.systemAuditLog.create({
+                    data: {
+                        userId: userId,
+                        action: 'VISIT_LOGGED',
+                        resourceType: 'Visit',
+                        resourceId: visit.id,
+                        details: `Visita registrada em ${visit.restaurant.name} (${visit.outcome || 'Sem desfecho'})`,
+                        createdAt: visit.createdAt || visit.visitDate || new Date()
                     }
                 });
             }
         }
+
+        // 4. Importar Leads Criados (Limitado)
+        const recentLeads = await prisma.restaurant.findMany({
+            take: 200,
+            orderBy: { createdAt: 'desc' },
+            where: { sellerId: { not: null } }
+        });
+
+        for (const lead of recentLeads) {
+            if (!lead.sellerId) continue;
+            const userId = sellerUserMap.get(lead.sellerId);
+            if (!userId) continue;
+
+            const exists = await prisma.systemAuditLog.findFirst({
+                where: { resourceId: lead.id, resourceType: 'Restaurant', action: 'LEAD_CREATED' }
+            });
+
+            if (!exists && lead.createdAt) {
+                await prisma.systemAuditLog.create({
+                    data: {
+                        userId: userId,
+                        action: 'LEAD_CREATED',
+                        resourceType: 'Restaurant',
+                        resourceId: lead.id,
+                        details: `Novo lead cadastrado: ${lead.name}`,
+                        createdAt: lead.createdAt
+                    }
+                });
+            }
+        }
+
     } catch (e) {
-        console.warn('Backfill skipped due to error (schema mismatch?):', e);
+        console.warn('Erro parcial no backfill de histórico:', e);
     }
 }
 
@@ -48,7 +136,6 @@ async function getAuditLogs(page: number = 1, limit: number = 50) {
     const skip = (page - 1) * limit;
 
     try {
-        // Tentar backfill se estiver vazio
         await backfillLegacyData();
 
         const [logs, total] = await Promise.all([
@@ -71,23 +158,19 @@ async function getAuditLogs(page: number = 1, limit: number = 50) {
 
         return { logs, total, totalPages: Math.ceil(total / limit) };
     } catch (error) {
-        console.error('Erro ao buscar logs de auditoria:', error);
+        console.error('Erro ao buscar logs:', error);
         return { logs: [], total: 0, totalPages: 0, error: String(error) };
     }
 }
 
 export default async function AuditLogPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
-    // 1. Verify Authentication & Root Role
     const cookieStore = await cookies();
     const token = cookieStore.get('session_token')?.value;
     if (!token) redirect('/login');
 
     const user = await validateSession(token);
     if (!user) redirect('/login');
-
-    if (user.role !== 'root') {
-        redirect('/');
-    }
+    if (user.role !== 'root') redirect('/');
 
     const { page: pageParam } = await searchParams;
     const page = Number(pageParam) || 1;
@@ -97,10 +180,7 @@ export default async function AuditLogPage({ searchParams }: { searchParams: Pro
         return (
             <div className={styles.container}>
                 <div className={styles.errorBox}>
-                    <p>
-                        ⚠️ Erro ao carregar registros de auditoria.<br />
-                        <span style={{ fontSize: '0.8em', marginTop: '0.5rem', display: 'block' }}>{error}</span>
-                    </p>
+                    <p>⚠️ Erro ao carregar dados. {error}</p>
                 </div>
             </div>
         );
@@ -127,7 +207,7 @@ export default async function AuditLogPage({ searchParams }: { searchParams: Pro
                                 <th>Ação</th>
                                 <th>Recurso</th>
                                 <th>IP / Agente</th>
-                                <th>Detalhes</th>
+                                <th style={{ width: '30%' }}>Detalhes</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -137,15 +217,17 @@ export default async function AuditLogPage({ searchParams }: { searchParams: Pro
                                         {log.createdAt ? new Date(log.createdAt).toLocaleString('pt-BR') : '-'}
                                     </td>
                                     <td>
-                                        <div style={{ fontWeight: 500 }}>{log.user.name}</div>
-                                        <div style={{ fontSize: '0.8em', color: '#64748b' }}>
-                                            @{log.user.username} ({log.user.role})
+                                        <div className={styles.userCell}>
+                                            <span className={styles.userName}>{log.user.name}</span>
+                                            <span className={styles.userRole}>@{log.user.username} ({log.user.role})</span>
                                         </div>
                                     </td>
                                     <td>
                                         <span className={`${styles.badge} ${log.action === 'LOGIN' ? styles.badgeLogin :
-                                                log.action.includes('EXPORT') ? styles.badgeExport :
-                                                    styles.badgeDefault
+                                                log.action === 'USER_CREATED' ? styles.badgeDefault :
+                                                    log.action.includes('EXPORT') ? styles.badgeExport :
+                                                        log.action === 'LEAD_CREATED' || log.action === 'VISIT_LOGGED' ? styles.badgeCreate :
+                                                            styles.badgeDefault
                                             }`}>
                                             {log.action}
                                         </span>
@@ -153,25 +235,25 @@ export default async function AuditLogPage({ searchParams }: { searchParams: Pro
                                     <td>
                                         {log.resourceType && (
                                             <>
-                                                <div>{log.resourceType}</div>
-                                                {log.resourceId && <div style={{ fontSize: '0.75em', color: '#94a3b8' }}>{log.resourceId}</div>}
+                                                <div style={{ fontWeight: 500 }}>{log.resourceType}</div>
+                                                {log.resourceId && <div style={{ fontSize: '0.7em', opacity: 0.7, fontFamily: 'monospace' }}>{log.resourceId.substring(0, 8)}...</div>}
                                             </>
                                         )}
                                     </td>
-                                    <td style={{ maxWidth: '200px' }}>
-                                        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis' }} title={log.ipAddress || ''}>{log.ipAddress}</div>
-                                        <div style={{ fontSize: '0.75em', color: '#94a3b8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={log.userAgent || ''}>
+                                    <td>
+                                        {log.ipAddress && <span className={styles.ipTag}>{log.ipAddress}</span>}
+                                        <div style={{ fontSize: '0.75em', marginTop: '4px', opacity: 0.7, maxWidth: '150px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }} title={log.userAgent || ''}>
                                             {log.userAgent}
                                         </div>
                                     </td>
-                                    <td style={{ maxWidth: '300px' }}>
-                                        <div style={{ whiteSpace: 'normal' }}>{log.details}</div>
+                                    <td>
+                                        <div style={{ whiteSpace: 'normal', lineHeight: '1.4' }}>{log.details}</div>
                                     </td>
                                 </tr>
                             ))}
                             {logs.length === 0 && (
                                 <tr>
-                                    <td colSpan={6} style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
+                                    <td colSpan={6} style={{ padding: '3rem', textAlign: 'center', opacity: 0.6 }}>
                                         Nenhum registro de auditoria encontrado.
                                     </td>
                                 </tr>
