@@ -88,9 +88,6 @@ export async function updateUserPermissions(
     userId: string,
     permissions: string[],
     grantedBy?: string,
-    userId: string,
-    permissions: string[],
-    grantedBy?: string,
     currentUserRole?: 'admin' | 'user' | 'root'
 ): Promise<{ success: boolean; message: string }> {
     try {
@@ -155,7 +152,6 @@ export async function updateUserPermissions(
 
 // Atualizar role do usuário
 export async function updateUserRole(
-    userId: string,
     userId: string,
     role: 'admin' | 'user' | 'root',
     currentUserRole?: 'admin' | 'user' | 'root' // Role do usuário fazendo a alteração
