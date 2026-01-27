@@ -756,8 +756,18 @@ export default function CarteiraClient({ initialData }: Props) {
                 console.log('✅ Exportação bem-sucedida! Tamanho dos dados:', result.data.length);
 
                 try {
-                    // Limpar string base64 de possíveis espaços em branco ou quebras de linha
-                    const cleanBase64 = result.data.replace(/[\n\r\s]/g, '');
+                    // Limpar string base64
+                    let cleanBase64 = result.data.replace(/[\n\r\s]/g, '');
+
+                    // DEBUG: Mostrar o início da string para identificar o formato
+                    const dataPreview = cleanBase64.substring(0, 50);
+                    console.log('🔍 Início dos dados:', dataPreview);
+
+                    // Adicionar padding se necessário
+                    const padding = cleanBase64.length % 4;
+                    if (padding > 0) {
+                        cleanBase64 += '='.repeat(4 - padding);
+                    }
 
                     // Converter base64 para Blob
                     const byteCharacters = atob(cleanBase64);
@@ -783,8 +793,8 @@ export default function CarteiraClient({ initialData }: Props) {
                     alert(`✅ Planilha de Agendamento exportada com sucesso!\n\n${result.count || 0} agendamento(s) exportado(s).`);
                 } catch (decodeError: any) {
                     console.error('❌ Erro na decodificação Base64:', decodeError);
-                    console.error('   Dados recebidos (primeiros 100 chars):', result.data.substring(0, 100));
-                    alert(`❌ Erro ao processar arquivo recebido.\n\nO servidor retornou dados, mas houve falha ao salvar.`);
+                    // MOSTRAR O INÍCIO DOS DADOS NO ALERT PARA O USUÁRIO VER
+                    alert(`❌ Erro ao decodificar arquivo.\n\nERRO TÉCNICO: O servidor retornou dados inválidos.\n\nInício dos dados: "${result.data.substring(0, 30)}..."\n\nPor favor, tire print desta mensagem.`);
                 }
             } else {
                 console.error('❌ Erro na exportação:', result.error);
