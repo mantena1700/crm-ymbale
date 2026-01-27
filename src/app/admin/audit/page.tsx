@@ -100,42 +100,43 @@ export default async function AuditLogPage({ searchParams }: { searchParams: Pro
                         </tr>
                     </thead>
                     <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                        <tr key={log.id} className="hover:bg-gray-50 dark:hover:bg-gray-750">
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400" suppressHydrationWarning>
-                                {log.createdAt ? new Date(log.createdAt).toLocaleString('pt-BR') : '-'}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="text-sm font-medium text-gray-900 dark:text-white">
-                                    {log.user.name}
-                                </div>
-                                <div className="text-xs text-gray-500 dark:text-gray-400">
-                                    @{log.user.username} ({log.user.role})
-                                </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                        {logs.map((log) => (
+                            <tr key={log.id} className="hover:bg-gray-50 dark:hover:bg-gray-750">
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400" suppressHydrationWarning>
+                                    {log.createdAt ? new Date(log.createdAt).toLocaleString('pt-BR') : '-'}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                    <div className="text-sm font-medium text-gray-900 dark:text-white">
+                                        {log.user.name}
+                                    </div>
+                                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                                        @{log.user.username} ({log.user.role})
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
                                         ${log.action === 'LOGIN' ? 'bg-green-100 text-green-800' :
-                                        log.action.includes('EXPORT') ? 'bg-yellow-100 text-yellow-800' :
-                                            'bg-gray-100 text-gray-800'}`}>
-                                    {log.action}
-                                </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                {log.resourceType && (
-                                    <>
-                                        <span className="font-medium">{log.resourceType}</span>
-                                        {log.resourceId && <span className="text-xs text-gray-400 block">{log.resourceId}</span>}
-                                    </>
-                                )}
-                            </td>
-                            <td className="px-6 py-4 whitespace-pre-wrap text-sm text-gray-500 dark:text-gray-400" style={{ maxWidth: '200px' }}>
-                                <div className="truncate" title={log.ipAddress || ''}>{log.ipAddress}</div>
-                                <div className="truncate text-xs text-gray-400" title={log.userAgent || ''}>{log.userAgent?.substring(0, 30)}...</div>
-                            </td>
-                            <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 max-w-xs truncate" title={log.details || ''}>
-                                {log.details}
-                            </td>
-                        </tr>
+                                            log.action.includes('EXPORT') ? 'bg-yellow-100 text-yellow-800' :
+                                                'bg-gray-100 text-gray-800'}`}>
+                                        {log.action}
+                                    </span>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                    {log.resourceType && (
+                                        <>
+                                            <span className="font-medium">{log.resourceType}</span>
+                                            {log.resourceId && <span className="text-xs text-gray-400 block">{log.resourceId}</span>}
+                                        </>
+                                    )}
+                                </td>
+                                <td className="px-6 py-4 whitespace-pre-wrap text-sm text-gray-500 dark:text-gray-400" style={{ maxWidth: '200px' }}>
+                                    <div className="truncate" title={log.ipAddress || ''}>{log.ipAddress}</div>
+                                    <div className="truncate text-xs text-gray-400" title={log.userAgent || ''}>{log.userAgent?.substring(0, 30)}...</div>
+                                </td>
+                                <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 max-w-xs truncate" title={log.details || ''}>
+                                    {log.details}
+                                </td>
+                            </tr>
                         ))}
                         {logs.length === 0 && (
                             <tr>
