@@ -1053,7 +1053,7 @@ async function createExecutiveSummarySheet(workbook: ExcelJS.Workbook, data: Wee
  */
 export async function fillAgendamentoTemplate(data: WeeklyScheduleData): Promise<Buffer> {
     const workbook = new ExcelJS.Workbook();
-    const templatePath = path.join(process.cwd(), 'public', 'Template Agendamento CheckMob - Jan.26.xlsx');
+    const templatePath = path.join(process.cwd(), 'Planilhas', 'Template Agendamento CheckMob - Jan.26.xlsx');
 
     try {
         await workbook.xlsx.readFile(templatePath);
