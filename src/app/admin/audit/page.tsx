@@ -1,5 +1,3 @@
-'use server';
-
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { validateSession } from '@/lib/auth';
@@ -75,7 +73,7 @@ export default async function AuditLogPage({ searchParams }: { searchParams: { p
                         {logs.map((log) => (
                             <tr key={log.id} className="hover:bg-gray-50 dark:hover:bg-gray-750">
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                    {new Date(log.createdAt).toLocaleString('pt-BR')}
+                                    {log.createdAt ? new Date(log.createdAt).toLocaleString('pt-BR') : '-'}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
                                     <div className="text-sm font-medium text-gray-900 dark:text-white">
