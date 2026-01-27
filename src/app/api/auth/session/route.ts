@@ -46,7 +46,7 @@ export async function GET() {
         let permissions: string[] = [];
 
         if (dbUser) {
-            if (dbUser.role === 'admin') {
+            if (dbUser.role === 'admin' || dbUser.role === 'root') {
                 permissions = Object.keys(ALL_PERMISSIONS);
             } else {
                 permissions = dbUser.userPermissions.map(up => up.permission.code);

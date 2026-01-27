@@ -66,6 +66,7 @@ export type PermissionCode = keyof typeof ALL_PERMISSIONS;
 // Permissões padrão para cada role
 export const ROLE_PERMISSIONS: Record<string, PermissionCode[]> = {
     admin: Object.keys(ALL_PERMISSIONS) as PermissionCode[], // Admin tem tudo
+    root: Object.keys(ALL_PERMISSIONS) as PermissionCode[], // Root tem tudo
     user: [
         'dashboard.view',
         'clients.view',
@@ -98,8 +99,8 @@ export async function hasPermission(userId: string, permissionCode: PermissionCo
 
         if (!user) return false;
 
-        // Admin tem todas as permissões
-        if (user.role === 'admin') return true;
+        // Admin/Root tem todas as permissões
+        if (user.role === 'admin' || user.role === 'root') return true;
 
         // Verificar permissão específica no banco
         const userPermission = await prisma.userPermission.findFirst({
@@ -135,8 +136,8 @@ export async function getUserPermissions(userId: string): Promise<PermissionCode
 
         if (!user) return [];
 
-        // Admin tem todas
-        if (user.role === 'admin') {
+        // Admin/Root tem todas
+        if (user.role === 'admin' || user.role === 'root') {
             return Object.keys(ALL_PERMISSIONS) as PermissionCode[];
         }
 
