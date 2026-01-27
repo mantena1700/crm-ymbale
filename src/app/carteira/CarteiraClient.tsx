@@ -1665,6 +1665,15 @@ export default function CarteiraClient({ initialData }: Props) {
                     <div className={styles.actionBar}>
                         <div className={styles.primaryActions}>
                             <button
+                                className={styles.actionBtnSecondary}
+                                onClick={() => router.push('/carteira/clientes-fixos')}
+                                style={{ backgroundColor: '#4b5563', color: 'white', border: 'none' }}
+                                title="Gerenciar clientes fixos recorrentes"
+                            >
+                                <span className={styles.actionIcon}>📌</span>
+                                <span className={styles.actionText}>Clientes Fixos</span>
+                            </button>
+                            <button
                                 className={styles.actionBtnPrimary}
                                 onClick={handleIntelligentAutoFill}
                                 disabled={loading || carteiraRestaurants.length === 0}
