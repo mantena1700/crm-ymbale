@@ -736,8 +736,6 @@ export default function CarteiraClient({ initialData }: Props) {
     const [isDeletingItems, setIsDeletingItems] = useState(false);
     const handleExportAgendamento = async () => {
         console.log('🚀 Iniciando exportação de agendamento...');
-        console.log('   selectedSellerId:', selectedSellerId);
-        console.log('   currentWeekStart:', currentWeekStart);
 
         if (!selectedSellerId) {
             alert('Selecione um executivo primeiro.');
@@ -752,46 +750,51 @@ export default function CarteiraClient({ initialData }: Props) {
                 currentWeekStart.toISOString()
             );
 
-            console.log('📥 Resultado recebido:', result);
+            console.log('📥 Resultado recebido. Sucesso:', result.success);
 
             if (result.success && result.data) {
-                console.log('✅ Exportação bem-sucedida! Convertendo base64 para Blob...');
-                // Converter base64 para Blob
-                const byteCharacters = atob(result.data);
-                const byteNumbers = new Array(byteCharacters.length);
-                for (let i = 0; i < byteCharacters.length; i++) {
-                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                console.log('✅ Exportação bem-sucedida! Tamanho dos dados:', result.data.length);
+
+                try {
+                    // Limpar string base64 de possíveis espaços em branco ou quebras de linha
+                    const cleanBase64 = result.data.replace(/[\n\r\s]/g, '');
+
+                    // Converter base64 para Blob
+                    const byteCharacters = atob(cleanBase64);
+                    const byteNumbers = new Array(byteCharacters.length);
+                    for (let i = 0; i < byteCharacters.length; i++) {
+                        byteNumbers[i] = byteCharacters.charCodeAt(i);
+                    }
+                    const byteArray = new Uint8Array(byteNumbers);
+                    const blob = new Blob([byteArray], {
+                        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                    });
+
+                    // Criar link temporário para download
+                    const url = window.URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = result.filename || `Agendamento_Semanal_${new Date().toISOString().split('T')[0]}.xlsx`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    window.URL.revokeObjectURL(url);
+
+                    alert(`✅ Planilha de Agendamento exportada com sucesso!\n\n${result.count || 0} agendamento(s) exportado(s).`);
+                } catch (decodeError: any) {
+                    console.error('❌ Erro na decodificação Base64:', decodeError);
+                    console.error('   Dados recebidos (primeiros 100 chars):', result.data.substring(0, 100));
+                    alert(`❌ Erro ao processar arquivo recebido.\n\nO servidor retornou dados, mas houve falha ao salvar.`);
                 }
-                const byteArray = new Uint8Array(byteNumbers);
-                const blob = new Blob([byteArray], {
-                    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-                });
-
-                console.log('📦 Blob criado, tamanho:', blob.size, 'bytes');
-
-                // Criar link temporário para download
-                const url = window.URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = result.filename || `Agendamento_Semanal_${new Date().toISOString().split('T')[0]}.xlsx`;
-                document.body.appendChild(link);
-                console.log('🔗 Link criado, iniciando download...');
-                link.click();
-                document.body.removeChild(link);
-                window.URL.revokeObjectURL(url);
-
-                alert(`✅ Planilha de Agendamento exportada com sucesso!\n\n${result.count || 0} agendamento(s) exportado(s).`);
             } else {
                 console.error('❌ Erro na exportação:', result.error);
                 alert(`❌ Erro ao exportar planilha.\n\n${result.error || 'Erro desconhecido'}`);
             }
         } catch (error: any) {
             console.error('❌ Erro ao exportar:', error);
-            console.error('   Stack:', error.stack);
-            alert(`❌ Erro ao exportar planilha.\n\n${error.message || 'Erro desconhecido'}\n\nVerifique o console para mais detalhes.`);
+            alert(`❌ Erro técnico ao exportar planilha.\n\nVerifique o console para mais detalhes.`);
         } finally {
             setAgendamentoExporting(false);
-            console.log('🏁 Exportação finalizada');
         }
     };
 
