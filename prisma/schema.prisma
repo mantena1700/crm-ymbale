@@ -487,3 +487,23 @@ model FixedClient {
   @@index([restaurantId])
   @@map("fixed_clients")
 }
+
+model SystemAuditLog {
+  id           String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  action       String   @db.VarChar(50) // 'LOGIN', 'EXPORT_EXCEL', 'EXPORT_CHECKMOB', etc.
+  details      String?  // JSON string or text description
+  ipAddress    String?  @map("ip_address") @db.VarChar(50)
+  userAgent    String?  @map("user_agent")
+  resourceType String?  @map("resource_type") @db.VarChar(50) // 'Carteira', 'Restaurant', 'User'
+  resourceId   String?  @map("resource_id") @db.VarChar(100)
+  status       String   @default("SUCCESS") @db.VarChar(20) // 'SUCCESS', 'FAILURE'
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "idx_audit_logs_user_id")
+  @@index([action], map: "idx_audit_logs_action")
+  @@index([createdAt(sort: Desc)], map: "idx_audit_logs_created_at")
+  @@map("system_audit_logs")
+}

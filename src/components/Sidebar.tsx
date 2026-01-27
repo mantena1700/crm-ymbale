@@ -22,6 +22,7 @@ interface NavItem {
     label: string;
     badge?: number;
     adminOnly?: boolean;
+    rootOnly?: boolean;
     permission?: string; // código de permissão necessária
 }
 
@@ -34,7 +35,7 @@ interface UserInfo {
     id: string;
     username: string;
     name: string;
-    role: 'admin' | 'user';
+    role: 'admin' | 'user' | 'root';
     permissions?: string[];
 }
 
@@ -154,6 +155,7 @@ const Sidebar = () => {
             items: [
                 { href: '/settings', icon: '⚙️', label: 'Configurações', adminOnly: true, permission: 'settings.view' },
                 { href: '/users', icon: '👤', label: 'Usuários', adminOnly: true, permission: 'users.view' },
+                { href: '/admin/audit', icon: '🛡️', label: 'Auditoria', rootOnly: true },
             ]
         }
     ];
@@ -314,7 +316,13 @@ const Sidebar = () => {
                             // Se usuário não carregado, esconde tudo
                             if (!user) return false;
 
-                            // Admin vê tudo
+                            // Root vê tudo
+                            if (user.role === 'root') return true;
+
+                            // Se é rootOnly e não é root (já passou pelo check acima), esconde
+                            if (item.rootOnly) return false;
+
+                            // Admin vê tudo ( exceto rootOnly, que já foi filtrado acima se necessário, mas rootOnly implícito para admin? Não, rootOnly é estrito)
                             if (user.role === 'admin') return true;
 
                             // Verificar permissão específica (se definida)
@@ -374,7 +382,7 @@ const Sidebar = () => {
                             <div className={styles.userInfo}>
                                 <span className={styles.userName}>{user?.name || 'Usuário'}</span>
                                 <span className={styles.userRole}>
-                                    {user?.role === 'admin' ? '👑 Administrador' : '👤 Usuário'}
+                                    {user?.role === 'root' ? '🛡️ ROOT' : user?.role === 'admin' ? '👑 Administrador' : '👤 Usuário'}
                                 </span>
                             </div>
                         )}
@@ -390,8 +398,8 @@ const Sidebar = () => {
                         </button>
                     )}
                 </div>
-            </aside>
-        </SidebarContext.Provider>
+            </aside >
+        </SidebarContext.Provider >
     );
 };
 

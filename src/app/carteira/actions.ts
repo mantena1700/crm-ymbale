@@ -5,6 +5,9 @@ import { revalidatePath } from 'next/cache';
 import { generateIntelligentWeeklySchedule, getFixedClientsForWeek } from './actions-intelligent';
 import { calculateDistance, getCoordinatesFromAddress } from '@/lib/distance-calculator';
 import { getCoordinatesFromAddressWithGoogle, calculateBatchDistances, geocodeAddress } from '@/lib/google-maps';
+import { cookies } from 'next/headers';
+import { validateSession } from '@/lib/auth';
+import { logSystemActivity } from '@/lib/audit';
 
 // Agendar visita
 export async function scheduleVisit(
@@ -767,6 +770,15 @@ export async function exportWeeklyScheduleToExcel(
     try {
         console.log('Iniciando exportação Excel...', { sellerId, weekStart });
 
+        // Audit Log
+        const token = cookies().get('session_token')?.value;
+        if (token) {
+            const user = await validateSession(token);
+            if (user) {
+                await logSystemActivity(user.id, 'EXPORT_EXCEL', { sellerId, weekStart, type: 'WeeklySchedule' }, 'Carteira', sellerId);
+            }
+        }
+
         const weekStartDate = new Date(weekStart);
         const weekEndDate = new Date(weekStartDate);
         weekEndDate.setDate(weekEndDate.getDate() + 7);
@@ -904,6 +916,15 @@ export async function exportWeeklyScheduleToAgendamentoTemplate(
 
     try {
         console.log('Iniciando exportação para Template Agendamento CheckMob...', { sellerId, weekStart });
+
+        // Audit Log
+        const token = cookies().get('session_token')?.value;
+        if (token) {
+            const user = await validateSession(token);
+            if (user) {
+                await logSystemActivity(user.id, 'EXPORT_CHECKMOB', { sellerId, weekStart, type: 'AgendamentoTemplate' }, 'Carteira', sellerId);
+            }
+        }
 
         const weekStartDate = new Date(weekStart);
         const weekEndDate = new Date(weekStartDate);

@@ -7,6 +7,10 @@ import { saveFollowUp, getFollowUps, saveGoal, getGoals, getRestaurants, getAnal
 import { FollowUp, Restaurant, AnalysisResult, Note } from '@/lib/types';
 import { generateEmailWithAI as generateEmail, generateStrategyWithAI as generateStrategy, generateFollowUpMessageWithAI as generateFollowUp } from '@/lib/openai-service';
 import { analyzeRestaurant } from '@/lib/ai-service';
+import { cookies } from 'next/headers';
+import { validateSession } from '@/lib/auth';
+import { logSystemActivity } from '@/lib/audit';
+
 
 // Função para gerar o próximo código de cliente (começando em 10000)
 async function getNextCodigoCliente(): Promise<number> {
@@ -1448,6 +1452,15 @@ export async function exportRestaurantsToExcel(restaurantIds: string[]) {
         const xlsx = await import('xlsx');
         const { prisma } = await import('@/lib/db');
 
+        // Audit Log
+        const token = cookies().get('session_token')?.value;
+        if (token) {
+            const user = await validateSession(token);
+            if (user) {
+                await logSystemActivity(user.id, 'EXPORT_EXCEL', { count: restaurantIds.length, type: 'ClientList' }, 'Restaurant', 'batch');
+            }
+        }
+
         // Buscar restaurantes selecionados
         const restaurants = await prisma.restaurant.findMany({
             where: {
@@ -1563,6 +1576,15 @@ export async function exportRestaurantsToCheckmob(restaurantIds: string[]) {
         const fs = await import('fs');
         const path = await import('path');
         const { prisma } = await import('@/lib/db');
+
+        // Audit Log
+        const token = cookies().get('session_token')?.value;
+        if (token) {
+            const user = await validateSession(token);
+            if (user) {
+                await logSystemActivity(user.id, 'EXPORT_CHECKMOB', { count: restaurantIds.length, type: 'CheckmobImport' }, 'Restaurant', 'batch');
+            }
+        }
 
         // Caminho do template original
         // Tentar múltiplos caminhos possíveis
