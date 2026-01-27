@@ -7,7 +7,7 @@ export interface UserSession {
     username: string;
     name: string;
     email: string | null;
-    role: 'admin' | 'user';
+    role: 'admin' | 'user' | 'root';
     mustChangePassword?: boolean;
     sellerId?: string | null;
 }
@@ -33,6 +33,8 @@ export async function hashPassword(password: string): Promise<string> {
 export async function verifyPassword(password: string, hash: string): Promise<boolean> {
     return bcrypt.compare(password, hash);
 }
+
+import { logSystemActivity } from './audit';
 
 // Autenticar usuário
 export async function authenticateUser(username: string, password: string): Promise<AuthResult> {
@@ -122,6 +124,9 @@ export async function authenticateUser(username: string, password: string): Prom
             }
         });
 
+        // Log login success
+        await logSystemActivity(user.id, 'LOGIN', { username: user.username }, 'User', user.id);
+
         return {
             success: true,
             mustChangePassword,
@@ -130,7 +135,7 @@ export async function authenticateUser(username: string, password: string): Prom
                 username: user.username,
                 name: user.name,
                 email: user.email,
-                role: user.role as 'admin' | 'user',
+                role: user.role as 'admin' | 'user' | 'root',
                 mustChangePassword,
                 sellerId: user.sellerId
             }
@@ -187,7 +192,7 @@ export async function validateSession(token: string): Promise<UserSession | null
             username: session.user.username,
             name: session.user.name,
             email: session.user.email,
-            role: session.user.role as 'admin' | 'user',
+            role: session.user.role as 'admin' | 'user' | 'root',
             sellerId: session.user.sellerId
         };
     } catch (error) {

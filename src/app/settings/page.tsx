@@ -23,8 +23,8 @@ export default async function SettingsPage() {
     const { getUserPermissionsById } = await import('@/app/users/permissions-actions');
     const permissions = await getUserPermissionsById(user.id);
 
-    // Acesso permitido se for admin OU tiver permissão de visualizar configurações
-    const hasAccess = user.role === 'admin' || permissions.includes('settings.view');
+    // Acesso permitido se for admin/root OU tiver permissão de visualizar configurações
+    const hasAccess = user.role === 'admin' || user.role === 'root' || permissions.includes('settings.view');
 
     if (!hasAccess) {
         redirect('/');

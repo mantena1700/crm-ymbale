@@ -8,7 +8,7 @@ import styles from './page.module.css';
 interface Props {
     initialUsers: UserData[];
     currentUserId: string;
-    currentUserRole: 'admin' | 'user';
+    currentUserRole: 'admin' | 'user' | 'root';
 }
 
 export default function UsersClient({ initialUsers, currentUserId, currentUserRole }: Props) {
@@ -24,7 +24,7 @@ export default function UsersClient({ initialUsers, currentUserId, currentUserRo
         name: '',
         email: '',
         password: '',
-        role: 'user' as 'admin' | 'user'
+        role: 'user' as 'admin' | 'user' | 'root'
     });
 
     const [showResetPassword, setShowResetPassword] = useState<string | null>(null);
@@ -272,7 +272,7 @@ export default function UsersClient({ initialUsers, currentUserId, currentUserRo
                                 <td>{user.email || '-'}</td>
                                 <td>
                                     <span className={`${styles.roleBadge} ${styles[user.role]}`}>
-                                        {user.role === 'admin' ? '👑 Admin' : '👤 Usuário'}
+                                        {user.role === 'root' ? '🛡️ ROOT' : user.role === 'admin' ? '👑 Admin' : '👤 Usuário'}
                                     </span>
                                 </td>
                                 <td>
@@ -311,7 +311,7 @@ export default function UsersClient({ initialUsers, currentUserId, currentUserRo
                                                 >
                                                     ✏️
                                                 </button>
-                                                {currentUserRole === 'admin' && (
+                                                {(currentUserRole === 'admin' || currentUserRole === 'root') && (
                                                     <button
                                                         className={styles.actionBtn}
                                                         onClick={() => setEditingPermissions(user)}
@@ -427,8 +427,11 @@ export default function UsersClient({ initialUsers, currentUserId, currentUserRo
                                     }))}
                                 >
                                     <option value="user">👤 Usuário</option>
-                                    {currentUserRole === 'admin' && (
+                                    {(currentUserRole === 'admin' || currentUserRole === 'root') && (
                                         <option value="admin">👑 Administrador</option>
+                                    )}
+                                    {currentUserRole === 'root' && (
+                                        <option value="root">🛡️ ROOT</option>
                                     )}
                                 </select>
                             </div>

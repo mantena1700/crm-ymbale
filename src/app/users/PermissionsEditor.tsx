@@ -9,7 +9,7 @@ interface PermissionsEditorProps {
     userId: string;
     userName: string;
     userRole: string;
-    currentUserRole: 'admin' | 'user'; // Role of the user making the edit
+    currentUserRole: 'admin' | 'user' | 'root'; // Role of the user making the edit
     onClose: () => void;
     onSave: () => void;
 }
@@ -114,7 +114,7 @@ export default function PermissionsEditor({ userId, userName, userRole, currentU
     };
 
     const handleTogglePermission = (code: string) => {
-        if (role === 'admin') return; // Admin tem todas
+        if (role === 'admin' || role === 'root') return; // Admin/Root tem todas
 
         const newPerms = new Set(selectedPermissions);
         if (newPerms.has(code)) {
@@ -139,10 +139,10 @@ export default function PermissionsEditor({ userId, userName, userRole, currentU
         setSelectedPermissions(newPerms);
     };
 
-    const handleRoleChange = async (newRole: 'admin' | 'user') => {
+    const handleRoleChange = async (newRole: 'admin' | 'user' | 'root') => {
         setRole(newRole);
-        if (newRole === 'admin') {
-            // Admin tem todas as permissões
+        if (newRole === 'admin' || newRole === 'root') {
+            // Admin/Root tem todas as permissões
             setSelectedPermissions(new Set(Object.keys(ALL_PERMISSIONS)));
         } else {
             // Usuário começa com permissões padrão do role
@@ -165,8 +165,8 @@ export default function PermissionsEditor({ userId, userName, userRole, currentU
                 }
             }
 
-            // Atualizar permissões (apenas se não for admin)
-            if (role !== 'admin') {
+            // Atualizar permissões (apenas se não for admin/root)
+            if (role !== 'admin' && role !== 'root') {
                 const permsResult = await updateUserPermissions(userId, Array.from(selectedPermissions), undefined, currentUserRole);
                 if (!permsResult.success) {
                     setMessage({ type: 'error', text: permsResult.message });
@@ -188,7 +188,7 @@ export default function PermissionsEditor({ userId, userName, userRole, currentU
     };
 
     const isPermissionSelected = (code: string) => {
-        if (role === 'admin') return true;
+        if (role === 'admin' || role === 'root') return true;
         return selectedPermissions.has(code);
     };
 
@@ -253,8 +253,8 @@ export default function PermissionsEditor({ userId, userName, userRole, currentU
                                 <div style={{ fontWeight: 600 }}>Usuário</div>
                                 <div style={{ fontSize: '0.85rem', opacity: 0.7 }}>Acesso limitado conforme permissões</div>
                             </button>
-                            {/* Apenas admins podem definir outros usuários como admin */}
-                            {currentUserRole === 'admin' && (
+                            {/* Apenas admins/root podem definir outros usuários como admin */}
+                            {(currentUserRole === 'admin' || currentUserRole === 'root') && (
                                 <button
                                     onClick={() => handleRoleChange('admin')}
                                     style={{
@@ -273,18 +273,38 @@ export default function PermissionsEditor({ userId, userName, userRole, currentU
                                     <div style={{ fontSize: '0.85rem', opacity: 0.7 }}>Acesso total ao sistema</div>
                                 </button>
                             )}
+                            {/* Apenas root pode definir outros como root */}
+                            {currentUserRole === 'root' && (
+                                <button
+                                    onClick={() => handleRoleChange('root')}
+                                    style={{
+                                        flex: 1,
+                                        padding: '1rem',
+                                        border: '2px solid',
+                                        borderColor: role === 'root' ? 'var(--primary-color)' : 'transparent',
+                                        borderRadius: '8px',
+                                        background: role === 'root' ? 'var(--primary-color)20' : 'var(--bg-primary)',
+                                        cursor: 'pointer',
+                                        textAlign: 'left'
+                                    }}
+                                >
+                                    <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>🛡️</div>
+                                    <div style={{ fontWeight: 600 }}>ROOT</div>
+                                    <div style={{ fontSize: '0.85rem', opacity: 0.7 }}>Acesso ilimitado e auditoria</div>
+                                </button>
+                            )}
                         </div>
                     </div>
 
                     {/* Permissões por Módulo */}
-                    {role !== 'admin' && (
+                    {(role !== 'admin' && role !== 'root') && (
                         <div>
                             <h3 style={{ marginBottom: '1rem' }}>Permissões por Módulo</h3>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
                                 {Object.entries(PERMISSION_GROUPS).map(([key, group]) => {
                                     // Filtrar permissões que o usuário atual pode ver
                                     const visiblePermissions = group.permissions.filter(code =>
-                                        currentUserRole === 'admin' || !RESTRICTED_FOR_NON_ADMINS.includes(code)
+                                        (currentUserRole === 'admin' || currentUserRole === 'root') || !RESTRICTED_FOR_NON_ADMINS.includes(code)
                                     );
 
                                     // Se não tem permissões visíveis neste grupo, não renderizar o grupo
@@ -354,11 +374,11 @@ export default function PermissionsEditor({ userId, userName, userRole, currentU
                         </div>
                     )}
 
-                    {role === 'admin' && (
+                    {(role === 'admin' || role === 'root') && (
                         <div style={{ padding: '2rem', textAlign: 'center', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
-                            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>👑</div>
-                            <h3>Administrador tem acesso total</h3>
-                            <p style={{ opacity: 0.7 }}>Todas as permissões estão automaticamente habilitadas para administradores.</p>
+                            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>{role === 'root' ? '🛡️' : '👑'}</div>
+                            <h3>{role === 'root' ? 'ROOT' : 'Administrador'} tem acesso total</h3>
+                            <p style={{ opacity: 0.7 }}>Todas as permissões estão automaticamente habilitadas.</p>
                         </div>
                     )}
                 </div>

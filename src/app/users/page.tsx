@@ -31,8 +31,8 @@ export default async function UsersPage() {
         // Em caso de erro, apenas admin passa
     }
 
-    // Acesso permitido se for admin OU tiver permissão de visualizar usuários
-    const hasAccess = user.role === 'admin' || permissions.includes('users.view');
+    // Acesso permitido se for admin/root OU tiver permissão de visualizar usuários
+    const hasAccess = user.role === 'admin' || user.role === 'root' || permissions.includes('users.view');
 
     if (!hasAccess) {
         redirect('/');
@@ -40,12 +40,11 @@ export default async function UsersPage() {
 
     const users = await getUsers();
 
-    // Filtrar: se não é admin, não vê admins
-    // Isso impede que um usuário com permissão de editar usuários edite o admin
-    const filteredUsers = user.role === 'admin'
+    // Filtrar: se não é admin/root, não vê admins/roots
+    const filteredUsers = (user.role === 'admin' || user.role === 'root')
         ? users
-        : users.filter(u => u.role !== 'admin');
+        : users.filter(u => u.role !== 'admin' && u.role !== 'root');
 
-    return <UsersClient initialUsers={filteredUsers} currentUserId={user.id} currentUserRole={user.role as 'admin' | 'user'} />;
+    return <UsersClient initialUsers={filteredUsers} currentUserId={user.id} currentUserRole={user.role as 'admin' | 'user' | 'root'} />;
 }
 

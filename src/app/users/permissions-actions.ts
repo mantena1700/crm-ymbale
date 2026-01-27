@@ -55,8 +55,8 @@ export async function getUserPermissionsById(userId: string): Promise<string[]> 
 
         if (!user) return [];
 
-        // Se admin, tem todas
-        if (user.role === 'admin') {
+        // Se admin ou root, tem todas
+        if (user.role === 'admin' || user.role === 'root') {
             return Object.keys(ALL_PERMISSIONS);
         }
 
@@ -88,13 +88,16 @@ export async function updateUserPermissions(
     userId: string,
     permissions: string[],
     grantedBy?: string,
-    currentUserRole?: 'admin' | 'user'
+    userId: string,
+    permissions: string[],
+    grantedBy?: string,
+    currentUserRole?: 'admin' | 'user' | 'root'
 ): Promise<{ success: boolean; message: string }> {
     try {
-        // SEGURANÇA: Se não for admin, remover permissões restritas da lista
+        // SEGURANÇA: Se não for admin/root, remover permissões restritas da lista
         // Isso impede que um usuário comum atribua permissões poderosas a si mesmo ou a outros
         let permsToSave = permissions;
-        if (currentUserRole !== 'admin') {
+        if (currentUserRole !== 'admin' && currentUserRole !== 'root') {
             permsToSave = permissions.filter(p => !RESTRICTED_FOR_NON_ADMINS.includes(p));
 
             // Logar tentativa de violação (opcional)
@@ -153,19 +156,30 @@ export async function updateUserPermissions(
 // Atualizar role do usuário
 export async function updateUserRole(
     userId: string,
-    role: 'admin' | 'user',
-    currentUserRole?: 'admin' | 'user' // Role do usuário fazendo a alteração
+    userId: string,
+    role: 'admin' | 'user' | 'root',
+    currentUserRole?: 'admin' | 'user' | 'root' // Role do usuário fazendo a alteração
 ): Promise<{ success: boolean; message: string }> {
     try {
-        // SEGURANÇA: Apenas admins podem alterar roles para admin
-        if (role === 'admin' && currentUserRole !== 'admin') {
+        // SEGURANÇA: Apenas admins/root podem alterar roles para admin
+        if (role === 'admin' && currentUserRole !== 'admin' && currentUserRole !== 'root') {
             return { success: false, message: 'Apenas administradores podem definir outros usuários como administrador' };
         }
 
-        // SEGURANÇA: Apenas admins podem alterar o role de outros admins
+        // SEGURANÇA: Apenas root pode definir outros como root
+        if (role === 'root' && currentUserRole !== 'root') {
+            return { success: false, message: 'Apenas ROOT pode definir outros usuários como ROOT' };
+        }
+
+        // SEGURANÇA: Apenas admins/root podem alterar o role de outros admins
         const targetUser = await prisma.user.findUnique({ where: { id: userId } });
-        if (targetUser?.role === 'admin' && currentUserRole !== 'admin') {
+        if (targetUser?.role === 'admin' && currentUserRole !== 'admin' && currentUserRole !== 'root') {
             return { success: false, message: 'Apenas administradores podem alterar o cargo de outros administradores' };
+        }
+
+        // SEGURANÇA: Apenas root pode alterar o role de outros roots
+        if (targetUser?.role === 'root' && currentUserRole !== 'root') {
+            return { success: false, message: 'Apenas ROOT pode alterar o cargo de outros usuários ROOT' };
         }
 
         await prisma.user.update({
