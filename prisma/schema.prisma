@@ -71,6 +71,7 @@ model User {
   sellerId           String?          @unique @map("seller_id") @db.Uuid
   sessions           Session[]
   userPermissions    UserPermission[]
+  systemAuditLogs    SystemAuditLog[]
   seller             Seller?          @relation(fields: [sellerId], references: [id])
 
   @@index([username], map: "idx_users_username")
