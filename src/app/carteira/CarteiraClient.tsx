@@ -1033,6 +1033,13 @@ export default function CarteiraClient({ initialData }: Props) {
                 >
                     📥 Exportar
                 </button>
+                <button
+                    className={styles.tab}
+                    onClick={() => router.push('/carteira/clientes-fixos')}
+                    style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '5px', color: '#4b5563' }}
+                >
+                    📌 Clientes Fixos
+                </button>
             </div>
 
             {/* Tab Content - Carteira Padrão */}
@@ -1664,15 +1671,6 @@ export default function CarteiraClient({ initialData }: Props) {
                     {/* Barra de Ações Destacada */}
                     <div className={styles.actionBar}>
                         <div className={styles.primaryActions}>
-                            <button
-                                className={styles.actionBtnSecondary}
-                                onClick={() => router.push('/carteira/clientes-fixos')}
-                                style={{ backgroundColor: '#4b5563', color: 'white', border: 'none' }}
-                                title="Gerenciar clientes fixos recorrentes"
-                            >
-                                <span className={styles.actionIcon}>📌</span>
-                                <span className={styles.actionText}>Clientes Fixos</span>
-                            </button>
                             <button
                                 className={styles.actionBtnPrimary}
                                 onClick={handleIntelligentAutoFill}
