@@ -2,13 +2,55 @@ import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { validateSession } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import styles from './page.module.css';
+
+async function backfillLegacyData() {
+    try {
+        // Check if we have logs
+        const count = await prisma.systemAuditLog.count();
+        if (count > 0) return;
+
+        // If empty, find users with access logs or create from basic user data if available
+        // Note: Prisma model might not have lastLogin if not defined in schema.
+        // We will try safe access or skip if field doesn't exist to prevent crash.
+
+        // Dynamic check for lastLogin field existence is hard with strong typing, 
+        // so we trust the schema has it or we wrap in try-catch.
+        // If lastLogin is not in schema, this query might fail at runtime if not caught.
+
+        // Let's try to fetch users. If Schema doesn't match, this will throw.
+        // casting to any to avoid TS error if field is missing in generated client but present in DB
+        const users = await prisma.user.findMany();
+
+        for (const u of users) {
+            // @ts-ignore - Check if lastLogin exists dynamically
+            if (u.lastLogin) {
+                await prisma.systemAuditLog.create({
+                    data: {
+                        userId: u.id,
+                        action: 'LOGIN',
+                        resourceType: 'AUTH',
+                        details: 'Login registrado antes da ativação da auditoria (Histórico recuperado)',
+                        ipAddress: 'Sistema',
+                        userAgent: 'Migration-Script',
+                        // @ts-ignore
+                        createdAt: u.lastLogin
+                    }
+                });
+            }
+        }
+    } catch (e) {
+        console.warn('Backfill skipped due to error (schema mismatch?):', e);
+    }
+}
 
 async function getAuditLogs(page: number = 1, limit: number = 50) {
     const skip = (page - 1) * limit;
 
-    // We can add filtering logic here later based on search params
-
     try {
+        // Tentar backfill se estiver vazio
+        await backfillLegacyData();
+
         const [logs, total] = await Promise.all([
             prisma.systemAuditLog.findMany({
                 orderBy: { createdAt: 'desc' },
@@ -30,7 +72,6 @@ async function getAuditLogs(page: number = 1, limit: number = 50) {
         return { logs, total, totalPages: Math.ceil(total / limit) };
     } catch (error) {
         console.error('Erro ao buscar logs de auditoria:', error);
-        // Retornar lista vazia em caso de erro (ex: tabela não existe) para não quebrar a página
         return { logs: [], total: 0, totalPages: 0, error: String(error) };
     }
 }
@@ -42,11 +83,10 @@ export default async function AuditLogPage({ searchParams }: { searchParams: Pro
     if (!token) redirect('/login');
 
     const user = await validateSession(token);
-    if (!user) redirect('/login'); // Session invalid
+    if (!user) redirect('/login');
 
-    // STRICT CHECK: Only root can see this
     if (user.role !== 'root') {
-        redirect('/'); // Or show a 403 Access Denied component
+        redirect('/');
     }
 
     const { page: pageParam } = await searchParams;
@@ -55,114 +95,105 @@ export default async function AuditLogPage({ searchParams }: { searchParams: Pro
 
     if (error) {
         return (
-            <div className="p-8">
-                <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4">
-                    <div className="flex">
-                        <div className="flex-shrink-0">⚠️</div>
-                        <div className="ml-3">
-                            <p className="text-sm text-red-700">
-                                Erro ao carregar registros de auditoria.
-                                <br />
-                                Provável causa: A tabela de banco de dados ainda não foi criada.
-                                <br />
-                                <span className="font-mono text-xs mt-2 block bg-red-100 p-2 rounded">
-                                    {error}
-                                </span>
-                            </p>
-                        </div>
-                    </div>
+            <div className={styles.container}>
+                <div className={styles.errorBox}>
+                    <p>
+                        ⚠️ Erro ao carregar registros de auditoria.<br />
+                        <span style={{ fontSize: '0.8em', marginTop: '0.5rem', display: 'block' }}>{error}</span>
+                    </p>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="p-8">
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+        <div className={styles.container}>
+            <div className={styles.header}>
+                <h1 className={styles.title}>
                     🛡️ Registro de Auditoria do Sistema
                 </h1>
-                <div className="text-sm text-gray-500">
+                <div className={styles.subtitle}>
                     Total de registros: {total}
                 </div>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                    <thead className="bg-gray-50 dark:bg-gray-900">
-                        <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Data/Hora</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Usuário</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Ação</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Recurso</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">IP / Agente</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Detalhes</th>
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                        {logs.map((log) => (
-                            <tr key={log.id} className="hover:bg-gray-50 dark:hover:bg-gray-750">
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400" suppressHydrationWarning>
-                                    {log.createdAt ? new Date(log.createdAt).toLocaleString('pt-BR') : '-'}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    <div className="text-sm font-medium text-gray-900 dark:text-white">
-                                        {log.user.name}
-                                    </div>
-                                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                                        @{log.user.username} ({log.user.role})
-                                    </div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                                        ${log.action === 'LOGIN' ? 'bg-green-100 text-green-800' :
-                                            log.action.includes('EXPORT') ? 'bg-yellow-100 text-yellow-800' :
-                                                'bg-gray-100 text-gray-800'}`}>
-                                        {log.action}
-                                    </span>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                    {log.resourceType && (
-                                        <>
-                                            <span className="font-medium">{log.resourceType}</span>
-                                            {log.resourceId && <span className="text-xs text-gray-400 block">{log.resourceId}</span>}
-                                        </>
-                                    )}
-                                </td>
-                                <td className="px-6 py-4 whitespace-pre-wrap text-sm text-gray-500 dark:text-gray-400" style={{ maxWidth: '200px' }}>
-                                    <div className="truncate" title={log.ipAddress || ''}>{log.ipAddress}</div>
-                                    <div className="truncate text-xs text-gray-400" title={log.userAgent || ''}>{log.userAgent?.substring(0, 30)}...</div>
-                                </td>
-                                <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 max-w-xs truncate" title={log.details || ''}>
-                                    {log.details}
-                                </td>
-                            </tr>
-                        ))}
-                        {logs.length === 0 && (
+            <div className={styles.card}>
+                <div className={styles.tableContainer}>
+                    <table className={styles.table}>
+                        <thead>
                             <tr>
-                                <td colSpan={6} className="px-6 py-10 text-center text-gray-500">
-                                    Nenhum registro de auditoria encontrado.
-                                </td>
+                                <th>Data/Hora</th>
+                                <th>Usuário</th>
+                                <th>Ação</th>
+                                <th>Recurso</th>
+                                <th>IP / Agente</th>
+                                <th>Detalhes</th>
                             </tr>
-                        )}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {logs.map((log) => (
+                                <tr key={log.id}>
+                                    <td suppressHydrationWarning>
+                                        {log.createdAt ? new Date(log.createdAt).toLocaleString('pt-BR') : '-'}
+                                    </td>
+                                    <td>
+                                        <div style={{ fontWeight: 500 }}>{log.user.name}</div>
+                                        <div style={{ fontSize: '0.8em', color: '#64748b' }}>
+                                            @{log.user.username} ({log.user.role})
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span className={`${styles.badge} ${log.action === 'LOGIN' ? styles.badgeLogin :
+                                                log.action.includes('EXPORT') ? styles.badgeExport :
+                                                    styles.badgeDefault
+                                            }`}>
+                                            {log.action}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {log.resourceType && (
+                                            <>
+                                                <div>{log.resourceType}</div>
+                                                {log.resourceId && <div style={{ fontSize: '0.75em', color: '#94a3b8' }}>{log.resourceId}</div>}
+                                            </>
+                                        )}
+                                    </td>
+                                    <td style={{ maxWidth: '200px' }}>
+                                        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis' }} title={log.ipAddress || ''}>{log.ipAddress}</div>
+                                        <div style={{ fontSize: '0.75em', color: '#94a3b8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={log.userAgent || ''}>
+                                            {log.userAgent}
+                                        </div>
+                                    </td>
+                                    <td style={{ maxWidth: '300px' }}>
+                                        <div style={{ whiteSpace: 'normal' }}>{log.details}</div>
+                                    </td>
+                                </tr>
+                            ))}
+                            {logs.length === 0 && (
+                                <tr>
+                                    <td colSpan={6} style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
+                                        Nenhum registro de auditoria encontrado.
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
-            {/* Simple Pagination */}
-            <div className="mt-4 flex justify-between items-center">
+            <div className={styles.pagination}>
                 <a
                     href={page > 1 ? `/admin/audit?page=${page - 1}` : '#'}
-                    className={`px-4 py-2 border rounded text-sm ${page <= 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+                    className={`${styles.paginationBtn} ${page <= 1 ? styles.disabled : ''}`}
                 >
                     Anterior
                 </a>
-                <span className="text-sm text-gray-600 dark:text-gray-400">
+                <span className={styles.subtitle}>
                     Página {page} de {totalPages || 1}
                 </span>
                 <a
                     href={page < totalPages ? `/admin/audit?page=${page + 1}` : '#'}
-                    className={`px-4 py-2 border rounded text-sm ${page >= totalPages ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+                    className={`${styles.paginationBtn} ${page >= totalPages ? styles.disabled : ''}`}
                 >
                     Próxima
                 </a>
