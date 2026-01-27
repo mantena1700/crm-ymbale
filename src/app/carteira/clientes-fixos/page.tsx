@@ -1,7 +1,7 @@
 
 import { prisma } from '@/lib/db';
-import FixedClientsSection from '../FixedClientsSection';
 import Link from 'next/link';
+import PageContent from './PageContent';
 
 export const dynamic = 'force-dynamic';
 
@@ -70,54 +70,6 @@ export default async function FixedClientsPage() {
             </div>
 
             <PageContent sellers={data.sellers} restaurants={data.restaurants} />
-        </div>
-    );
-}
-
-// Client wrapper to handle state
-'use client';
-import { useState } from 'react';
-
-function PageContent({ sellers, restaurants }: { sellers: any[], restaurants: any[] }) {
-    const [selectedSellerId, setSelectedSellerId] = useState<string>(sellers[0]?.id || '');
-
-    return (
-        <div>
-            <div style={{
-                background: '#fff',
-                padding: '20px',
-                borderRadius: '12px',
-                boxShadow: '0 4px 6px rgba(0,0,0,0.05)',
-                marginBottom: '20px'
-            }}>
-                <h1 style={{ margin: '0 0 10px 0', fontSize: '1.5rem', color: '#1f2937' }}>Gestão de Clientes Fixos</h1>
-                <p style={{ margin: 0, color: '#6b7280' }}>Configure clientes recorrentes para o preenchimento inteligente da agenda.</p>
-
-                <div style={{ marginTop: '20px' }}>
-                    <label style={{ display: 'block', marginBottom: '5px', fontWeight: 500, color: '#374151' }}>Selecione o Executivo:</label>
-                    <select
-                        value={selectedSellerId}
-                        onChange={(e) => setSelectedSellerId(e.target.value)}
-                        style={{
-                            width: '100%',
-                            maxWidth: '400px',
-                            padding: '10px',
-                            borderRadius: '8px',
-                            border: '1px solid #d1d5db',
-                            fontSize: '1rem'
-                        }}
-                    >
-                        {sellers.map(seller => (
-                            <option key={seller.id} value={seller.id}>{seller.name}</option>
-                        ))}
-                    </select>
-                </div>
-            </div>
-
-            <FixedClientsSection
-                sellerId={selectedSellerId}
-                restaurants={restaurants}
-            />
         </div>
     );
 }
