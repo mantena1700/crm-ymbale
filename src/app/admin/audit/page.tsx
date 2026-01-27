@@ -2,37 +2,43 @@ import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { validateSession } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import styles from './page.module.css'; // We'll need to create this or use inline styles for now
 
 async function getAuditLogs(page: number = 1, limit: number = 50) {
     const skip = (page - 1) * limit;
 
     // We can add filtering logic here later based on search params
 
-    const [logs, total] = await Promise.all([
-        prisma.systemAuditLog.findMany({
-            orderBy: { createdAt: 'desc' },
-            take: limit,
-            skip: skip,
-            include: {
-                user: {
-                    select: {
-                        name: true,
-                        username: true,
-                        role: true
+    try {
+        const [logs, total] = await Promise.all([
+            prisma.systemAuditLog.findMany({
+                orderBy: { createdAt: 'desc' },
+                take: limit,
+                skip: skip,
+                include: {
+                    user: {
+                        select: {
+                            name: true,
+                            username: true,
+                            role: true
+                        }
                     }
                 }
-            }
-        }),
-        prisma.systemAuditLog.count()
-    ]);
+            }),
+            prisma.systemAuditLog.count()
+        ]);
 
-    return { logs, total, totalPages: Math.ceil(total / limit) };
+        return { logs, total, totalPages: Math.ceil(total / limit) };
+    } catch (error) {
+        console.error('Erro ao buscar logs de auditoria:', error);
+        // Retornar lista vazia em caso de erro (ex: tabela não existe) para não quebrar a página
+        return { logs: [], total: 0, totalPages: 0, error: String(error) };
+    }
 }
 
-export default async function AuditLogPage({ searchParams }: { searchParams: { page?: string } }) {
+export default async function AuditLogPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
     // 1. Verify Authentication & Root Role
-    const token = cookies().get('session_token')?.value;
+    const cookieStore = await cookies();
+    const token = cookieStore.get('session_token')?.value;
     if (!token) redirect('/login');
 
     const user = await validateSession(token);
@@ -43,8 +49,32 @@ export default async function AuditLogPage({ searchParams }: { searchParams: { p
         redirect('/'); // Or show a 403 Access Denied component
     }
 
-    const page = Number(searchParams.page) || 1;
-    const { logs, total, totalPages } = await getAuditLogs(page);
+    const { page: pageParam } = await searchParams;
+    const page = Number(pageParam) || 1;
+    const { logs, total, totalPages, error } = await getAuditLogs(page);
+
+    if (error) {
+        return (
+            <div className="p-8">
+                <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4">
+                    <div className="flex">
+                        <div className="flex-shrink-0">⚠️</div>
+                        <div className="ml-3">
+                            <p className="text-sm text-red-700">
+                                Erro ao carregar registros de auditoria.
+                                <br />
+                                Provável causa: A tabela de banco de dados ainda não foi criada.
+                                <br />
+                                <span className="font-mono text-xs mt-2 block bg-red-100 p-2 rounded">
+                                    {error}
+                                </span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="p-8">
@@ -70,43 +100,42 @@ export default async function AuditLogPage({ searchParams }: { searchParams: { p
                         </tr>
                     </thead>
                     <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                        {logs.map((log) => (
-                            <tr key={log.id} className="hover:bg-gray-50 dark:hover:bg-gray-750">
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                    {log.createdAt ? new Date(log.createdAt).toLocaleString('pt-BR') : '-'}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    <div className="text-sm font-medium text-gray-900 dark:text-white">
-                                        {log.user.name}
-                                    </div>
-                                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                                        @{log.user.username} ({log.user.role})
-                                    </div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                        <tr key={log.id} className="hover:bg-gray-50 dark:hover:bg-gray-750">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400" suppressHydrationWarning>
+                                {log.createdAt ? new Date(log.createdAt).toLocaleString('pt-BR') : '-'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm font-medium text-gray-900 dark:text-white">
+                                    {log.user.name}
+                                </div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">
+                                    @{log.user.username} ({log.user.role})
+                                </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
                                         ${log.action === 'LOGIN' ? 'bg-green-100 text-green-800' :
-                                            log.action.includes('EXPORT') ? 'bg-yellow-100 text-yellow-800' :
-                                                'bg-gray-100 text-gray-800'}`}>
-                                        {log.action}
-                                    </span>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                    {log.resourceType && (
-                                        <>
-                                            <span className="font-medium">{log.resourceType}</span>
-                                            {log.resourceId && <span className="text-xs text-gray-400 block">{log.resourceId}</span>}
-                                        </>
-                                    )}
-                                </td>
-                                <td className="px-6 py-4 whitespace-pre-wrap text-sm text-gray-500 dark:text-gray-400" style={{ maxWidth: '200px' }}>
-                                    <div className="truncate" title={log.ipAddress || ''}>{log.ipAddress}</div>
-                                    <div className="truncate text-xs text-gray-400" title={log.userAgent || ''}>{log.userAgent?.substring(0, 30)}...</div>
-                                </td>
-                                <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 max-w-xs truncate" title={log.details || ''}>
-                                    {log.details}
-                                </td>
-                            </tr>
+                                        log.action.includes('EXPORT') ? 'bg-yellow-100 text-yellow-800' :
+                                            'bg-gray-100 text-gray-800'}`}>
+                                    {log.action}
+                                </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                {log.resourceType && (
+                                    <>
+                                        <span className="font-medium">{log.resourceType}</span>
+                                        {log.resourceId && <span className="text-xs text-gray-400 block">{log.resourceId}</span>}
+                                    </>
+                                )}
+                            </td>
+                            <td className="px-6 py-4 whitespace-pre-wrap text-sm text-gray-500 dark:text-gray-400" style={{ maxWidth: '200px' }}>
+                                <div className="truncate" title={log.ipAddress || ''}>{log.ipAddress}</div>
+                                <div className="truncate text-xs text-gray-400" title={log.userAgent || ''}>{log.userAgent?.substring(0, 30)}...</div>
+                            </td>
+                            <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 max-w-xs truncate" title={log.details || ''}>
+                                {log.details}
+                            </td>
+                        </tr>
                         ))}
                         {logs.length === 0 && (
                             <tr>
